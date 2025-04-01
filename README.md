@@ -1,93 +1,103 @@
-# map-itn
+# MAP ITN Model
+
+## Overview
+This repository contains the codebase to construct newly developed MITN (Multitype ITN) models using raw national and subnational ITN delivery data, household survey data and various geographical covariates. The model construction pipeline consists of three main phases:
+1. Data extraction
+2. Stock and flow modelling
+3. Spatial disaggregation
+4. Raster and map construction
+
+In order to provide better scalability with available computational resources, phases 1,2, and 4 are written in Julia and are multithreaded where possible. Phase 3 is implemented in R to utilise the existing mature INLA package for spatial statistics.
+
+## Repository Structure
+
+### Non-Model Code
+#### docs
+Sub-project directory containing Documenter script for producing documentation pages for the code base. Currently WIP, but will eventually contain information on the following:
+- How-to-use guide
+- Mathematical justification and code details
+- Required input data formats and standards
+- Outstanding code issues
+- References (if relevant)
+#### datasets
+Folder containing all the required raw numerical datasets (anything contained in a .csv file) such as 
+- Cleaned household surveys
+- Delivery data
+- Distribution data
+- Country code lookups
+- Population numbers
+#### outputs
+Contains output files from the model construction pipeline. Files may either be intermediate components in the pipeline (e.g. data extractions, posterior draws of net parameters), or finalised model components (e.g. INLA draws, MCMC models for stock and flow mechanics, posterior draws of net crop and access). Files are generally stored in .jld2 format, with the exception of simple table data (.csv), raster files (.tiff) and INLA model outputs (.RData). The .jld2 format is based of HDF5 and should be compatible with other programming languages that support the HDF5 standard. Detail formats of each output file data type is provided in the documentation wiki.
+#### output_plots
+General storage folder for outputs of various plotting scripts. Contains diagnostic and visualisation outputs of different parts of the ITN model.
+
+### Model Code
+#### env_files
+Contains the Julia Manifest.toml and Project.toml files listing all required packages in the environment for model construction. Will be instantiated with Pkg.activate() at the start of each pipeline run. Note: The Documenter code utilises its own set of .toml environment files.
+#### src
+Source files containing bulk of model code. Written as modules containing functions and wrappers to be called from pipeline scripts. (Do not edit unless absolutely necessary.) More details are provided in the documentation wiki.
+#### scripts
+Contains scripts files that procedurally run components of the pipeline (from src) used to construct the MITN model. General overview of the subfolders
+##### DataProcessing
+Scripts used in the pre-processing or raw or intermediate datasets into the required format to be input into the model. (e.g. scraping household data, aligning country boundaries, geo-labelling entries, extracting previous BV model estimates for comparison)
+##### AuxAnalysis
+Non-model critical analyses (e.g. homogeneity tests) and other miscellaneous experiments and exploratory analysis for the ITN model. Not required for outputs. 
+##### MITN Folders: NationalMITN and SubnationalMITN
+These two folders contain scripts that must be run in order to construct stock and flow model estimates on the national and subnational level with the MITN model. They primarily use functions declared in **src** and output to the **outputs** folder
+##### INLA
+Contains R code for running the INLA spatial disaggregation step for NPC, Access and Use. Runs via Posit and outputs .tiff component rasters needed to construct final ITN coverage maps. 
+##### RasterMaps
+Script that combines stock and flow outputs, and INLA rasters to provide final ITN coverage maps. Heavily focused around the Julia Rasters.jl package and mosaic() function. 
 
 
+## List of Changes from BV-ITN
+### Mathematical/Structural Updates
+- Added support for multiple simultaneous net types in stock and flow
+- Added support for processing and outputting subnational level data (currently prototyping with dummy data)
+- Overhauled temporal interpolation approach to use gradient descent rather than random uniform.
+- Increased temporal resolution from quarterly to monthly estimates
+- Streamlined linear regression model for net life parameters (see documentation for details)
+- MCMC adjustment parameters updates to hew subnational stock and flow estimates to national level estimates
+- Added support for multiple net attrition models
+### Coding/Technical Changes
+- Partial multithreading support in stock and flow model
+- Usage of standard HDF5 data storage types for better future inter-compatibility with other programming languages
+- Porting of stock and flow deterministic model to Julia for better performance and memory management
+- Pipeline with standardised input and output formats
+### Miscellaneous
+- Improved documentation and code organisation
 
-## Getting started
+## To Do List
+### Implementations
+#### Required
+- Clean up obsolete/commented code originally from prototyping phase. General declutter
+- Organise directories and wrap functions into modules where possible for cleaning
+- Update and complete code repo documentation
+	- Add material into documentation and makefile.jl
+	- Provide support for automatic documentation updates via Github-CI
+	- Update documentation with list of dependencies and required data formats
+- Write master script to run both Julia and R components in pipeline
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+#### Desirable (Nice to haves)
+- Clean up and try and implement multithreading capabilities (if possible) in the raster construction section. Might not be possible due to GDAL limitations
+- Find a way to run Julia on AWS (currently broken and needs to be run manually)
+	- Implementation of automatic multi-processing capability when doing national level SNF estimates of net attrition parameters (currently manually run via R Studio terminal)
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+### Testing
+- Complete first run initial outputs of ITN coverage rasters with coarse mesh in INLA
+- Do full pipeline run of entire model construction to iron out bugs
 
-## Add your files
+### Model Validation
+- Compare initial estimates (with CI) of continent and national ITN measures over time at annual resolution
 
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
+### Bug Hunts
+- Identify spurious/occasional NaNs in adjusted national and subnational access
 
-```
-cd existing_repo
-git remote add origin https://gitlab.com/malaria-atlas-project/model-dev/map-itn.git
-git branch -M main
-git push -uf origin main
-```
+### Writing and Publication
+- Extend current paper draft to include new innovations of subnational analyses and spatial disaggregation
+- Narrative for public health purposes
+- Overhaul paper structure and separate body from SI
+- Update supplementary information with new mathematical changes and detail
 
-## Integrate with your tools
-
-- [ ] [Set up project integrations](https://gitlab.com/malaria-atlas-project/model-dev/map-itn/-/settings/integrations)
-
-## Collaborate with your team
-
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
-
-## Test and Deploy
-
-Use the built-in continuous integration in GitLab.
-
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
-
-***
-
-# Editing this README
-
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
-
-## Suggestions for a good README
-
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
-
-## Name
-Choose a self-explaining name for your project.
-
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
-
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
-
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
-
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
-
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
-
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
-
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
-
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
-
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
-
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
-
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
-
-## License
-For open source projects, say how it is licensed.
-
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+## Documentation wiki
+Coming soon once I figure out how to get Github-CI to play nice with Documenter.jl :(
