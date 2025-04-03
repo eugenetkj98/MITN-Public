@@ -8,6 +8,9 @@ Extract observed net crop estimates for household survey data by area_id.
 # %% Prep environment and subdirectories
 include(pwd()*"/scripts/init_env.jl")
 
+# %% Import filenames and directories from config file
+include(pwd()*"/scripts/dir_configs.jl")
+
 # %% Import Public Packages
 using JLD2
 using CSV
@@ -18,36 +21,38 @@ using LinearAlgebra
 using StatsBase
 
 # %%
-function inflation_factor(n; saturation_size = 4000)
+function inflation_factor(n; saturation_size = DEFAULT_INFLATION_SAT_SIZE)
     return 1 ./sqrt((min.(1, n/saturation_size)))
 end
 
 # %% Define paths
-dataset_dir = "datasets/subnational/"
+dataset_dir = RAW_SUBNAT_DATASET_DIR
+dataprep_dir = OUTPUT_DATAPREP_DIR
 
 # Admin 1 ID Legend
-id_legend_filename = "admin2023_1_MG_5K_config.csv"
+id_legend_filename = ADMIN1_AREAID_LEGEND_FILENAME
+
 # National aggregated survey data
-nat_npc_monthly_data_filename = "npc_monthly_data.csv"
+nat_npc_monthly_data_filename = HOUSEHOLD_NAT_SUMMARY_DATA_FILENAME
 
 # Full household survey data entries
-hh_survey_data_filename = "datasets/itn_hh_surveydata_complete_dataeng.csv"#"datasets/subnational/itn_hh_surveydata_complete_subnat.csv"
+hh_survey_data_filename = OUTPUT_DATAPREP_DIR*HOUSEHOLD_SURVEY_DATA_FILENAME #"datasets/subnational/itn_hh_surveydata_complete_subnat.csv"
 
 # Paths to save output
-output_path = "datasets/subnational/"
-output_filename = "subnat_npc_monthly_data.csv"
+output_path = OUTPUT_DATAPREP_DIR
+output_filename = HOUSEHOLD_SUBNAT_SUMMARY_DATA_FILENAME
 
 # %% Import datasets
 master_id_legend = CSV.read(dataset_dir*id_legend_filename, DataFrame)
-nat_npc_monthly_data = CSV.read("datasets/"*nat_npc_monthly_data_filename, DataFrame)
+nat_npc_monthly_data = CSV.read(RAW_DATASET_DIR*nat_npc_monthly_data_filename, DataFrame)
 subnat_full_survey_data = CSV.read(hh_survey_data_filename, DataFrame)
 # Exclude data entries with missing ISO
 subnat_full_survey_data = subnat_full_survey_data[.!ismissing.(subnat_full_survey_data.ISO),:]
 
 # %% Choose Country and Analysis Settings
-sat_survey_size = 4000
-YEAR_START = 2000 # Start year for data parsing
-YEAR_END = 2023 # End year for data parsing
+sat_survey_size = DEFAULT_INFLATION_SAT_SIZE
+YEAR_START = YEAR_NAT_START # Start year for data parsing
+YEAR_END = YEAR_NAT_END # End year for data parsing
 
 # %% Get list of countries
 ISO_list = unique(subnat_full_survey_data.ISO)
@@ -62,7 +67,6 @@ for ISO_idx in ProgressBar(1:length(ISO_list))
     # %% Filter survey data to desired country
     
     findall(ismissing.(subnat_full_survey_data.ISO .== ISO))
-    subnat_full_survey_data[309735,:]
     country_full_survey_data = subnat_full_survey_data[subnat_full_survey_data.ISO .== ISO,:]
     country_name = country_full_survey_data.Country[1]
 

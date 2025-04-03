@@ -8,6 +8,9 @@ With confidence intervals
 # %% Prep environment and subdirectories
 include(pwd()*"/scripts/init_env.jl")
 
+# %% Import filenames and directories from config file
+include(pwd()*"/scripts/dir_configs.jl")
+
 # %% Import packages
 using CairoMakie
 using JLD2
@@ -17,8 +20,8 @@ using Colors
 using StatsBase
 
 # %% Import Dataset for Plotting
-model_nat_est_timeseries = load("outputs/coverage_timeseries/nat_model_coverage.jld2")
-survey_pred_data = CSV.read("outputs/coverage_timeseries/model_prediction_comparisons.csv", DataFrame)
+model_nat_est_timeseries = load(OUTPUT_DIR*"coverage_timeseries/adj_nat_model_coverage.jld2")
+survey_pred_data = CSV.read(OUTPUT_DIR*"coverage_timeseries/adj_model_prediction_comparisons.csv", DataFrame)
 
 
 CairoMakie.plot(survey_pred_data.use, survey_pred_data.mitn_use, markersize = 3)
@@ -349,6 +352,7 @@ npc_rmse_indic = (Vector{Float64}(undef, n_countries) .= NaN)
 access_rmse_indic = (Vector{Float64}(undef, n_countries) .= NaN)
 hh_use_rmse_indic = (Vector{Float64}(undef, n_countries) .= NaN)
 pop_use_rmse_indic = (Vector{Float64}(undef, n_countries) .= NaN)
+
 for i in 1:n_countries
     if isnan(bv_npc_RMSE[i])
         if isnan(mitn_npc_RMSE[i])

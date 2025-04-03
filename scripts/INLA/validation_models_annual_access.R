@@ -9,7 +9,7 @@ library(terra)
 source("scripts/INLA/transforms.R")
 
 # Import Models
-load("outputs/INLA/coarse_models/model1_access_complete_pmodel.RData")
+load("outputs/INLA/model1_access_complete_pmodel.RData")
 
 # Check summary
 summary(m1)
@@ -22,7 +22,7 @@ sf_use_s2(FALSE)
 #########################
 
 # load INLA regression data
-inla_data <- read.csv('datasets/INLA/inla_dataset_reduced.csv')
+inla_data <- read.csv('outputs/data_prep/INLA/inla_dataset_reduced.csv')
 inla_data <- inla_data[seq(2,dim(inla_data)[1],2),]
 inla_data <- inla_data[which(inla_data$access > 0),]
 # inla_data <- inla_data[1:1000,]

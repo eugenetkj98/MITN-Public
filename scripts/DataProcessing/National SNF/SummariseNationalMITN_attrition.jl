@@ -7,6 +7,9 @@ Extract posterior net crop and attrition estimates from regressed national crop 
 # %% Prep environment and subdirectories
 include(pwd()*"/scripts/init_env.jl")
 
+# %% Import filenames and directories from config file
+include(pwd()*"/scripts/dir_configs.jl")
+
 # %% Import Public Packages
 using JLD2
 using CSV
@@ -20,13 +23,12 @@ using Plots
 
 
 # %% Extraction Settings
-YEAR_START = 2000
-YEAR_END = 2023
+YEAR_START = YEAR_NAT_START
+YEAR_END = YEAR_NAT_END
 
 
 # %% Define Posterior Models data location
-post_outputs_dir = "outputs/"
-netcrop_reg_dir = pwd()*"/"*post_outputs_dir*"regressions/crop/$(YEAR_START)_$(YEAR_END)/"
+netcrop_reg_dir = OUTPUT_REGRESSIONS_DIR*"crop/$(YEAR_START)_$(YEAR_END)/"
 
 """
     kernelmode_gaussian(samples::Vector{Float64})
@@ -45,8 +47,8 @@ function kernelmode_gaussian(samples)
 end
 
 # %%
-ISO_list = String.(CSV.read("datasets/ISO_list.csv", DataFrame)[:,1])
-exclusion_ISOs = []#["CPV","BWA","CAF","GNQ","DJI","GAB","GNB","ERI","ETH","SOM","SDN","ZAF","SSD"]
+ISO_list = String.(CSV.read(RAW_DATASET_DIR*ISO_LIST_FILENAME, DataFrame)[:,1])
+exclusion_ISOs = ["CPV","ZAF"]
 filt_ISOs = setdiff(ISO_list, exclusion_ISOs)
 
 # %% Extract net attrition parameters for all countries
@@ -87,4 +89,4 @@ for ISO in filt_ISOs
 end
 
 # Save summary as CSV
-CSV.write("outputs/net_attrition_posteriors.csv",net_attrition_summary)
+CSV.write(OUTPUT_DIR*"net_attrition_posteriors.csv",net_attrition_summary)

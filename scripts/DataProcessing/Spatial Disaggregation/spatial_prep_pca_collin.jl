@@ -8,6 +8,9 @@ Script to normalise and post process extracted spatial household data points and
 # %% Prep environment and subdirectories
 include(pwd()*"/scripts/init_env.jl")
 
+# %% Import filenames and directories from config file
+include(pwd()*"/scripts/dir_configs.jl")
+
 # %% Import relevant packages
 using ProgressBars
 using DataFrames
@@ -19,13 +22,12 @@ using LinearAlgebra
 using SparseArrays
 
 # %% Directories
-input_dir = "datasets/INLA/"
-input_filename = "inla_dataset.csv"
-cov_legend_filename = "inla_raw_covariates_legend.csv"
+input_dir = OUTPUT_DATAPREP_DIR
+input_filename = INLA_DATAPREP_FILENAME
+cov_legend_filename = COV_LEGEND_FILENAME
 
-
-output_dir = "datasets/INLA/"
-output_filename = "inla_dataset_reduced.csv"
+output_dir = OUTPUT_DATAPREP_DIR
+output_filename = INLA_REDUCED_DATAPREP_FILENAME
 
 # %% Load extracted household data
 data = CSV.read(input_dir*input_filename, DataFrame)

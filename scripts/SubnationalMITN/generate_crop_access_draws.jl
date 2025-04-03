@@ -8,6 +8,9 @@ Generate subnational crop and access draws
 # %% Prep environment and subdirectories
 include(pwd()*"/scripts/init_env.jl")
 
+# %% Import filenames and directories from config file
+include(pwd()*"/scripts/dir_configs.jl")
+
 # %% Import Public Packages
 using JLD2
 using CSV
@@ -24,44 +27,40 @@ using Distributions
 using DateConversions
 using NetLoss
 using NetAccessModel
+using NetAccessPrediction
 using Subnat_NetCropModel
 
 ##############################################
 # %% GLOBAL SETTINGS (NOT COUNTRY DEPENDENT)
 ##############################################
 # %% Define paths
-dataset_dir = "datasets/subnational/"
-subnat_reg_dir = "outputs/regressions/subnational/"
-nat_netcrop_post_dir = "outputs/draws/national/crop_access/"
-nat_netage_post_dir = "outputs/draws/national/demography/"
-nat_access_ext_dir = "outputs/extractions/access/pred_data/"
-nat_access_reg_dir = "outputs/regressions/access/"
-save_dir = "outputs/draws/subnational/"
+dataset_dir = RAW_SUBNAT_DATASET_DIR
+subnat_reg_dir = OUTPUT_REGRESSIONS_DIR*"subnational/"
+nat_netcrop_post_dir = OUTPUT_DRAWS_DIR*"national/crop_access/"
+nat_netage_post_dir = OUTPUT_DRAWS_DIR*"national/demography/"
+nat_access_ext_dir = OUTPUT_EXTRACTIONS_DIR*"access/pred_data/"
+nat_access_reg_dir = OUTPUT_REGRESSIONS_DIR*"access/"
+save_dir = OUTPUT_DRAWS_DIR*"subnational/"
 
 # %% Sampling settings
-n_samples = 50
+n_samples = SUBNAT_CROP_ACCESS_N_DRAWS
 
 # %% MCMC NAT-SUBNAT Adjustment ratio Sampler settings
-iterations = 20000
-burn_in = 5000
-sample_var = 0.0004
+iterations = NAT_SUBNAT_ADJ_MCMC_ITERATIONS
+burn_in = NAT_SUBNAT_ADJ_MCMC_BURNIN
+sample_var = NAT_SUBNAT_ADJ_MCMC_SAMPLING_VAR
 
 # %% Year bounds
-REG_YEAR_START_NAT = 2000 # Start year for national model
-REG_YEAR_START = 2010#2011 # Start year for subnational model
-REG_YEAR_END = 2023
+REG_YEAR_START_NAT = YEAR_NAT_START # Start year for national model
+REG_YEAR_START = YEAR_SUBNAT_TRANS #2011 # Start year for subnational model
+REG_YEAR_END = YEAR_NAT_END
 
 ##############################################
 # %% BATCH RUN CODE BLOCK!
 ##############################################
-# # %% Get ISO List
-# ISO_list = String.(CSV.read(raw"C:\Users\ETan\Documents\Prototype Analyses\itn-updated\datasets\ISO_list.csv", DataFrame)[:,1])
-# exclusion_ISOs = ["CPV","BWA","GNQ","DJI","ETH","SOM","ZAF","SSD"]
-# # ["CPV","BWA","CAF","GNQ","DJI","GAB","GNB","ERI","ETH","SOM","SDN","ZAF","SSD"]
-# # GAB excluded
 
 # %% Perform draws and save outputs. Filter out unwanted countries
-ISO_list = String.(CSV.read(raw"C:\Users\ETan\Documents\Prototype Analyses\itn-updated\datasets\ISO_list.csv", DataFrame)[:,1])
+ISO_list = String.(CSV.read(RAW_DATASET_DIR*ISO_LIST_FILENAME, DataFrame)[:,1])
 exclusion_ISOs = ["CPV","ZAF"]
 filt_ISOs = setdiff(ISO_list, exclusion_ISOs)
 
@@ -77,12 +76,12 @@ for ISO in filt_ISOs
     # National draws filename
     nat_netcrop_post_filename = "$(ISO)_2000_2023_post_crop_access.jld2"
     # Net Distribution data
-    distributions_filename = "net_distributions_admin1_dummy_combined_amp.csv"
+    distributions_filename = SUBNAT_DISTRIBUTION_DATA_FILENAME
     # Net age demography posterior
     net_age_filename = "$(ISO)_net_age_demography_samples.csv"
 
     # %% National MCMC chain (for getting monthly disaggregation ratios)
-    nat_cropchain_dir = "outputs/regressions/crop/$(REG_YEAR_START_NAT)_$(REG_YEAR_END)/"
+    nat_cropchain_dir = OUTPUT_REGRESSIONS_DIR*"crop/$(REG_YEAR_START_NAT)_$(REG_YEAR_END)/"
     nat_cropchain_filename = "$(ISO)_$(REG_YEAR_START_NAT)_$(REG_YEAR_END)_cropchains.jld2"
 
     # %% Access Model MCMC Chain
@@ -105,8 +104,8 @@ for ISO in filt_ISOs
     net_access_input_dict = JLD2.load(nat_access_ext_dir*net_access_input_dict_filename)
     net_access_chain = JLD2.load(nat_access_reg_dir*net_access_chain_filename)
     # Household Survey Data
-    nat_npc_monthly = CSV.read("datasets/npc_monthly_data.csv", DataFrame)
-    subnat_npc_monthly = CSV.read("datasets/subnational/subnat_npc_monthly_data.csv", DataFrame)
+    nat_npc_monthly = CSV.read(OUTPUT_DATAPREP_DIR*HOUSEHOLD_NAT_SUMMARY_DATA_FILENAME, DataFrame)
+    subnat_npc_monthly = CSV.read(OUTPUT_SUBNAT_DATAPREP_DIR*HOUSEHOLD_SUBNAT_SUMMARY_DATA_FILENAME, DataFrame)
     # National MCMC Chain (for getting monthly disaggregation ratios)
     nat_cropchain = load(nat_cropchain_dir*nat_cropchain_filename)
 
@@ -119,11 +118,10 @@ for ISO in filt_ISOs
     admin1_names = subnat_reg_data["admin1_names"]
     n_admin1 = length(admin1_names)
 
-
     # %% Calculate indexing bounds
-    YEAR_START_NAT = 2000 #subnat_reg_data["YEAR_START_NAT"]
-    YEAR_START = 2010 #subnat_reg_data["YEAR_START"]
-    YEAR_END = 2023 #subnat_reg_data["YEAR_END"]
+    YEAR_START_NAT = YEAR_NAT_START #subnat_reg_data["YEAR_START_NAT"]
+    YEAR_START = YEAR_SUBNAT_TRANS #subnat_reg_data["YEAR_START"]
+    YEAR_END = YEAR_NAT_END #subnat_reg_data["YEAR_END"]
 
     YEARS_ANNUAL = Vector(YEAR_START:1:(YEAR_END))
     MONTHS_MONTHLY = Vector(1:(YEAR_END-YEAR_START+1)*12)
@@ -313,17 +311,10 @@ for ISO in filt_ISOs
             NPC_MONTHLY_TOTAL_samples[i,:] = NPC_MONTHLY_TOTAL
         end
 
-        FULL_POPULATION_MONTHLY
-
-
-
         # %% Sample posterior access, give subnational NPC draws
         λ_ACCESS_samples = sample_net_access(ρ_chain_df, μ_chain_df, p_h,
                                     FULL_POPULATION_MONTHLY, Γ_MONTHLY_TOTAL_samples;
                                     n_max = 20)
-
-        
-
 
         # %% Add to collection of outputs
         # Only keep mean for net sampled demography due to file size constraints

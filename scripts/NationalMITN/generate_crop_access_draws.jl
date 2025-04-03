@@ -9,6 +9,9 @@ Code to generate the mean net crop posterior estimate. Saves as a CSV file
 # %% Prep environment and subdirectories
 include(pwd()*"/scripts/init_env.jl")
 
+# %% Import filenames and directories from config file
+include(pwd()*"/scripts/dir_configs.jl")
+
 # %% Import Public Packages
 using JLD2
 using CSV
@@ -20,6 +23,7 @@ using DateConversions
 using NetCropModel
 using NetCropRegression
 using NetAccessModel
+using NetAccessPrediction
 using NetAccessRegression
 
 # Maths packages
@@ -28,33 +32,30 @@ using StatsBase
 using ProgressBars
 
 # %% Output directory
-output_dir = "outputs/draws/national/crop_access/"
+output_dir = OUTPUT_DRAWS_DIR*"national/crop_access/"
 
 # %% Sampling Settings
-n_samples = 50#1000
+n_samples = NAT_CROP_ACCESS_N_DRAWS #1000
 
 # %% Get ISO List
-ISO_list = String.(CSV.read("datasets/ISO_list.csv", DataFrame)[:,1])
-exclusion_ISOs = []#["CPV","BWA","GNQ","DJI","ETH","SOM","ZAF","SSD"]
-# ["CPV","BWA","CAF","GNQ","DJI","GAB","GNB","ERI","ETH","SOM","SDN","ZAF","SSD"]
-# GAB excluded
+ISO_list = String.(CSV.read(RAW_DATASET_DIR*ISO_LIST_FILENAME, DataFrame)[:,1])
+exclusion_ISOs = ["CPV","ZAF"]
+
 # %% Run Analysis
-YEAR_START = 2000
-YEAR_END = 2023 
+YEAR_START = YEAR_NAT_START
+YEAR_END = YEAR_NAT_END
 
 # %% Perform draws and save outputs
-# ISO_list = String.(CSV.read(raw"C:\Users\ETan\Documents\Prototype Analyses\itn-updated\datasets\ISO_list.csv", DataFrame)[:,1])
-# exclusion_ISOs = ["CPV","BWA","CAF","GNQ","DJI","GAB","GNB","ERI","ETH","SOM","SDN","ZAF","SSD"]
 filt_ISOs = setdiff(ISO_list, exclusion_ISOs)
 
 for ISO in filt_ISOs
     println("Generating draws of national crop and access for $(ISO)...")
     # Import Data
-    input_dict = load("outputs/extractions/crop/$(YEAR_START)_$(YEAR_END)/$(ISO)_$(YEAR_START)_$(YEAR_END)_cropextract.jld2")
+    input_dict = load(OUTPUT_EXTRACTIONS_DIR*"crop/$(YEAR_START)_$(YEAR_END)/$(ISO)_$(YEAR_START)_$(YEAR_END)_cropextract.jld2")
     # regression_dict = load("outputs/regressions/crop/Compact Regressions/$(YEAR_START)_$(YEAR_END)/$(ISO)_$(YEAR_START)_$(YEAR_END)_cropchains.jld2")
-    regression_dict = load("outputs/regressions/crop/$(YEAR_START)_$(YEAR_END)/$(ISO)_$(YEAR_START)_$(YEAR_END)_cropchains.jld2")
-    net_access_input_dict = load("outputs/extractions/access/pred_data/$(YEAR_START)_$(YEAR_END)/$(ISO)_$(YEAR_START)_$(YEAR_END)_accessextract.jld2")
-    net_access_chain = load("outputs/regressions/access/netaccesschains.jld2")
+    regression_dict = load(OUTPUT_REGRESSIONS_DIR*"crop/$(YEAR_START)_$(YEAR_END)/$(ISO)_$(YEAR_START)_$(YEAR_END)_cropchains.jld2")
+    net_access_input_dict = load(OUTPUT_EXTRACTIONS_DIR*"access/pred_data/$(YEAR_START)_$(YEAR_END)/$(ISO)_$(YEAR_START)_$(YEAR_END)_accessextract.jld2")
+    net_access_chain = load(OUTPUT_REGRESSIONS_DIR*"access/netaccesschains.jld2")
 
     # Crop Regression input data
     ISO = input_dict["ISO"]

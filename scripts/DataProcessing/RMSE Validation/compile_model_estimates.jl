@@ -8,6 +8,9 @@ estimates, used to calculate RMSE
 # %% Prep environment and subdirectories
 include(pwd()*"/scripts/init_env.jl")
 
+# %% Import filenames and directories from config file
+include(pwd()*"/scripts/dir_configs.jl")
+
 # %% Import packages
 using ProgressBars
 using CSV
@@ -20,27 +23,28 @@ using NetAccessModel
 using DateConversions
 
 # %% Define raster file locations
-map_rasters_dir = "Z:/eugene/Final Rasters/rasters/"#"outputs/rasters/"
-pop_rasters_dir = "Z:/mastergrids/Other_Global_Covariates/Population/WorldPop/v3/PopulationCounts_DRC_fixed/5km/"
+map_rasters_dir = OUTPUT_RASTERS_DIR
+pop_rasters_dir = POPULATION_RASTER_DIR
 
 # %% Define dataset to post-process
-dataset_dir = "datasets/"
+dataset_dir = OUTPUT_DATAPREP_DIR
 inla_dataset_filename = "INLA/inla_dataset.csv"
 
 # %% Get region boundaries
 # Region boundaries
-admin0_shapes_geoIO = GeoIO.load("Z:/master_geometries/Admin_Units/Global/MAP/2023/MG_5K/admin2023_0_MG_5K.shp")
-admin1_shapes_geoIO = GeoIO.load("Z:/master_geometries/Admin_Units/Global/MAP/2023/MG_5K/admin2023_1_MG_5K.shp")
+admin0_shapes_geoIO = GeoIO.load(ADMIN0_SHAPEFILE)
+admin1_shapes_geoIO = GeoIO.load(ADMIN1_SHAPEFILE)
 
 # %% Extracted time series from models (for National level estimates)
-model_nat_est_timeseries = load("outputs/coverage_timeseries/nat_model_coverage.jld2")
+model_nat_est_timeseries = load(OUTPUT_DIR*"coverage_timeseries/adj_nat_model_coverage.jld2")
 
 # %% National level survey measurements
-nat_survey_data = CSV.read("datasets/npc_monthly_data.csv", DataFrame)
+nat_survey_data = CSV.read(OUTPUT_DATAPREP_DIR*HOUSEHOLD_NAT_SUMMARY_DATA_FILENAME, DataFrame)
+hh_survey_data = CSV.read(OUTPUT_DATAPREP_DIR*HOUSEHOLD_SURVEY_DATA_FILENAME, DataFrame)
 
 # %% Reference years
-YEAR_START = 2000
-YEAR_END = 2023
+YEAR_START = YEAR_NAT_START
+YEAR_END = YEAR_NAT_END
 
 # %% Import data
 data = CSV.read(dataset_dir*inla_dataset_filename, DataFrame)
@@ -68,13 +72,13 @@ for i in ProgressBar(1:length(monthidxs), leave = false)
     population_raster = replace_missing(Raster(pop_rasters_dir*"WorldPop_UNAdj_v3_DRC_fix.$(min(year,2020)).Annual.Data.5km.sum.tif"), missingval = NaN)
 
     # Import BV model rasters
-    bv_npc_raster = replace_missing(Raster("Z:/map-data-eng/airflow/itn_model/output/itn_cube/20241015/nets_per_capita/ITN_$(year)_percapita_nets_mean.tif"), missingval = NaN)
-    bv_use_raster = replace_missing(Raster("Z:/map-data-eng/airflow/itn_model/output/itn_cube/20241015/ITN_$(year)_use_mean.tif"), missingval = NaN)
+    bv_npc_raster = replace_missing(Raster(BV_OUTPUT_DIR*"nets_per_capita/ITN_$(year)_percapita_nets_mean.tif"), missingval = NaN)
+    bv_use_raster = replace_missing(Raster(BV_OUTPUT_DIR*"ITN_$(year)_use_mean.tif"), missingval = NaN)
     
     # Import MITN model rasters
-    mitn_npc_raster = Raster(map_rasters_dir*"final_npc/logmodel_npc/adj_npc_$(year)_$(month_str)_mean.tif")
-    mitn_access_raster = Raster(map_rasters_dir*"final_access/pmodel_access/adj_access_$(year)_$(month_str)_mean.tif")
-    mitn_use_raster = Raster(map_rasters_dir*"final_use/logis_use/use_$(year)_$(month_str)_mean.tif")
+    mitn_npc_raster = replace_missing(Raster(map_rasters_dir*"final_npc/logmodel_npc/adj_npc_$(year)_$(month_str)_mean.tif"), missingval = NaN)
+    mitn_access_raster = replace_missing(Raster(map_rasters_dir*"final_access/pmodel_access/adj_access_$(year)_$(month_str)_mean.tif"), missingval = NaN)
+    mitn_use_raster = replace_missing(Raster(map_rasters_dir*"final_use/logis_use/use_$(year)_$(month_str)_mean.tif"), missingval = NaN)
     # mitn_use_raster = Raster("outputs/rasters/final_use/logis_use/use_$(year)_$(month_str)_mean.tif")
 
     # Find all entries in relevant monthidx
@@ -165,16 +169,18 @@ end
 
 # %%
 admin0_df_entries = []
-ISO_list = String.(CSV.read(raw"C:\Users\ETan\Documents\Prototype Analyses\itn-updated\datasets\ISO_list.csv", DataFrame)[:,1])
-exclusion_ISOs = ["CPV","ZAF"]
-YEAR_START = 2000
-YEAR_END = 2023
+ISO_list = String.(CSV.read(RAW_DATASET_DIR*ISO_LIST_FILENAME, DataFrame)[:,1])
+exclusion_ISOs = ["CPV", "ZAF"]
 filt_ISOs = setdiff(ISO_list, exclusion_ISOs)
+
+YEAR_START = YEAR_NAT_START
+YEAR_END = YEAR_NAT_END
+
 
 for ISO_i in ProgressBar(1:length(filt_ISOs))
     ISO = filt_ISOs[ISO_i]
     # Import access data and calculate household access
-    net_access_input_dict = load("outputs/extractions/access/$(YEAR_START)_$(YEAR_END)/$(ISO)_$(YEAR_START)_$(YEAR_END)_accessextract.jld2")
+    net_access_input_dict = load(OUTPUT_EXTRACTIONS_DIR*"access/reg_data/$(YEAR_START)_$(YEAR_END)/$(ISO)_$(YEAR_START)_$(YEAR_END)_accessextract.jld2")
 
     # Calculate reference values for National household Access from Surveys
     national_H_aggregated = net_access_input_dict["H_aggregated"]
@@ -217,13 +223,13 @@ for ISO_i in ProgressBar(1:length(filt_ISOs))
         population_raster = replace_missing(Raster(pop_rasters_dir*"WorldPop_UNAdj_v3_DRC_fix.$(min(year,2020)).Annual.Data.5km.sum.tif"), missingval = NaN)
 
         # Import BV model rasters
-        bv_npc_raster = replace_missing(Raster("Z:/map-data-eng/airflow/itn_model/output/itn_cube/20241015/nets_per_capita/ITN_$(year)_percapita_nets_mean.tif"), missingval = NaN)
-        bv_use_raster = replace_missing(Raster("Z:/map-data-eng/airflow/itn_model/output/itn_cube/20241015/ITN_$(year)_use_mean.tif"), missingval = NaN)
+        bv_npc_raster = replace_missing(Raster(BV_OUTPUT_DIR*"nets_per_capita/ITN_$(year)_percapita_nets_mean.tif"), missingval = NaN)
+        bv_use_raster = replace_missing(Raster(BV_OUTPUT_DIR*"ITN_$(year)_use_mean.tif"), missingval = NaN)
 
         # Import MITN model rasters
-        mitn_npc_raster = Raster(map_rasters_dir*"final_npc/logmodel_npc/adj_npc_$(year)_$(month_str)_mean.tif")
-        mitn_access_raster = Raster(map_rasters_dir*"final_access/pmodel_access/adj_access_$(year)_$(month_str)_mean.tif")
-        mitn_use_raster = Raster(map_rasters_dir*"final_use/logis_use/use_$(year)_$(month_str)_mean.tif")
+        mitn_npc_raster = replace_missing(Raster(map_rasters_dir*"final_npc/logmodel_npc/adj_npc_$(year)_$(month_str)_mean.tif"), missingval = NaN)
+        mitn_access_raster = replace_missing(Raster(map_rasters_dir*"final_access/pmodel_access/adj_access_$(year)_$(month_str)_mean.tif", missingval = NaN))
+        mitn_use_raster = replace_missing(Raster(map_rasters_dir*"final_use/logis_use/use_$(year)_$(month_str)_mean.tif"), missingval = NaN)
         # mitn_use_raster = Raster("outputs/rasters/final_use/logis_use/use_$(year)_$(month_str)_mean.tif")
 
         # Find all entries in relevant monthidx
@@ -240,9 +246,19 @@ for ISO_i in ProgressBar(1:length(filt_ISOs))
                                             (nat_survey_data.year .== year),"NPC_mean"][1]
         end
 
+        hh_survey_slice = hh_survey_data[(hh_survey_data.ISO .== ISO) .& 
+                                            (hh_survey_data.interview_month .== month) .&
+                                            (hh_survey_data.interview_year .== year),:]
+
         if monthidx ∈ access_monthidxs
             admin0_access = national_access_aggregated[findfirst(access_monthidxs .== monthidx)]
+        else
+            hh_survey_slice = hh_survey_data[(hh_survey_data.ISO .== ISO) .& 
+                                            (hh_survey_data.interview_month .== month) .&
+                                            (hh_survey_data.interview_year .== year),:]
+            admin0_access = sum(min.(2 .*hh_survey_slice.n_itn./hh_survey_slice.hh_size,1).*(hh_survey_slice.hh_size).*(hh_survey_slice.hh_sample_wt))/sum((hh_survey_slice.hh_size).*(hh_survey_slice.hh_sample_wt))
         end
+
 
         if monthidx ∈ use_monthidxs
             admin0_use = nat_survey_data[(nat_survey_data.ISO .== ISO) .& 
@@ -297,6 +313,6 @@ output_csv = vcat(admin1_df_entries..., admin0_df_entries...)
 
 # %%
 
-CSV.write("outputs/coverage_timeseries/model_prediction_comparisons.csv", output_csv)
+CSV.write(OUTPUT_DIR*"coverage_timeseries/adj_model_prediction_comparisons.csv", output_csv)
 
 

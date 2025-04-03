@@ -9,6 +9,9 @@ Also extracts the model estimates from the previous BV model rasters and compile
 # %% Prep environment and subdirectories
 include(pwd()*"/scripts/init_env.jl")
 
+# %% Import filenames and directories from config file
+include(pwd()*"/scripts/dir_configs.jl")
+
 # %% Import relevant packages
 using ProgressBars
 using DataFrames
@@ -26,26 +29,26 @@ using DateConversions
 
 # %% File paths
 # Population Rasters directory
-pop_dir = "Z:/mastergrids/Other_Global_Covariates/Population/WorldPop/v3/PopulationCounts_DRC_fixed/5km/"
-
-# Region boundaries
-admin1_shapes_geoIO = GeoIO.load("Z:/master_geometries/Admin_Units/Global/MAP/2023/MG_5K/admin2023_1_MG_5K.shp")
+pop_dir = POPULATION_RASTER_DIR
 
 # Directory of rasters
-raster_dir = "Z:/eugene/Final Rasters/rasters/"#"outputs/rasters/"
+raster_dir = OUTPUT_RASTERS_DIR
+
+# Region boundaries
+admin0_shapes_geoIO = GeoIO.load(ADMIN1_SHAPEFILE)
 
 # Output save dir
-mkpath("outputs/coverage_timeseries/subnational/")
-output_dir = "outputs/coverage_timeseries/subnational/"
+output_dir = OUTPUT_DIR*"coverage_timeseries/subnational/"
+mkpath(output_dir)
 
 # %% Perform draws and save outputs. Filter out unwanted countries
-ISO_list = String.(CSV.read("datasets/ISO_list.csv", DataFrame)[:,1])
+ISO_list = String.(CSV.read(RAW_DATASET_DIR*ISO_LIST_FILENAME, DataFrame)[:,1])
 exclusion_ISOs = ["CPV","ZAF"]
 filt_ISOs = setdiff(ISO_list, exclusion_ISOs)
 
 # %% Time bounds
-YEAR_START = 2000
-YEAR_END = 2023
+YEAR_START = YEAR_NAT_START
+YEAR_END = YEAR_NAT_END
 
 # %% Construct Timeseries for model predictions
 
@@ -75,11 +78,11 @@ for year in ProgressBar(YEAR_START:YEAR_END, leave = false)
 		end
 
         # Import ITN coverage rasters (MITN)
-        bv_npc_mean_raster = replace_missing(Raster("Z:/map-data-eng/airflow/itn_model/output/itn_cube/20241015/nets_per_capita/ITN_$(year)_percapita_nets_mean.tif"), missingval = NaN)
+        bv_npc_mean_raster = replace_missing(Raster(BV_OUTPUT_DIR**"nets_per_capita/ITN_$(year)_percapita_nets_mean.tif"), missingval = NaN)
         
-        bv_use_mean_raster = replace_missing(Raster("Z:/map-data-eng/airflow/itn_model/output/itn_cube/20241015/ITN_$(year)_use_mean.tif"), missingval = NaN)
-        bv_use_upper_raster = replace_missing(Raster("Z:/map-data-eng/airflow/itn_model/output/itn_cube/20241015/ci/ITN_$(year)_use_upper.tif"), missingval = NaN)
-        bv_use_lower_raster = replace_missing(Raster("Z:/map-data-eng/airflow/itn_model/output/itn_cube/20241015/ci/ITN_$(year)_use_lower.tif"), missingval = NaN)
+        bv_use_mean_raster = replace_missing(Raster(BV_OUTPUT_DIR*"ITN_$(year)_use_mean.tif"), missingval = NaN)
+        bv_use_upper_raster = replace_missing(Raster(BV_OUTPUT_DIR*"ci/ITN_$(year)_use_upper.tif"), missingval = NaN)
+        bv_use_lower_raster = replace_missing(Raster(BV_OUTPUT_DIR*"ITN_$(year)_use_lower.tif"), missingval = NaN)
 
 		# Import ITN coverage rasters (MITN)
 		mitn_npc_mean_raster = Raster(raster_dir*"final_npc/logmodel_npc/adj_npc_$(year)_$(month_str)_mean.tif")

@@ -9,6 +9,9 @@ module NetCropModel
 export monthly_reduced_itn
 export model_evolve_forward
 
+# %% Import filenames and directories from config file
+include(pwd()*"/scripts/dir_configs.jl")
+
 using Distributions
 using StatsBase
 using LinearAlgebra
@@ -25,7 +28,6 @@ using NetLoss
 ########################################
 # %% Forward evolution of monthly reduced ITN model
 ########################################
-MISSING_NETS_SCALE = 1e6
 """
     monthly_reduced_itn(YEARS_ANNUAL, MONTHS_MONTHLY,
                                     DELIVERIES_ANNUAL, DISTRIBUTION_ANNUAL,

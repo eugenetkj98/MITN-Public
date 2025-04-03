@@ -5,10 +5,11 @@ Last Updated: 19/11/2024
 MITN model for subnational
 """
 
-
-
 # %% Prep environment and subdirectories
 include(pwd()*"/scripts/init_env.jl")
+
+# %% Import filenames and directories from config file
+include(pwd()*"/scripts/dir_configs.jl")
 
 # %% Import Public Packages
 using JLD2
@@ -28,54 +29,50 @@ using DateConversions
 using NetLoss
 using Subnat_NetCropModel
 
+# %% Create worker processes
+n_workers = N_WORKERS
+addprocs(n_workers)
+println("Starting National MITN Regression with $(nprocs()) workers, each with $(Threads.nthreads())")
 
-##############################################
-# %% GLOBAL SETTINGS (NOT COUNTRY DEPENDENT)
-##############################################
-# %% Define paths
-dataset_dir = "datasets/subnational/"
-nat_netcrop_post_dir = "outputs/draws/national/crop_access/"
-net_age_dir = "outputs/draws/national/demography/"
-save_dir = "outputs/regressions/subnational/"
-posterior_dir = "outputs/"
+@everywhere begin
 
-# %% MCMC and Regression Settings
-n_chains = 4
+    ##############################################
+    # %% GLOBAL SETTINGS (NOT COUNTRY DEPENDENT)
+    ##############################################
+    # %% Define paths
+    dataset_dir = RAW_SUBNAT_DATASET_DIR
+    dataprep_dir = OUTPUT_DATAPREP_DIR
+    nat_netcrop_post_dir = OUTPUT_DRAWS_DIR*"national/crop_access/"
+    net_age_dir = OUTPUT_DRAWS_DIR*"national/demography/"
+    save_dir = OUTPUT_REGRESSIONS_DIR*"subnational/"
+    posterior_dir = OUTPUT_DIR
 
-# Settings for calculating adjustment weights
-adj_iterations = 5000
-adj_burn_in = 2000
+    # %% MCMC and Regression Settings
+    n_chains = min(SUBNAT_CROP_ADJ_N_CHAINS, Threads.nthreads())
 
-# Settings for fitting subnational attrition parameters
-scaling_constant = 0.10
-proposal_resampling_variances = scaling_constant .*[0.15,8,0.15] # Compact support sampling
-subnat_iterations = 15000
-subnat_burn_in = 2000
+    # Settings for calculating adjustment weights
+    adj_iterations = SUBNAT_CROP_ADJ_MCMC_ITERATIONS
+    adj_burn_in = SUBNAT_CROP_ADJ_MCMC_BURNIN
 
-# %% Year bounds
-YEAR_START_NAT = 2000 # Start year for national model
-YEAR_START = 2010 # Start year for subnational model
-YEAR_END = 2023
+    # Settings for fitting subnational attrition parameters
+    scaling_constant = SUBNAT_CROP_ATR_SCALING_CONSTANT
+    proposal_resampling_variances = SUBNAT_CROP_ATR_PROPOSAL_SAMPLING_VAR # Compact support sampling
+    subnat_iterations = SUBNAT_CROP_ATR_MCMC_ITERATIONS
+    subnat_burn_in = SUBNAT_CROP_ATR_MCMC_BURNIN
 
+    # %% Year bounds
+    YEAR_START_NAT = YEAR_NAT_START # Start year for national model
+    YEAR_START = YEAR_SUBNAT_TRANS # Start year for subnational model
+    YEAR_END = YEAR_NAT_END
 
-##############################################
-# %% BATCH RUN CODE BLOCK!
-##############################################
-# %% Get ISO List
-# ISO_list = String.(CSV.read(raw"C:\Users\ETan\Documents\Prototype Analyses\itn-updated\datasets\ISO_list.csv", DataFrame)[:,1])
-# exclusion_ISOs = ["CPV","BWA","GNQ","DJI","ETH","SOM","ZAF","SSD"]
-# # ["CPV","BWA","CAF","GNQ","DJI","GAB","GNB","ERI","ETH","SOM","SDN","ZAF","SSD"]
-# # GAB excluded
+    # %% Perform draws and save outputs. Filter out unwanted countries
+    ISO_list = String.(CSV.read(RAW_DATASET_DIR*ISO_LIST_FILENAME, DataFrame)[:,1])
+    exclusion_ISOs = ["CPV", "ZAF"] #["CPV","BWA","CAF","GNQ","DJI","GAB","GNB","ERI","ETH","SOM","SDN","ZAF","SSD"]
+    filt_ISOs = setdiff(ISO_list, exclusion_ISOs)
+end
 
-# %% Perform draws and save outputs. Filter out unwanted countries
-ISO_list = String.(CSV.read("datasets/ISO_list.csv", DataFrame)[:,1])
-ISO_list
-
-exclusion_ISOs = ["CPV", "ZAF"]#["CPV","BWA","CAF","GNQ","DJI","GAB","GNB","ERI","ETH","SOM","SDN","ZAF","SSD"]
-filt_ISOs = setdiff(ISO_list, exclusion_ISOs)
-filt_ISOs
 # %%
-for ISO_i in 7:32#33:length(filt_ISOs)
+@sync @distributed for ISO_i in 1:length(filt_ISOs)
 
     ISO = filt_ISOs[ISO_i]
 
@@ -86,24 +83,24 @@ for ISO_i in 7:32#33:length(filt_ISOs)
 
     # %% Data Filenames
     # Population Data
-    subnat_population_filename = "map_admin1_zonal_stats_pops.csv"
+    subnat_population_filename = SUBNAT_POPULATION_FILENAME
     # Net Distribution Data
-    distributions_filename = "net_distributions_admin1_dummy_combined_amp.csv"
+    distributions_filename = SUBNAT_DISTRIBUTION_DATA_FILENAME
     # Admin 1 ID Legend
-    id_legend_filename = "admin2023_1_MG_5K_config.csv"
+    id_legend_filename = ADMIN1_AREAID_LEGEND_FILENAME
     # Net age demography posterior
     net_age_filename = "$(ISO)_net_age_demography_mean.csv"
     # Net attrition posteriors (from national model)
     net_attrition_filename = "net_attrition_posteriors.csv"
     # NPC monthly dataset for regression
-    subnat_npc_monthly_data_filename = "subnat_npc_monthly_data.csv"
+    subnat_npc_monthly_data_filename = HOUSEHOLD_SUBNAT_SUMMARY_DATA_FILENAME
     # National input dict used for the national net crop regression (used to get monthly population numbers)
     nat_netcrop_input_dict_filename = "$(ISO)_$(YEAR_START_NAT)_$(YEAR_END)_cropextract.jld2"
     # National net crop draws
     nat_netcrop_post_filename = "$(ISO)_$(YEAR_START_NAT)_$(YEAR_END)_post_crop_access.jld2"
 
     # %% National MCMC chain (for getting monthly disaggregation ratios)
-    nat_cropchain_dir = "outputs/regressions/crop/$(YEAR_START_NAT)_$(YEAR_END)/"
+    nat_cropchain_dir = OUTPUT_REGRESSIONS_DIR*"crop/$(YEAR_START_NAT)_$(YEAR_END)/"
     nat_cropchain_filename = "$(ISO)_$(YEAR_START_NAT)_$(YEAR_END)_cropchains.jld2"
 
     # %% File save settings
@@ -123,9 +120,9 @@ for ISO_i in 7:32#33:length(filt_ISOs)
 
     # %% Load required country specific national level data
     # National input dict used for the national net crop regression (used to get monthly population numbers)
-    nat_netcrop_input_dict = load(posterior_dir*"extractions/crop/$(YEAR_START_NAT)_$(YEAR_END)/"*nat_netcrop_input_dict_filename)
+    nat_netcrop_input_dict = load(OUTPUT_EXTRACTIONS_DIR*"crop/$(YEAR_START_NAT)_$(YEAR_END)/"*nat_netcrop_input_dict_filename)
     # Subnational filtered household survey data
-    subnat_npc_monthly_data = CSV.read(dataset_dir*subnat_npc_monthly_data_filename, DataFrame)
+    subnat_npc_monthly_data = CSV.read(dataprep_dir*subnat_npc_monthly_data_filename, DataFrame)
     # Load national net crop draws
     nat_netcrop_post_data = load(nat_netcrop_post_dir*nat_netcrop_post_filename)
     # Load National regression MCMC chain (for monthly disaggregation ratios)

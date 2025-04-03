@@ -4,6 +4,12 @@ Date Created: 27/3/2025
 Last Updated: 27/3/2025
 Script to plot a figure of the LLIN halflives across a list of analysed countries. Compares BV vs MITN
 """
+# %% Prep environment and subdirectories
+include(pwd()*"/scripts/init_env.jl")
+
+# %% Import filenames and directories from config file
+include(pwd()*"/scripts/dir_configs.jl")
+
 # %% Import Public Packages
 using DataFrames
 using Missings
@@ -23,19 +29,24 @@ using NetAccessModel
 using DateConversions
 using NetLoss
 
+
+
 # %% Define save paths
-output_path = "output_plots/snf/national/summaries/"
+output_path = OUTPUT_PLOTS_DIR*"snf/national/summaries/"
 mkpath(output_path)
 
 # %% Country Data
-YEAR_START = 2000
-YEAR_END = 2023
-ISO_list = String.(CSV.read("datasets/ISO_list.csv", DataFrame)[:,1])
-BV_halflife = CSV.read("datasets/bv_retention_times.csv", DataFrame)
-country_code = CSV.read("datasets/country_codes.csv", DataFrame)
+YEAR_START = YEAR_NAT_START
+YEAR_END = YEAR_NAT_END
+ISO_list = String.(CSV.read(RAW_DATASET_DIR*ISO_LIST_FILENAME, DataFrame)[:,1])
+exclusion_ISOs = ["CPV","ZAF"]
+filt_ISOs = setdiff(ISO_list, exclusion_ISOs)
+
+BV_halflife = CSV.read(RAW_DATASET_DIR*BV_OUTPUTS_FILENAME, DataFrame)
+country_code = CSV.read(RAW_DATASET_DIR*COUNTRY_CODES_FILENAME, DataFrame)
 
 # %% Raw Survey data to find out how much data was available
-survey_data = CSV.read("Z:/eugene/ITN Input Datasets/Svy_ALL_ITN_HH_Res.csv", DataFrame)
+survey_data = CSV.read(HOUSEHOLD_SURVEY_DIR*HOUSEHOLD_SURVEY_FILENAME, DataFrame)
 survey_data = survey_data[.!ismissing.(survey_data.ISO),:] # Remove entries with missing ISO
 # country_name = country_code[findfirst(country_code.ISO3 .== ISO),"Country"]
 
@@ -43,11 +54,11 @@ survey_data = survey_data[.!ismissing.(survey_data.ISO),:] # Remove entries with
 df_collection = []
 
 # %%
-for ISO in ISO_list
+for ISO in filt_ISOs
 
     # %% Load Datasets
-    input_dict = load("outputs/extractions/crop/$(YEAR_START)_$(YEAR_END)/$(ISO)_$(YEAR_START)_$(YEAR_END)_cropextract.jld2")
-    regression_dict = load("outputs/regressions/crop/$(YEAR_START)_$(YEAR_END)/$(ISO)_$(YEAR_START)_$(YEAR_END)_cropchains.jld2")
+    input_dict = load(OUTPUT_EXTRACTIONS_DIR*"crop/$(YEAR_START)_$(YEAR_END)/$(ISO)_$(YEAR_START)_$(YEAR_END)_cropextract.jld2")
+    regression_dict = load(OUTPUT_REGRESSIONS_DIR*"crop/$(YEAR_START)_$(YEAR_END)/$(ISO)_$(YEAR_START)_$(YEAR_END)_cropchains.jld2")
 
     # %%
     # Get Metadata and define bounds

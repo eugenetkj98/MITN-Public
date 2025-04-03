@@ -10,7 +10,7 @@ library(matrixStats)
 source("scripts/INLA/transforms.R")
 
 # Import Models
-load("outputs/INLA/coarse_models/model1_access_complete_pmodel.RData")
+load("outputs/INLA/model1_access_complete_pmodel.RData")
 
 # Check summary
 summary(m1)
@@ -103,7 +103,7 @@ for (year in start_year:end_year) {
   # Preprocess Covariate Values
   ##############################
   # Normalise all covariates and write as new variables
-  cov_norm_constants <- read.csv("datasets/INLA/covariate_normalisation_constants.csv")
+  cov_norm_constants <- read.csv("outputs/data_prep/INLA/covariate_normalisation_constants.csv")
   norm_cov_var_names <- c()
   
   for (i in 1:(length(cov_norm_constants$cov)-6)){
@@ -121,7 +121,7 @@ for (year in start_year:end_year) {
   norm_cov_matrix <- as.matrix(do.call("rbind", as.list(lapply(norm_cov_var_names, get))))
   
   # Import projection matrix to covariates and calculated values for reduced proj_matrix
-  M_proj_raw <- read.csv("datasets/INLA/proj_matrix.csv")
+  M_proj_raw <- read.csv("outputs/data_prep/INLA/proj_matrix.csv")
   M_proj <- as.matrix(M_proj_raw[1:(dim(M_proj_raw)[1]-2),2:(dim(M_proj_raw)[2]-6)])
   
   proj_cov_datavalues <- M_proj %*% norm_cov_matrix
@@ -260,10 +260,10 @@ for (year in start_year:end_year) {
   
   # Save Raster
   # save_filename = str_glue("outputs/INLA/maps_pmodel/ACCESS_pmodel_{year}.tif")
-  save_filename_mean = str_glue("outputs/INLA/coarse_models/rasters/access_pmodel/ACCESS_pmodel_{year}_mean.tif")
-  # save_filename_std = str_glue("outputs/INLA/coarse_models/rasters/access_pmodel/ACCESS_pmodel_{year}_std.tif")
-  # save_filename_lower = str_glue("outputs/INLA/coarse_models/rasters/access_pmodel/ACCESS_pmodel_{year}_lower.tif")
-  # save_filename_upper = str_glue("outputs/INLA/coarse_models/rasters/access_pmodel/ACCESS_pmodel_{year}_upper.tif")
+  save_filename_mean = str_glue("outputs/INLA/rasters/inla_pmodel_access/ACCESS_pmodel_{year}_mean.tif")
+  # save_filename_std = str_glue("outputs/INLA/rasters/inla_pmodel_access/ACCESS_pmodel_{year}_std.tif")
+  # save_filename_lower = str_glue("outputs/INLA/rasters/inla_pmodel_access/ACCESS_pmodel_{year}_lower.tif")
+  # save_filename_upper = str_glue("outputs/INLA/rasters/inla_pmodel_access/ACCESS_pmodel_{year}_upper.tif")
   
   # writeRaster(pr.mdg.out, save_filename, NAflag = -9999, overwrite = TRUE)
   writeRaster(pr.mdg.out_mean, save_filename_mean, NAflag = -9999, overwrite = TRUE)

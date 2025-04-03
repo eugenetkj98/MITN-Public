@@ -10,6 +10,9 @@ export extract_data_netcrop
 export SA_extract_data_netcrop
 export extract_data_netaccess
 
+# %% Import settings, filenames and directories from config file
+include(pwd()*"/scripts/dir_configs.jl")
+
 # %% Import required packages
 # Data Wrangling
 using CSV
@@ -35,28 +38,29 @@ using NetCropModel
 # TO DO: CONSIDER INPUT AS A CONFIG TEXT FILE
 ########################################
 # Filepaths
-deliveries_data_dir = raw"datasets"
-distribution_data_dir = raw"datasets"
-population_data_dir = raw"datasets"
-hh_data_dir = raw"datasets"#raw"Z:\map-data-eng\airflow\itn_model\input\household_surveys\dhs_surveys\2024-06-26"
-countrycodes_dir = raw"datasets"
+deliveries_data_dir = RAW_DATASET_DIR
+distribution_data_dir = RAW_DATASET_DIR
+population_data_dir = RAW_DATASET_DIR
+hh_data_dir = RAW_DATASET_DIR
+hh_dataprep_dir = OUTPUT_DATAPREP_DIR
+countrycodes_dir = RAW_DATASET_DIR
 
 # Filenames
-deliveries_data_filename = raw"\base_manufacturer_deliveries.csv"
-distribution_data_filename = raw"\net_distributions_cITN_adjusted.csv"
-population_data_filename = raw"\ihme_populations.csv"
-hh_listing_filename = raw"\itn_hh_surveydata_complete_dataeng.csv"#raw"\dhs_survey_listing.csv"
-hh_npc_data = raw"\npc_monthly_data.csv"#raw"Z:\eugene\ITN Input Datasets\npc_monthly_data.csv"
-countrycodes_filename = raw"\country_codes.csv"
+deliveries_data_filename = DELIVERIES_DATA_FILENAME
+distribution_data_filename = DISTRIBUTION_DATA_FILENAME
+population_data_filename = POPULATION_DATA_FILENAME
+hh_listing_filename = HOUSEHOLD_SURVEY_DATA_FILENAME
+hh_npc_data = HOUSEHOLD_NAT_SUMMARY_DATA_FILENAME
+countrycodes_filename = COUNTRY_CODES_FILENAME
 
 # Output Directory
-output_dir = "outputs/extractions/"
+output_dir = OUTPUT_EXTRACTIONS_DIR
 
 ########################################
 # %% Define extraction settings
 ########################################
 # Window smoothing settings
-R_window = 2
+R_window = SMOOTHING_WINDOW_WIDTH
 
 ########################################
 # %% Data Extraction Code
@@ -199,7 +203,7 @@ function extract_data_netcrop(ISO::String, YEAR_START::Int64, YEAR_END::Int64;
     ########################################
 
     # Import NPC data
-    household_npc_data = CSV.read(hh_data_dir*hh_npc_data, DataFrame)
+    household_npc_data = CSV.read(hh_dataprep_dir*hh_npc_data, DataFrame)
 
     # Filter by require country ISO
     household_npc_ISOSLICE = household_npc_data[findall((household_npc_data.ISO .== ISO).*
@@ -437,7 +441,7 @@ function SA_extract_data_netcrop(ISO::String, YEAR_START::Int64, YEAR_END::Int64
     ########################################
 
     # Import NPC data
-    household_npc_data = CSV.read(hh_data_dir*hh_npc_data, DataFrame)
+    household_npc_data = CSV.read(hh_dataprep_dir*hh_npc_data, DataFrame)
 
     # Filter by require country ISO
     household_npc_ISOSLICE = household_npc_data[findall((household_npc_data.ISO .== ISO).*
@@ -962,7 +966,7 @@ function extract_data_netaccess(ISO::String, YEAR_START::Int64, YEAR_END::Int64,
     # Select a year
     for i in 1:n_surveys
 
-        surveyid =hh_surveyids_ISOSLICE[i]
+        surveyid = hh_surveyids_ISOSLICE[i]
 
         # year = year_vals[i]
         # row_idx = findfirst(household_survey_listing_ISOSLICE.SurveyYear .== year)
@@ -985,6 +989,7 @@ function extract_data_netaccess(ISO::String, YEAR_START::Int64, YEAR_END::Int64,
 
         hh_sizes = current_hh_survey.hh_size
         n_itns = current_hh_survey.n_itn
+        hh_weight = current_hh_survey.hh_sample_wt
         # # Get interview years
         # interview_years = unique(hh_data_RAW.interview_year)
         # interview_years = intersect(interview_years[findall(.!ismissing.(interview_years))], YEARS_ANNUAL)
@@ -997,13 +1002,13 @@ function extract_data_netaccess(ISO::String, YEAR_START::Int64, YEAR_END::Int64,
         
 
         # %% Calculate H matrix
-        # Matrix of household counts
-        HH_matrix = zeros(Int,h_max,n_max) 
+        # Matrix of weighted household counts
+        HH_matrix = zeros(h_max,n_max) 
 
         for n in 0:size(HH_matrix)[2]-1
             for h in 1:size(HH_matrix)[1]
-                HH_matrix[h,n+1] = sum(findall((hh_sizes .== h).*
-                                                (n_itns .== n)))
+                HH_matrix[h,n+1] = sum((hh_sizes .== h).*
+                                                (n_itns .== n) .* hh_weight)
             end
         end
 

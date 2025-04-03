@@ -13,7 +13,7 @@ source("scripts/INLA/transforms.R")
 sf_use_s2(FALSE)
 
 # load INLA regression data
-inla_data <- read.csv('datasets/INLA/inla_dataset_reduced.csv')
+inla_data <- read.csv('outputs/data_prep/INLA/inla_dataset_reduced.csv')
 # inla_data <- inla_data[seq(1,dim(inla_data)[1],2),]
 inla_data <- inla_data[which(inla_data$access > 0),]
 inla_data$yearidx <- (inla_data$monthidx %/% 12)#*12
@@ -135,7 +135,7 @@ m1 <- inla(res_access_gap ~ -1 + Intercept +
 
 print("Saving Access gap model outputs...")
 
-save(africa_mesh, africa_spde, temporal_mesh_annual, m1, access_theta, file = "outputs/INLA/coarse_models/model1_access_complete_pmodel.RData")
+save(africa_mesh, africa_spde, temporal_mesh_annual, m1, access_theta, file = "outputs/INLA/model1_access_complete_pmodel.RData")
 
 print("Saved Access model")
 

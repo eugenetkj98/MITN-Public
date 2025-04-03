@@ -8,7 +8,6 @@ Code that defined the PPL model for the estimating parameters for Net Access
 module NetAccessModel
 
 export H_to_access
-export sample_net_access
 export model_prop_h_nonets
 export model_prop_h_meannets
 

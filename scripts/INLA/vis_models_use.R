@@ -10,7 +10,7 @@ library(matrixStats)
 source("scripts/INLA/transforms.R")
 
 # Import Models
-load("outputs/INLA/coarse_models/model1_use_complete_logis.RData")
+load("outputs/INLA/model1_use_complete_logis.RData")
 
 # Check summary
 summary(m1)
@@ -63,7 +63,7 @@ cov_NTL <- raster::extract(raster('/mnt/s3/mastergrids/Other_Global_Covariates/N
 cov_ELEV <- raster::extract(raster('/mnt/s3/mastergrids/Other_Global_Covariates/Elevation/SRTM-Elevation/5km/Synoptic/SRTM_elevation.Synoptic.Overall.Data.5km.mean.tif'), pred.points, df = TRUE)
 cov_SLP <- raster::extract(raster('/mnt/s3/mastergrids/Other_Global_Covariates/Elevation/SRTM-Slope/5km/Synoptic/SRTM_SlopePCT_Corrected.Synoptic.Overall.Data.5km.mean.tif'), pred.points, df = TRUE)
 
-start_year <- 2018
+start_year <- 2022
 end_year <- 2023
 
 for (year in start_year:end_year) {
@@ -125,7 +125,7 @@ for (year in start_year:end_year) {
     # Preprocess Covariate Values
     ##############################
     # Normalise all covariates and write as new variables
-    cov_norm_constants <- read.csv("datasets/INLA/covariate_normalisation_constants.csv")
+    cov_norm_constants <- read.csv("outputs/data_prep/INLA/covariate_normalisation_constants.csv")
     norm_cov_var_names <- c()
     
     for (i in 1:(length(cov_norm_constants$cov))){
@@ -143,7 +143,8 @@ for (year in start_year:end_year) {
     norm_cov_matrix <- as.matrix(do.call("rbind", as.list(lapply(norm_cov_var_names, get))))
     
     # Import projection matrix to covariates and calculated values for reduced proj_matrix
-    M_proj_raw <- read.csv("datasets/INLA/proj_matrix.csv")
+    M_proj_raw <- read.csv("outputs/data_prep/INLA/proj_matrix.csv")
+    
     M_proj <- as.matrix(M_proj_raw[1:(dim(M_proj_raw)[1]),2:(dim(M_proj_raw)[2])])
 
     proj_cov_datavalues <- M_proj %*% norm_cov_matrix
@@ -275,10 +276,10 @@ for (year in start_year:end_year) {
     
     # Save Raster
     # save_filename = str_glue("outputs/INLA/maps_logis/USE_logismodel_{year}_{month}.tif")
-    save_filename_mean = str_glue("outputs/INLA/coarse_models/rasters/use_logis/USE_logismodel_{year}_{month}_mean.tif")
-    # save_filename_std = str_glue("outputs/INLA/coarse_models/rasters/use_logis/USE_logismodel_{year}_{month}_std.tif")
-    # save_filename_lower = str_glue("outputs/INLA/coarse_models/rasters/use_logis/USE_logismodel_{year}_{month}_lower.tif")
-    # save_filename_upper = str_glue("outputs/INLA/coarse_models/rasters/use_logis/USE_logismodel_{year}_{month}_upper.tif")
+    save_filename_mean = str_glue("outputs/INLA/rasters/inla_adj_use_logis/adj_USE_logismodel_{year}_{month}_mean.tif")
+    # save_filename_std = str_glue("outputs/INLA/rasters/inla_adj_use_logis/adj_USE_logismodel_{year}_{month}_std.tif")
+    # save_filename_lower = str_glue("outputs/INLA/rasters/inla_adj_use_logis/adj_USE_logismodel_{year}_{month}_lower.tif")
+    # save_filename_upper = str_glue("outputs/INLA/rasters/inla_adj_use_logis/adj_USE_logismodel_{year}_{month}_upper.tif")
 
     
     # writeRaster(pr.mdg.out, save_filename, NAflag = -9999, overwrite = TRUE)
@@ -290,7 +291,7 @@ for (year in start_year:end_year) {
     # Save sample draws for calculating quantiles later
     for (i in 1:n_samples_saved){
       pr.mdg.out_sample <- rasterFromXYZ(cbind(x, z_samples[,i]), crs = "+proj=longlat +datum=WGS84 +no_defs +type=crs")
-      save_filename_sample = str_glue("outputs/INLA/coarse_models/rasters/use_logis/USE_logismodel_{year}_{month}_sample_{i}.tif")
+      save_filename_sample = str_glue("outputs/INLA/rasters/inla_adj_use_logis/adj_USE_logismodel_{year}_{month}_sample_{i}.tif")
       writeRaster(pr.mdg.out_sample, save_filename_sample, NAflag = -9999, overwrite = TRUE)
     }
   }

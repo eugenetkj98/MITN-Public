@@ -5,7 +5,7 @@ Last Updated: 5/8/2024
 Code that defined the PPL model for the estimating parameters for Net Access
 """
 
-module NetAccessModel
+module NetAccessPrediction
 export sample_net_access
 
 # Package requirements

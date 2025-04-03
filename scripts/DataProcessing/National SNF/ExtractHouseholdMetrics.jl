@@ -9,6 +9,9 @@ applies adjustment to the standard errors. Outputs are saved in a csv file.
 # %% Prep environment and subdirectories
 include(pwd()*"/scripts/init_env.jl")
 
+# %% Import filenames and directories from config file
+include(pwd()*"/scripts/dir_configs.jl")
+
 # %% Data Wrangling
 using CSV
 using DataFrames
@@ -22,28 +25,26 @@ using Distributions
 using DateConversions
 
 # %% Define Directories
-datasets_dir = "datasets/"
+datasets_dir = RAW_DATASET_DIR
+dataprep_dir = OUTPUT_DATAPREP_DIR
 
 # %% Set start and end year bounds for reference
-YEAR_START = 1950
-YEAR_END = 2023
+YEAR_START = YEAR_REF_START
+YEAR_END = YEAR_NAT_END
 
 # %% Import required datasets and legend/keys
-country_codes_key = CSV.read(datasets_dir*"country_codes.csv", DataFrame)
-master_survey_data = CSV.read(datasets_dir*"itn_hh_surveydata_complete_dataeng.csv", DataFrame)
-# country_codes_key = CSV.read("datasets/country_codes.csv", DataFrame)
-# master_survey_data = CSV.read("datasets/itn_hh_surveydata_complete.csv", DataFrame)
+country_codes_key = CSV.read(datasets_dir*COUNTRY_CODES_FILENAME, DataFrame)
+master_survey_data = CSV.read(dataprep_dir*HOUSEHOLD_SURVEY_DATA_FILENAME, DataFrame)
 
 # %% Get list of surveyIds that need to be extracted
 surveyid_list = unique(master_survey_data.SurveyId)
 
 # %%
-τ = 1.5
+τ = STD_ERR_TAU
 
-function inflation_factor(n; saturation_size = 4000)
+function inflation_factor(n; saturation_size = DEFAULT_INFLATION_SAT_SIZE)
     return 1 ./sqrt((min.(1, n/saturation_size)))
 end
-
 
 # %% Compute metrics for each survey id
 survey_summaries = []
@@ -172,4 +173,7 @@ end
 
 # %% Compile data and save
 summarised_data = vcat(survey_summaries...)
-CSV.write(datasets_dir*"npc_monthly_data.csv", summarised_data)
+CSV.write(dataprep_dir*HOUSEHOLD_NAT_SUMMARY_DATA_FILENAME, summarised_data)
+
+println("JULIA EXTRACTION COMPLETED :D")
+flush(stdout)

@@ -9,6 +9,9 @@ Also extracts the model estimates from the previous BV model and compiles into a
 # %% Prep environment and subdirectories
 include(pwd()*"/scripts/init_env.jl")
 
+# %% Import filenames and directories from config file
+include(pwd()*"/scripts/dir_configs.jl")
+
 # %% Import relevant packages
 using ProgressBars
 using DataFrames
@@ -27,34 +30,35 @@ using DateConversions
 
 # %% File paths
 # Population Rasters directory
-pop_dir = "Z:/mastergrids/Other_Global_Covariates/Population/WorldPop/v3/PopulationCounts_DRC_fixed/5km/"
+pop_dir = POPULATION_RASTER_DIR
 
 # Directory of rasters
-raster_dir = "Z:/eugene/Final Rasters/rasters/"#"outputs/rasters/"
+raster_dir = OUTPUT_RASTERS_DIR
 
 # Output save dir
-mkpath("outputs/coverage_timeseries/")
-output_dir = "outputs/coverage_timeseries/"
+output_dir = OUTPUT_DIR*"coverage_timeseries/"
+mkpath(output_dir)
+
 
 # %% Perform draws and save outputs. Filter out unwanted countries
-ISO_list = String.(CSV.read("datasets/ISO_list.csv", DataFrame)[:,1])
+ISO_list = String.(CSV.read(RAW_DATASET_DIR*ISO_LIST_FILENAME, DataFrame)[:,1])
 exclusion_ISOs = ["CPV","ZAF"]
 filt_ISOs = setdiff(ISO_list, exclusion_ISOs)
 
 # %% Time bounds
-YEAR_START = 2000
-YEAR_END = 2023
+YEAR_START = YEAR_NAT_START
+YEAR_END = YEAR_NAT_END
 
 # %% Construct Timeseries for model predictions
 
 # Raster Directory
-raster_dir = "Z:/eugene/Final Rasters/rasters/"
+raster_dir = OUTPUT_RASTERS_DIR
 
 # Population Raster directory
-pop_dir = "Z:/mastergrids/Other_Global_Covariates/Population/WorldPop/v3/PopulationCounts_DRC_fixed/5km/"
+pop_dir = POPULATION_RASTER_DIR
 
 # Region boundaries
-admin0_shapes_geoIO = GeoIO.load("Z:/master_geometries/Admin_Units/Global/MAP/2023/MG_5K/admin2023_0_MG_5K.shp")
+admin0_shapes_geoIO = GeoIO.load(ADMIN0_SHAPEFILE)
 
 # Year bounds
 YEAR_LIST = YEAR_START:YEAR_END
@@ -85,17 +89,17 @@ for year_i in ProgressBar(1:n_years, leave = false)
 		end
 
 		# Import ITN coverage rasters (MITN)
-		npc_mean_raster = Raster(raster_dir*"final_npc/logmodel_npc/adj_npc_$(year)_$(month_str)_mean.tif")
-		npc_upper_raster = Raster(raster_dir*"final_npc/logmodel_npc/adj_npc_$(year)_$(month_str)_upper.tif")
-		npc_lower_raster = Raster(raster_dir*"final_npc/logmodel_npc/adj_npc_$(year)_$(month_str)_lower.tif")
+		npc_mean_raster = replace_missing(Raster(raster_dir*"final_npc/logmodel_npc/adj_npc_$(year)_$(month_str)_mean.tif"), missingval = NaN)
+		npc_upper_raster = replace_missing(Raster(raster_dir*"final_npc/logmodel_npc/adj_npc_$(year)_$(month_str)_upper.tif"), missingval = NaN)
+		npc_lower_raster = replace_missing(Raster(raster_dir*"final_npc/logmodel_npc/adj_npc_$(year)_$(month_str)_lower.tif"), missingval = NaN)
 
-		access_mean_raster = Raster(raster_dir*"final_access/pmodel_access/adj_access_$(year)_$(month_str)_mean.tif")
-		access_upper_raster = Raster(raster_dir*"final_access/pmodel_access/adj_access_$(year)_$(month_str)_upper.tif")
-		access_lower_raster = Raster(raster_dir*"final_access/pmodel_access/adj_access_$(year)_$(month_str)_lower.tif")
+		access_mean_raster = replace_missing(Raster(raster_dir*"final_access/pmodel_access/adj_access_$(year)_$(month_str)_mean.tif"), missingval = NaN)
+		access_upper_raster = replace_missing(Raster(raster_dir*"final_access/pmodel_access/adj_access_$(year)_$(month_str)_upper.tif"), missingval = NaN)
+		access_lower_raster = replace_missing(Raster(raster_dir*"final_access/pmodel_access/adj_access_$(year)_$(month_str)_lower.tif"), missingval = NaN)
 		
-		use_mean_raster = Raster(raster_dir*"final_use/logis_use/use_$(year)_$(month_str)_mean.tif")
-		use_upper_raster = Raster(raster_dir*"final_use/logis_use/use_$(year)_$(month_str)_upper.tif")
-		use_lower_raster = Raster(raster_dir*"final_use/logis_use/use_$(year)_$(month_str)_lower.tif")
+		use_mean_raster = replace_missing(Raster(raster_dir*"final_use/logis_use/use_$(year)_$(month_str)_mean.tif"), missingval = NaN)
+		use_upper_raster = replace_missing(Raster(raster_dir*"final_use/logis_use/use_$(year)_$(month_str)_upper.tif"), missingval = NaN)
+		use_lower_raster = replace_missing(Raster(raster_dir*"final_use/logis_use/use_$(year)_$(month_str)_lower.tif"), missingval = NaN)
 		# use_mean_raster = Raster("outputs/rasters/final_use/logis_use/use_$(year)_$(month_str)_mean.tif")
 		# use_upper_raster = Raster("outputs/rasters/final_use/logis_use/use_$(year)_$(month_str)_upper.tif")
 		# use_lower_raster = Raster("outputs/rasters/final_use/logis_use/use_$(year)_$(month_str)_lower.tif")
@@ -174,7 +178,7 @@ end
 # %% BV Data extraction
 
 # Import BV model data
-bv_outputs_dir = "Z:/map-data-eng/airflow/itn_model/output/itn_cube/20241015/aggregated/"
+bv_outputs_dir = BV_OUTPUT_DIR*"aggregated/"
 
 # Declare storage variables (data stored in quarters)
 
@@ -224,8 +228,7 @@ for year in ProgressBar(YEAR_START:YEAR_END, leave = false)
 end
 
 # %% Save model predictions to .jld2 file
-mkpath("outputs/coverage_timeseries/")
-jldsave(output_dir*"nat_model_coverage.jld2";
+jldsave(output_dir*"adj_nat_model_coverage.jld2";
         filt_ISOs,
         YEAR_LIST,
         mitn_continent_npc,

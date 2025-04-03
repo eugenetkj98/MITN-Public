@@ -482,7 +482,7 @@ function plot_attrition_curves(regression_dict)
         end
     end
 
-    fig = plot(title = "$(ISO) Net Attrition", 
+    fig = plot(title = "$(regression_dict["ISO"]) Net Attrition", 
                 xlims = (-0.1, 4.1), ylims = (-0.05, 1.05),
                 xlabel = "Years", ylabels = "Survival Rate")
 

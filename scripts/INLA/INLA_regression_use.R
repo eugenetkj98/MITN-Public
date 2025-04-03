@@ -13,7 +13,7 @@ source("scripts/INLA/transforms.R")
 sf_use_s2(FALSE)
 
 # load INLA regression data
-inla_data <- read.csv('datasets/INLA/inla_dataset_reduced.csv')
+inla_data <- read.csv('outputs/data_prep/INLA/inla_dataset_reduced_use.csv')
 # inla_data <- inla_data[seq(1,dim(inla_data)[1],2),]
 inla_data <- inla_data[which(inla_data$access > 0),]
 inla_data$yearidx <- (inla_data$monthidx %/% 12)#*12
@@ -66,7 +66,7 @@ S_index_monthly <- inla.spde.make.index(name = "field",
 # Use gap
 epsilon <- 1e-5
 for (i in 1:length(inla_data$use)){
-  inla_data$p_use[i] <- p_transform(inla_data$use[i], inla_data$access[i], n = 2)
+  inla_data$p_use[i] <- p_transform(inla_data$use[i], inla_data$adj_access[i], n = 2)
 }
 gap_emplogit(inla_data$p_use)
 use_theta <- optimise(ihs_loglik, lower = 0.001, upper = 1000, x = gap_emplogit(inla_data$p_use), maximum = TRUE)$maximum
@@ -76,8 +76,6 @@ res_use_gap <- ihs(gap_emplogit(inla_data$p_use), use_theta)
 # use_ratios[which(use_ratios < 0)] <- 0 # Correct negatives to restrict to valid values
 # use_theta <- optimise(ihs_loglik, lower = 0.0001, upper = 50, x = gap_emplogit(use_ratios), maximum = TRUE)$maximum
 # res_use_gap <- ihs(gap_emplogit(use_ratios), use_theta)
-
-
 
 response_data <- list(res_use_gap = res_use_gap)
 
@@ -148,7 +146,7 @@ m1 <- inla(res_use_gap ~ -1 + Intercept +
 
 print("Saving Use gap model outputs...")
 
-save(africa_mesh, africa_spde, temporal_mesh_monthly, m1, use_theta, file = "outputs/INLA/coarse_models/model1_use_complete_logis.RData")
+save(africa_mesh, africa_spde, temporal_mesh_monthly, m1, use_theta, file = "outputs/INLA/model1_use_complete_logis.RData")
 
 print("Saved Use model Part")
 

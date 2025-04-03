@@ -1,7 +1,7 @@
 """
 Author: Eugene Tan
-Date Created: 23/7/2024
-Last Updated: 26/8/2024
+Date Created: 2/4/2025
+Last Updated: 2/4/2025
 Need to write documentation
 """
 
@@ -19,8 +19,6 @@ using DataFrames
 # %% Import Custom Packages
 using DataExtractions
 using DateConversions
-using NetCropModel
-using NetCropRegression
 using NetAccessModel
 using NetAccessRegression
 
@@ -30,7 +28,7 @@ using StatsBase
 
 # %% Get ISO List
 ISO_list = String.(CSV.read(RAW_DATASET_DIR*ISO_LIST_FILENAME, DataFrame)[:,1])
-exclusion_ISOs = []
+exclusion_ISOs = ["CPV", "ZAF"]
 filt_ISOs = setdiff(ISO_list, exclusion_ISOs)
 
 # %% Run Analysis
@@ -48,11 +46,8 @@ for i in 1:length(filt_ISOs)
         println("$(ISO) is on exclusion list. Moving to next country.")
         continue
     else
-        # Stock and Flow regression
-        extract_data_netcrop(ISO, YEAR_START, YEAR_END)
+        # Import net crop data
         input_dict = load(OUTPUT_EXTRACTIONS_DIR*"crop/$(YEAR_START)_$(YEAR_END)/$(ISO)_$(YEAR_START)_$(YEAR_END)_cropextract.jld2")
-
-        bayes_GD(input_dict, save_output = true, N_EPOCHS = 5)
         regression_dict = load(OUTPUT_REGRESSIONS_DIR*"crop/$(YEAR_START)_$(YEAR_END)/$(ISO)_$(YEAR_START)_$(YEAR_END)_cropchains.jld2")
         
         # Extract net access data
@@ -60,11 +55,10 @@ for i in 1:length(filt_ISOs)
                                                     input_dict, regression_dict, reg_mode = true)
         extract_data_netaccess(ISO, YEAR_START, YEAR_END,
                                                     input_dict, regression_dict, reg_mode = false)
-
-        # %%
-        println("Net Crop Regression complete for $(ISO). Data saved")
     end
 end
+
+println("Extracted all required net access data.")
 
 # %% Aggregate survey data for regressing net access parameters and save .jld2
 init_variables = false
@@ -117,5 +111,5 @@ jldsave(OUTPUT_EXTRACTIONS_DIR*"access/reg_data/aggregated_inputs/netaccess_alls
 access_survey_globaldata = load(OUTPUT_EXTRACTIONS_DIR*"access/reg_data/aggregated_inputs/netaccess_allsurvey_inputs.jld2")
 bayes_access(access_survey_globaldata)
 
-# println("Analysis Complete. Check directory for outputs.")
+println("Net access regression complete.")
 

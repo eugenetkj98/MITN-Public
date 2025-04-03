@@ -9,7 +9,7 @@ library(terra)
 source("scripts/INLA/transforms.R")
 
 # Import Models
-load("outputs/INLA/coarse_models/model1_use_complete_logis.RData")
+load("outputs/INLA/model1_use_complete_logis.RData")
 
 # Check summary
 summary(m1)
@@ -22,7 +22,7 @@ sf_use_s2(FALSE)
 #########################
 
 # load INLA regression data
-inla_data <- read.csv('datasets/INLA/inla_dataset_reduced.csv')
+inla_data <- read.csv('outputs/data_prep/INLA/inla_dataset_reduced_use.csv')
 inla_data <- inla_data[seq(2,dim(inla_data)[1],2),]
 inla_data <- inla_data[which(inla_data$access > 0),]
 # inla_data <- inla_data[1:1000,]
@@ -125,7 +125,7 @@ pred <- m1$summary.fixed['Intercept', 'mean'] +
 use_pred <- c()
 p_pred <- inv_gap_emplogit(inv_ihs(pred, use_theta))
 for (i in 1:length(p_pred)){
-  use_pred[i] <- inv_p_transform(p_pred[i], inla_data$access[i], n =2)
+  use_pred[i] <- inv_p_transform(p_pred[i], inla_data$adj_access[i], n =2)
 }
 
 

@@ -8,12 +8,15 @@ Code that defined the PPL model for the estimating parameters for Net Access
 module NetAccessRegression
 export bayes_access
 
+# %% Import filenames and directories from config file
+include(pwd()*"/scripts/dir_configs.jl")
+
 # %% Default parameters for net access regression
 # Bayesian MCMC hyperparameters
-iterations = 10000; # Number of MCMC iterations
-# n_chains = 4; # Number of chains
-n_params = 5
-burn_in = 2000; # Number of iterations to discard for burn-in
+iterations = NAT_ACCESS_MCMC_ITERATIONS; # Number of MCMC iterations
+n_chains = min(NAT_ACCESS_N_CHAINS, Threads.nthreads()); # Number of chains
+# n_params = 5
+burn_in = NAT_ACCESS_MCMC_BURNIN; # Number of iterations to discard for burn-in
 
 using Logit # Import Logit helper function
 using NetAccessModel
@@ -22,7 +25,7 @@ using DataFrames
 using JLD2
 
 # Save directory for final chains
-chain_output_dir = "outputs/regressions/access/"
+chain_output_dir = OUTPUT_REGRESSIONS_DIR*"access/"
 
 ########################################
 # %% Function to perform model fit for Net Crop on survey data
@@ -100,7 +103,7 @@ Does not return a result, but instead saves the posterior MCMC chain as DataFram
 """
 function bayes_access(access_survey_globaldata;
                             iterations = 10000, burn_in = 2000,
-                            chain_output_dir = chain_output_dir)
+                            chain_output_dir = chain_output_dir, n_chains = n_chains)
     # Read saved aggregate data from surveys for regressing net access model
     p_h_globaldata = access_survey_globaldata["p_h_globaldata"]
     ρ_h_globaldata = access_survey_globaldata["ρ_h_globaldata"]
@@ -112,9 +115,19 @@ function bayes_access(access_survey_globaldata;
 
     # Construct PPL models and do MCMC regression
     model_ρ = model_prop_h_nonets(emplogit_ρ_h_globaldata, γ_globaldata)
-    ρ_h_chain = sample(model_ρ, NUTS(), iterations; discard_initial = burn_in)
     model_μ = model_prop_h_meannets(μ_h_globaldata, γ_globaldata)
-    μ_h_chain = sample(model_μ, NUTS(), iterations; discard_initial = burn_in)
+
+    ρ_h_chain = []
+    μ_h_chain = []
+
+    if n_chains > 1
+        ρ_h_chain = sample(model_ρ, NUTS(), MCMCThreads(), iterations, n_chains; progress = true, discard_initial = burn_in)   
+        μ_h_chain = sample(model_μ, NUTS(), MCMCThreads(), iterations, n_chains; progress = true, discard_initial = burn_in)
+    else
+        ρ_h_chain = sample(model_ρ, NUTS(), iterations; discard_initial = burn_in)   
+        μ_h_chain = sample(model_μ, NUTS(), iterations; discard_initial = burn_in)
+    end
+    
 
     # Convert MCMC Chain to DataFrame for storage
     ρ_chain_df = DataFrame(ρ_h_chain[:,1:7,:])[:,3:end]

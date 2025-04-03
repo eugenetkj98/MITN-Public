@@ -9,6 +9,9 @@ module NetCropRegression
 export bayes_GD
 export normalised_monthly_weights
 
+# %% Import filenames and directories from config file
+include(pwd()*"/scripts/dir_configs.jl")
+
 using ProgressBars
 using LinearAlgebra
 using Distributions
@@ -23,25 +26,24 @@ using NetLoss
 
 # %% Default parameters for regression
 # Bayesian MCMC hyperparameters
-iterations = 20000#50000; # Number of MCMC iterations
-n_chains = 4; # Number of chains
-burn_in = 2000#10000; # Number of iterations to discard for burn-in
+iterations = NAT_CROP_MCMC_ITERATIONS; # Number of MCMC iterations
+n_chains = min(NAT_CROP_N_CHAINS, Threads.nthreads()); # Number of chains
+burn_in = NAT_CROP_MCMC_BURNIN#10000; # Number of iterations to discard for burn-in
 # proposal_resampling_variances = 0.004 .*[30,15,20,20,4,5] # Weibull sampling, last two entries are for b and k
-proposal_resampling_variances = 0.004 .*[30,15,20,20,0.25,10] # Compact support sampling
+proposal_resampling_variances = NAT_CROP_PROPOSAL_SAMPLING_VAR # Compact support sampling
 
 # SGD hyperparameters
-N_EPOCHS = 5
-EPOCH_LEN = 30#150
+N_EPOCHS = NAT_CROP_SGD_EPOCHS # Maximum number of SGD alternating iterations
+EPOCH_LEN = NAT_CROP_SGD_STEPS # Number of SGD steps in each iteration
 NORMALISE_PERIOD = 1
-α = 0.03#0.05
-ϵ = 0.03#0.2
+α = NAT_CROP_SGD_ALPHA
+ϵ = NAT_CROP_SGD_EPSILON 
 
 # DIC Loss function
-DIC_SAMPLE_SIZE = 15
-η = 0.5 #Mixing Parameter
+DIC_SAMPLE_SIZE = NAT_CROP_SGD_DIC_SAMPLESIZE
 
 # Save directory for final chains
-chain_output_dir = "outputs/regressions/crop/"
+chain_output_dir = OUTPUT_REGRESSIONS_DIR*"crop/"
 
 ########################################
 # %% Helper function to normalise monthly distribution weights
@@ -236,9 +238,6 @@ function bayes_GD(input_dict;
         if n == 1
             monthly_p = normalised_monthly_weights(rand(length(MONTHS_MONTHLY))) # initialise iterations
         end
-        # else
-        #     monthly_p = (1-η).*(monthly_p_weights[end-1]) .+ η.*monthly_p # Perturb monthly p as reg.
-        # end
 
         ### Part 1: Bayesian Inference
 

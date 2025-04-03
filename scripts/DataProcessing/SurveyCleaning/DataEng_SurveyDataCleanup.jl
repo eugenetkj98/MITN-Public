@@ -12,6 +12,9 @@ push!(LOAD_PATH,"src/") # Path for source files and modules
 # Package manager (This should install the required packages. If not, run the "instantiate" command via Pkg)
 include(pwd()*"/scripts/init_env.jl")
 
+# %% Import filenames and directories from config file
+include(pwd()*"/scripts/dir_configs.jl")
+
 # %% Data Wrangling
 using CSV
 using DataFrames
@@ -21,16 +24,16 @@ using Missings
 using ProgressBars
 
 # %% Define Directories
-datasets_dir = "Z:/eugene/ITN Input Datasets/"
-survey_data_filename = "Svy_ALL_ITN_HH_Res.csv"
+datasets_dir = HOUSEHOLD_SURVEY_DIR
+survey_data_filename = HOUSEHOLD_SURVEY_FILENAME
 
 # %% Define output file name
-output_dir = "datasets/"
-output_filename = "itn_hh_surveydata_complete_dataeng.csv"
+output_dir = OUTPUT_DATAPREP_DIR
+output_filename = HOUSEHOLD_SURVEY_DATA_FILENAME
 
 # %% Geometry Data to lookup area id
 # Region boundaries
-admin1_shapes_geoIO = GeoIO.load("Z:/master_geometries/Admin_Units/Global/MAP/2023/MG_5K/admin2023_1_MG_5K.shp")
+admin1_shapes_geoIO = GeoIO.load(ADMIN1_SHAPEFILE)
 
 #############################
 # %% Data Eng Processing
@@ -79,11 +82,8 @@ Threads.@threads for i in ProgressBar(1:length(nonmissing_idx))
 end
 
 # %% Write and save cleaned and standardised survey dataset
-dataeng_survey_data
-area_ids
-
 cleaned_full_survey_data = hcat(dataeng_survey_data[:,setdiff(names(dataeng_survey_data),["area_id"])], DataFrame(area_id = area_ids))
 CSV.write(output_dir*output_filename, cleaned_full_survey_data)
 
-# %%
-cleaned_full_survey_data[findall(ismissing.(cleaned_full_survey_data.ISO)),:]
+println("JULIA EXTRACTION COMPLETED :D")
+flush(stdout)

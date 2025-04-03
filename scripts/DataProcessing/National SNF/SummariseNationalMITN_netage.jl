@@ -7,6 +7,9 @@ Extract posterior net crop and attrition estimates from regressed national crop 
 # %% Prep environment and subdirectories
 include(pwd()*"/scripts/init_env.jl")
 
+# %% Import filenames and directories from config file
+include(pwd()*"/scripts/dir_configs.jl")
+
 # %% Import Public Packages
 using JLD2
 using CSV
@@ -29,16 +32,15 @@ max_age_months = 4*12
 
 
 # %% Define Posterior Models data location
-post_outputs_dir = "outputs/"
-netcrop_extractions_dir = pwd()*"/"*post_outputs_dir*"extractions/crop/$(YEAR_START)_$(YEAR_END)/"
-netcrop_regressions_dir = pwd()*"/"*post_outputs_dir*"regressions/crop/$(YEAR_START)_$(YEAR_END)/"
+netcrop_extractions_dir = OUTPUT_EXTRACTIONS_DIR*"extractions/crop/$(YEAR_START)_$(YEAR_END)/"
+netcrop_regressions_dir = OUTPUT_REGRESSIONS_DIR*"regressions/crop/$(YEAR_START)_$(YEAR_END)/"
 
 # %% Define save directory
-save_dir = "outputs/draws/national/demography/"
+save_dir = OUTPUT_DRAWS_DIR*"national/demography/"
 mkpath(save_dir)
 # %%
-ISO_list = ["CPV","ZAF"]#String.(CSV.read("datasets/ISO_list.csv", DataFrame)[:,1])
-exclusion_ISOs = []#["CPV","ZAF"]
+ISO_list = String.(CSV.read(RAW_DATASET_DIR*ISO_LIST_FILENAME, DataFrame)[:,1])
+exclusion_ISOs = []
 filt_ISOs = setdiff(ISO_list, exclusion_ISOs)
 
 # %% Extract net attrition parameters for all countries
@@ -110,7 +112,7 @@ for ISO in filt_ISOs
     age_breakdown_allnets_dataframerows = Vector{Any}(undef, n_samples)
     
 
-    for i in ProgressBar(1:n_samples, leave = false)
+    Threads.@threads for i in ProgressBar(1:n_samples, leave = false)
         # Select MCMC posterior draw parameters
         ϕ = ϕ_posterior_draws[i]
         α_init = α_init_posterior_draws[i]

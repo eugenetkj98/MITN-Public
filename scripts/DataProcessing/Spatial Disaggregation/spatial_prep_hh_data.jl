@@ -8,6 +8,9 @@ Script to go through list of all household survey entries and extract relevant c
 # %% Prep environment and subdirectories
 include(pwd()*"/scripts/init_env.jl")
 
+# %% Import filenames and directories from config file
+include(pwd()*"/scripts/dir_configs.jl")
+
 # %% Import relevant packages
 using ProgressBars
 using DataFrames
@@ -25,24 +28,22 @@ using DateConversions
 
 # %% File paths
 # Output save dir
-output_dir = "datasets/INLA/"
-output_filename = "inla_dataset.csv"
+output_dir = OUTPUT_DATAPREP_DIR*"INLA/"
+output_filename = INLA_DATAPREP_FILENAME
 
 # Household Survey Data
-hh_dir = "datasets/"#"datasets/subnational/"
-hh_filename = "itn_hh_surveydata_complete_dataeng.csv"#"itn_hh_surveydata_complete_subnat.csv"
+hh_dir = OUTPUT_DATAPREP_DIR#"datasets/subnational/"
+hh_filename = HOUSEHOLD_SURVEY_DATA_FILENAME
 
 # MITN Posterior Estimates
-snf_post_dir = "outputs/draws/subnational/"
+snf_post_dir = OUTPUTS_DRAWS*"subnational/"
 
 # Region Admin 1 area id legend
-admin1_legend_dir = "datasets/subnational/"
-admin1_legend_filename = "admin2023_1_MG_5K_config.csv"
+admin1_legend_dir = RAW_SUBNAT_DATASET_DIR
+admin1_legend_filename = ADMIN1_AREAID_LEGEND_FILENAME
 
 # Region boundaries
-admin1_shapes_geoIO = GeoIO.load("Z:/master_geometries/Admin_Units/Global/MAP/2023/MG_5K/admin2023_1_MG_5K.shp")
-
-
+admin1_shapes_geoIO = GeoIO.load(ADMIN1_SHAPEFILE)
 
 # Covariates
 ####################################
@@ -58,7 +59,7 @@ full_hh_data = CSV.read(hh_dir*hh_filename, DataFrame)
 hh_data = full_hh_data[.!ismissing.(full_hh_data.latitude),:]
 
 # Get list of unique ISOs
-ISO_list = String.(CSV.read("datasets/ISO_list.csv", DataFrame)[:,1])
+ISO_list = String.(CSV.read(RAW_DATASET_DIR*ISO_LIST_FILENAME, DataFrame)[:,1])
 exclusion_ISOs = ["CPV","ZAF"]
 filt_ISOs = setdiff(ISO_list, exclusion_ISOs)
 
@@ -192,8 +193,8 @@ YEAR_VALS = sort(unique(hh_data_summary.interview_year))
 #######
 # %% Accessibility to Cities
 #######
-cov_raster_filepath = "Z:/mastergrids/Other_Global_Covariates/Accessibility/Weiss/2015/"
-cov_raster_filename = "accessibility_to_cities_2015_v1.0.tif"
+cov_raster_filepath = ACCESSIBILITY_RASTER_DIR
+cov_raster_filename = ACCESSIBILITY_COV_FILENAME
 
 # Load Rasters
 cov_raster = RasterStack(cov_raster_filepath*cov_raster_filename)
@@ -233,8 +234,8 @@ end
 #######
 # %% PET
 #######
-cov_raster_filepath = "Z:/mastergrids/Other_Global_Covariates/PET/5km/Synoptic/"
-cov_raster_filename = "PET_v3.Synoptic.Overall.Data.5km.mean.tif"
+cov_raster_filepath = COV_PET_DIR
+cov_raster_filename = COV_PET_FILENAME
 
 # Load Rasters
 cov_raster = Raster(cov_raster_filepath*cov_raster_filename)
@@ -263,8 +264,8 @@ PET_cov = max.(0, PET_cov)
 #######
 # %% Aridity Covariate
 #######
-cov_raster_filepath = "Z:/mastergrids/Other_Global_Covariates/Aridity/5km/Synoptic/"
-cov_raster_filename = "Aridity_Index_v3.Synoptic.Overall.Data.5km.mean.tif"
+cov_raster_filepath = COV_ARID_DIR
+cov_raster_filename = COV_ARID_FILENAME
 
 # Load Rasters
 cov_raster = Raster(cov_raster_filepath*cov_raster_filename)
@@ -293,8 +294,8 @@ ARID_cov = max.(0, ARID_cov)
 #######
 # %% Night Time Lights Covariate
 #######
-cov_raster_filepath = "Z:/mastergrids/Other_Global_Covariates/NightTimeLights/VIIRS_DNB_Composites/5km/Monthly/"
-cov_raster_filename = "VIIRS-SLC.2014.01.Data.5km.mean.tif"
+cov_raster_filepath = COV_NTL_DIR
+cov_raster_filename = COV_NTL_FILENAME
 
 # Load Rasters
 cov_raster = Raster(cov_raster_filepath*cov_raster_filename)
@@ -323,8 +324,8 @@ NTL_cov = max.(0, NTL_cov)
 #######
 # %% Elevation
 #######
-cov_raster_filepath = "Z:/mastergrids/Other_Global_Covariates/Elevation/SRTM-Elevation/5km/Synoptic/"
-cov_raster_filename = "SRTM_elevation.Synoptic.Overall.Data.5km.mean.tif"
+cov_raster_filepath = COV_ELEV_DIR
+cov_raster_filename = COV_ELEV_FILENAME
 
 # Load Rasters
 cov_raster = Raster(cov_raster_filepath*cov_raster_filename)
@@ -353,8 +354,8 @@ ELEV_cov = max.(0, ELEV_cov)
 #######
 # %% Slope
 #######
-cov_raster_filepath = "Z:/mastergrids/Other_Global_Covariates/Elevation/SRTM-Slope/5km/Synoptic/"
-cov_raster_filename = "SRTM_SlopePCT_Corrected.Synoptic.Overall.Data.5km.mean.tif"
+cov_raster_filepath = COV_SLP_DIR
+cov_raster_filename = COV_SLP_FILENAME
 
 # Load Rasters
 cov_raster = Raster(cov_raster_filepath*cov_raster_filename)
@@ -392,7 +393,7 @@ SLP_cov = max.(0, SLP_cov)
 EVI_cov = zeros(size(hh_data_summary)[1])
 
 # Define raster filepath
-cov_raster_filepath = "Z:/mastergrids/MODIS_Global/MCD43D6_v6_BRDF_Reflectance/EVI_v6/5km/Monthly/"
+cov_raster_filepath = COV_EVI_DIR
 
 # Select ayear
 for year_idx in ProgressBar(1:length(YEAR_VALS))
@@ -463,7 +464,7 @@ EVI_cov = max.(0, EVI_cov)
 LSTD_cov = zeros(size(hh_data_summary)[1])
 
 # Define raster filepath
-cov_raster_filepath = "Z:/mastergrids/MODIS_Global/MOD11A2_v6_LST/LST_Day/5km/Monthly/"
+cov_raster_filepath = COV_LSTD_DIR
 
 # Select ayear
 for year_idx in ProgressBar(1:length(YEAR_VALS))
@@ -534,7 +535,7 @@ LSTD_cov = max.(0, LSTD_cov)
 LSTN_cov = zeros(size(hh_data_summary)[1])
 
 # Define raster filepath
-cov_raster_filepath = "Z:/mastergrids/MODIS_Global/MOD11A2_v6_LST/LST_Night/5km/Monthly/"
+cov_raster_filepath = COV_LSTN_DIR
 
 # Select ayear
 for year_idx in ProgressBar(1:length(YEAR_VALS))
@@ -605,7 +606,7 @@ LSTN_cov = max.(0, LSTN_cov)
 LSTDELTA_cov = zeros(size(hh_data_summary)[1])
 
 # Define raster filepath
-cov_raster_filepath = "Z:/mastergrids/MODIS_Global/MOD11A2_v6_LST/LST_DiurnalDifference/5km/Monthly/"
+cov_raster_filepath = COV_LSTDELTA_DIR
 
 # Select ayear
 for year_idx in ProgressBar(1:length(YEAR_VALS))
@@ -676,7 +677,7 @@ LSTDELTA_cov = max.(0, LSTDELTA_cov)
 TCW_cov = zeros(size(hh_data_summary)[1])
 
 # Define raster filepath
-cov_raster_filepath = "Z:/mastergrids/MODIS_Global/MCD43D6_v6_BRDF_Reflectance/TCW_v6/5km/Monthly/"
+cov_raster_filepath = COV_TCW_DIR
 
 # Select ayear
 for year_idx in ProgressBar(1:length(YEAR_VALS))
@@ -747,7 +748,7 @@ TCW_cov = max.(0, TCW_cov)
 TSI_cov = zeros(size(hh_data_summary)[1])
 
 # Define raster filepath
-cov_raster_filepath = "Z:/mastergrids/Other_Global_Covariates/TemperatureSuitability/TSI_Pf_Dynamic/5km/Monthly/"
+cov_raster_filepath = COV_TSI_DIR
 
 # Select ayear
 for year_idx in ProgressBar(1:length(YEAR_VALS))
@@ -818,7 +819,7 @@ TSI_cov = max.(0, TSI_cov)
 TCB_cov = zeros(size(hh_data_summary)[1])
 
 # Define raster filepath
-cov_raster_filepath = "Z:/mastergrids/MODIS_Global/MCD43D6_v6_BRDF_Reflectance/TCB_v6/5km/Monthly/"
+cov_raster_filepath = COV_TCB_DIR
 
 # Select ayear
 for year_idx in ProgressBar(1:length(YEAR_VALS))
@@ -893,7 +894,7 @@ TCB_cov = max.(0, TCB_cov)
 LAND00_cov = zeros(size(hh_data_summary)[1])
 
 # Define raster filepath
-cov_raster_filepath = "Z:/mastergrids/MODIS_Global/MCD12Q1_v061_Annual_Landcover/IGBP_Landcover_Class00/5km/Annual/"
+cov_raster_filepath = COV_LAND00_DIR
 
 # Select ayear
 for year_idx in ProgressBar(1:length(YEAR_VALS))
@@ -947,7 +948,7 @@ LAND00_cov = max.(0, LAND00_cov)
 LAND01_cov = zeros(size(hh_data_summary)[1])
 
 # Define raster filepath
-cov_raster_filepath = "Z:/mastergrids/MODIS_Global/MCD12Q1_v061_Annual_Landcover/IGBP_Landcover_Class01/5km/Annual/"
+cov_raster_filepath = COV_LAND01_DIR
 
 # Select ayear
 for year_idx in ProgressBar(1:length(YEAR_VALS))
@@ -1001,7 +1002,7 @@ LAND01_cov = max.(0, LAND01_cov)
 LAND02_cov = zeros(size(hh_data_summary)[1])
 
 # Define raster filepath
-cov_raster_filepath = "Z:/mastergrids/MODIS_Global/MCD12Q1_v061_Annual_Landcover/IGBP_Landcover_Class02/5km/Annual/"
+cov_raster_filepath = COV_LAND02_DIR
 
 # Select ayear
 for year_idx in ProgressBar(1:length(YEAR_VALS))
@@ -1055,7 +1056,7 @@ LAND02_cov = max.(0, LAND02_cov)
 LAND03_cov = zeros(size(hh_data_summary)[1])
 
 # Define raster filepath
-cov_raster_filepath = "Z:/mastergrids/MODIS_Global/MCD12Q1_v061_Annual_Landcover/IGBP_Landcover_Class03/5km/Annual/"
+cov_raster_filepath = COV_LAND03_DIR
 
 # Select ayear
 for year_idx in ProgressBar(1:length(YEAR_VALS))
@@ -1109,7 +1110,7 @@ LAND03_cov = max.(0, LAND03_cov)
 LAND04_cov = zeros(size(hh_data_summary)[1])
 
 # Define raster filepath
-cov_raster_filepath = "Z:/mastergrids/MODIS_Global/MCD12Q1_v061_Annual_Landcover/IGBP_Landcover_Class04/5km/Annual/"
+cov_raster_filepath = COV_LAND04_DIR
 
 # Select ayear
 for year_idx in ProgressBar(1:length(YEAR_VALS))
@@ -1164,7 +1165,7 @@ LAND04_cov = max.(0, LAND04_cov)
 LAND05_cov = zeros(size(hh_data_summary)[1])
 
 # Define raster filepath
-cov_raster_filepath = "Z:/mastergrids/MODIS_Global/MCD12Q1_v061_Annual_Landcover/IGBP_Landcover_Class05/5km/Annual/"
+cov_raster_filepath = COV_LAND05_DIR
 
 # Select ayear
 for year_idx in ProgressBar(1:length(YEAR_VALS))
@@ -1218,7 +1219,7 @@ LAND05_cov = max.(0, LAND05_cov)
 LAND06_cov = zeros(size(hh_data_summary)[1])
 
 # Define raster filepath
-cov_raster_filepath = "Z:/mastergrids/MODIS_Global/MCD12Q1_v061_Annual_Landcover/IGBP_Landcover_Class06/5km/Annual/"
+cov_raster_filepath = COV_LAND06_DIR
 
 # Select ayear
 for year_idx in ProgressBar(1:length(YEAR_VALS))
@@ -1272,7 +1273,7 @@ LAND06_cov = max.(0, LAND06_cov)
 LAND07_cov = zeros(size(hh_data_summary)[1])
 
 # Define raster filepath
-cov_raster_filepath = "Z:/mastergrids/MODIS_Global/MCD12Q1_v061_Annual_Landcover/IGBP_Landcover_Class07/5km/Annual/"
+cov_raster_filepath = COV_LAND07_DIR
 
 # Select ayear
 for year_idx in ProgressBar(1:length(YEAR_VALS))
@@ -1326,7 +1327,7 @@ LAND07_cov = max.(0, LAND07_cov)
 LAND08_cov = zeros(size(hh_data_summary)[1])
 
 # Define raster filepath
-cov_raster_filepath = "Z:/mastergrids/MODIS_Global/MCD12Q1_v061_Annual_Landcover/IGBP_Landcover_Class08/5km/Annual/"
+cov_raster_filepath = COV_LAND08_DIR
 
 # Select ayear
 for year_idx in ProgressBar(1:length(YEAR_VALS))
@@ -1380,7 +1381,7 @@ LAND08_cov = max.(0, LAND08_cov)
 LAND09_cov = zeros(size(hh_data_summary)[1])
 
 # Define raster filepath
-cov_raster_filepath = "Z:/mastergrids/MODIS_Global/MCD12Q1_v061_Annual_Landcover/IGBP_Landcover_Class09/5km/Annual/"
+cov_raster_filepath = COV_LAND09_DIR
 
 # Select ayear
 for year_idx in ProgressBar(1:length(YEAR_VALS))
@@ -1434,7 +1435,7 @@ LAND09_cov = max.(0, LAND09_cov)
 LAND10_cov = zeros(size(hh_data_summary)[1])
 
 # Define raster filepath
-cov_raster_filepath = "Z:/mastergrids/MODIS_Global/MCD12Q1_v061_Annual_Landcover/IGBP_Landcover_Class10/5km/Annual/"
+cov_raster_filepath = COV_LAND10_DIR
 
 # Select ayear
 for year_idx in ProgressBar(1:length(YEAR_VALS))
@@ -1488,7 +1489,7 @@ LAND10_cov = max.(0, LAND10_cov)
 LAND11_cov = zeros(size(hh_data_summary)[1])
 
 # Define raster filepath
-cov_raster_filepath = "Z:/mastergrids/MODIS_Global/MCD12Q1_v061_Annual_Landcover/IGBP_Landcover_Class11/5km/Annual/"
+cov_raster_filepath = COV_LAND11_DIR
 
 # Select ayear
 for year_idx in ProgressBar(1:length(YEAR_VALS))
@@ -1542,7 +1543,7 @@ LAND11_cov = max.(0, LAND11_cov)
 LAND12_cov = zeros(size(hh_data_summary)[1])
 
 # Define raster filepath
-cov_raster_filepath = "Z:/mastergrids/MODIS_Global/MCD12Q1_v061_Annual_Landcover/IGBP_Landcover_Class12/5km/Annual/"
+cov_raster_filepath = COV_LAND12_DIR
 
 # Select ayear
 for year_idx in ProgressBar(1:length(YEAR_VALS))
@@ -1596,7 +1597,7 @@ LAND12_cov = max.(0, LAND12_cov)
 LAND13_cov = zeros(size(hh_data_summary)[1])
 
 # Define raster filepath
-cov_raster_filepath = "Z:/mastergrids/MODIS_Global/MCD12Q1_v061_Annual_Landcover/IGBP_Landcover_Class13/5km/Annual/"
+cov_raster_filepath = COV_LAND13_DIR
 
 # Select ayear
 for year_idx in ProgressBar(1:length(YEAR_VALS))
@@ -1650,7 +1651,7 @@ LAND13_cov = max.(0, LAND13_cov)
 LAND14_cov = zeros(size(hh_data_summary)[1])
 
 # Define raster filepath
-cov_raster_filepath = "Z:/mastergrids/MODIS_Global/MCD12Q1_v061_Annual_Landcover/IGBP_Landcover_Class14/5km/Annual/"
+cov_raster_filepath = COV_LAND14_DIR
 
 # Select ayear
 for year_idx in ProgressBar(1:length(YEAR_VALS))
@@ -1704,7 +1705,7 @@ LAND14_cov = max.(0, LAND14_cov)
 LAND15_cov = zeros(size(hh_data_summary)[1])
 
 # Define raster filepath
-cov_raster_filepath = "Z:/mastergrids/MODIS_Global/MCD12Q1_v061_Annual_Landcover/IGBP_Landcover_Class15/5km/Annual/"
+cov_raster_filepath = COV_LAND15_DIR
 
 # Select ayear
 for year_idx in ProgressBar(1:length(YEAR_VALS))
@@ -1758,7 +1759,7 @@ LAND15_cov = max.(0, LAND15_cov)
 LAND16_cov = zeros(size(hh_data_summary)[1])
 
 # Define raster filepath
-cov_raster_filepath = "Z:/mastergrids/MODIS_Global/MCD12Q1_v061_Annual_Landcover/IGBP_Landcover_Class16/5km/Annual/"
+cov_raster_filepath = COV_LAND16_DIR
 
 # Select ayear
 for year_idx in ProgressBar(1:length(YEAR_VALS))
@@ -1812,7 +1813,7 @@ LAND16_cov = max.(0, LAND16_cov)
 LAND17_cov = zeros(size(hh_data_summary)[1])
 
 # Define raster filepath
-cov_raster_filepath = "Z:/mastergrids/MODIS_Global/MCD12Q1_v061_Annual_Landcover/IGBP_Landcover_Class17/5km/Annual/"
+cov_raster_filepath = COV_LAND17_DIR
 
 # Select ayear
 for year_idx in ProgressBar(1:length(YEAR_VALS))
