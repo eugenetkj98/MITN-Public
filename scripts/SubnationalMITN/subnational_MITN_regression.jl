@@ -4,37 +4,44 @@ Date Created: 4/11/2024
 Last Updated: 19/11/2024
 MITN model for subnational
 """
-
 # %% Prep environment and subdirectories
 include(pwd()*"/scripts/init_env.jl")
-
 # %% Import filenames and directories from config file
 include(pwd()*"/scripts/dir_configs.jl")
-
-# %% Import Public Packages
-using JLD2
-using CSV
-using DataFrames
-using Missings
-using ProgressBars
-using LinearAlgebra
-using StatsBase
-using Distributions
-using Turing
-using AdvancedMH
-using StatsPlots
-
-# %% Import custom packages
-using DateConversions
-using NetLoss
-using Subnat_NetCropModel
+using Distributed
 
 # %% Create worker processes
 n_workers = N_WORKERS
 addprocs(n_workers)
 println("Starting National MITN Regression with $(nprocs()) workers, each with $(Threads.nthreads())")
 
+
+
 @everywhere begin
+
+    # %% Prep environment and subdirectories
+    include(pwd()*"/scripts/init_env.jl")
+    
+    # %% Import filenames and directories from config file
+    include(pwd()*"/scripts/dir_configs.jl")
+
+    # %% Import Public Packages
+    using JLD2
+    using CSV
+    using DataFrames
+    using Missings
+    using ProgressBars
+    using LinearAlgebra
+    using StatsBase
+    using Distributions
+    using Turing
+    using AdvancedMH
+    using StatsPlots
+
+    # %% Import custom packages
+    using DateConversions
+    using NetLoss
+    using Subnat_NetCropModel
 
     ##############################################
     # %% GLOBAL SETTINGS (NOT COUNTRY DEPENDENT)
@@ -122,7 +129,7 @@ end
     # National input dict used for the national net crop regression (used to get monthly population numbers)
     nat_netcrop_input_dict = load(OUTPUT_EXTRACTIONS_DIR*"crop/$(YEAR_START_NAT)_$(YEAR_END)/"*nat_netcrop_input_dict_filename)
     # Subnational filtered household survey data
-    subnat_npc_monthly_data = CSV.read(dataprep_dir*subnat_npc_monthly_data_filename, DataFrame)
+    subnat_npc_monthly_data = CSV.read(dataprep_dir*"subnational/"subnat_npc_monthly_data_filename, DataFrame)
     # Load national net crop draws
     nat_netcrop_post_data = load(nat_netcrop_post_dir*nat_netcrop_post_filename)
     # Load National regression MCMC chain (for monthly disaggregation ratios)

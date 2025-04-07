@@ -46,13 +46,13 @@ COV_SLP_DIR = "/mnt/s3/mastergrids/Other_Global_Covariates/Elevation/SRTM-Slope/
 COV_SLP_FILENAME = "SRTM_SlopePCT_Corrected.Synoptic.Overall.Data.5km.mean.tif"
 
 ## Monthly
-COV_EVI_DIR = "/mnt/s3/mastergrids/MODIS_Global/MCD43D6_v6_BRDF_Reflectance/EVI_v6/5km/Monthly/"
-COV_LSTD_DIR = "/mnt/s3/mastergrids/MODIS_Global/MOD11A2_v6_LST/LST_Day/5km/Monthly/"
-COV_LSTN_DIR = "/mnt/s3/mastergrids/MODIS_Global/MOD11A2_v6_LST/LST_Night/5km/Monthly/"
-COV_LSTDELTA_DIR = "/mnt/s3/mastergrids/MODIS_Global/MOD11A2_v6_LST/LST_DiurnalDifference/5km/Monthly/"
-COV_TCW_DIR = "/mnt/s3/mastergrids/MODIS_Global/MCD43D6_v6_BRDF_Reflectance/TCW_v6/5km/Monthly/"
+COV_EVI_DIR = "/mnt/s3/mastergrids/MODIS_Global/MCD43D6_v061_BRDF_Reflectance/EVI_v061/5km/Monthly/"
+COV_LSTD_DIR = "/mnt/s3/mastergrids/MODIS_Global/MOD11A2_v061_LST/LST_Day_v061/5km/Monthly/"
+COV_LSTN_DIR = "/mnt/s3/mastergrids/MODIS_Global/MOD11A2_v061_LST/LST_Night_v061/5km/Monthly/"
+COV_LSTDELTA_DIR = "/mnt/s3/mastergrids/MODIS_Global/MOD11A2_v061_LST/LST_DiurnalDifference_v061/5km/Monthly/"
+COV_TCW_DIR = "/mnt/s3/mastergrids/MODIS_Global/MCD43D6_v061_BRDF_Reflectance/TCW_v061/5km/Monthly/"
 COV_TSI_DIR = "/mnt/s3/mastergrids/Other_Global_Covariates/TemperatureSuitability/TSI_Pf_Dynamic/5km/Monthly/"
-COV_TCB_DIR = "/mnt/s3/mastergrids/MODIS_Global/MCD43D6_v6_BRDF_Reflectance/TCB_v6/5km/Monthly/"
+COV_TCB_DIR = "/mnt/s3/mastergrids/MODIS_Global/MCD43D6_v061_BRDF_Reflectance/TCB_v061/5km/Monthly/"
 
 ## Annual
 COV_LAND00_DIR = "/mnt/s3/mastergrids/MODIS_Global/MCD12Q1_v061_Annual_Landcover/IGBP_Landcover_Class00/5km/Annual/"
@@ -152,8 +152,8 @@ NAT_ACCESS_MCMC_BURNIN = 2000 #10000; # Number of iterations to discard for burn
 NAT_ACCESS_PROPOSAL_SAMPLING_VAR = 0.004 .*[30,15,20,20,0.25,10] # Compact support sampling
 
 # National MITN Posterior Draws
-NAT_CROP_ACCESS_N_DRAWS = 50
-SUBNAT_CROP_ACCESS_N_DRAWS = 50
+NAT_CROP_ACCESS_N_DRAWS = 100
+SUBNAT_CROP_ACCESS_N_DRAWS = 100
 NAT_SUBNAT_ADJ_MCMC_ITERATIONS = 20000
 NAT_SUBNAT_ADJ_MCMC_BURNIN = 5000
 NAT_SUBNAT_ADJ_MCMC_SAMPLING_VAR = 0.0004

@@ -1,8 +1,7 @@
 """
 Author: Eugene Tan
-Date Created: 2/12/2024
-Last Updated: 5/12/2024
-Script to go through list of all household survey entries and extract relevant covariate values at each survey
+Date Created: 6/4/2025
+Last Updated: 6/4/2025
 """
 
 # %% Prep environment and subdirectories
@@ -16,170 +15,147 @@ using ProgressBars
 using DataFrames
 using CSV
 using Rasters
-# using Shapefile
-using LinearAlgebra
+using Shapefile
 using GeoInterface
 using GeoIO
 using JLD2
 using StatsBase
-using Plots
 
 # Custom packages
 using DateConversions
 
 # %% File paths
-# Output save dir
+# Save file name
 output_dir = OUTPUT_DATAPREP_DIR*"INLA/"
-output_filename = INLA_DATAPREP_FILENAME
+output_filename = "inla_dataset_snf_adj.csv"
 
-# Household Survey Data
-hh_dir = OUTPUT_DATAPREP_DIR#"datasets/subnational/"
-hh_filename = HOUSEHOLD_SURVEY_DATA_FILENAME
+# Population Rasters directory
+pop_dir = POPULATION_RASTER_DIR
 
-# MITN Posterior Estimates
-snf_post_dir = OUTPUT_DRAWS_DIR*"subnational/"
-
-# Region Admin 1 area id legend
-admin1_legend_dir = RAW_SUBNAT_DATASET_DIR
-admin1_legend_filename = ADMIN1_AREAID_LEGEND_FILENAME
+# Rasters directory
+raster_dir = OUTPUT_RASTERS_DIR
 
 # Region boundaries
+admin0_shapes_geoIO = GeoIO.load(ADMIN0_SHAPEFILE)
 admin1_shapes_geoIO = GeoIO.load(ADMIN1_SHAPEFILE)
 
-# Covariates
-####################################
-# %% Pre-process and Summarise Household Data
-####################################
-# Load admin1 area id legend
-admin1_legend =  CSV.read(admin1_legend_dir*admin1_legend_filename, DataFrame)
-
-# Load raw survey data
-full_hh_data = CSV.read(hh_dir*hh_filename, DataFrame)
-
-# filter for only survey entries where there is lat-lon info
-hh_data = full_hh_data[.!ismissing.(full_hh_data.latitude),:]
-
-# Get list of unique ISOs
+# %% Perform draws and save outputs. Filter out unwanted countries
 ISO_list = String.(CSV.read(RAW_DATASET_DIR*ISO_LIST_FILENAME, DataFrame)[:,1])
 exclusion_ISOs = ["CPV","ZAF"]
 filt_ISOs = setdiff(ISO_list, exclusion_ISOs)
 
-# Storage variable for collection of dataframe rows
-df_collection = []
+# %% Construct spatial sampling distribution based on population in each pixel relative to national.
 
-# Go through each ISO and calculate/extract required data
+# %% Loop to first construct SNF block map up to subnational resolution
+# Import log model npc rasters (any calibrated raster will do 5x5km resolution)
+raster_base = replace_missing(Raster(OUTPUT_RASTERS_DIR*"inla_logmodel_npc/NPC_logmodel_$(2000)_mean.tif"), missingval = NaN)
+
+# %% Import population raster
+population_raster = replace_missing(Raster(pop_dir*"WorldPop_UNAdj_v3_DRC_fix.$(2020).Annual.Data.5km.sum.tif"), missingval = NaN)
+
+# %% Storage variable for weight rasters
+weight_rasters = []
+
 for ISO_i in ProgressBar(1:length(filt_ISOs))
+    # %% For each country calculate population distribution probability
     ISO = filt_ISOs[ISO_i]
 
-    #####################################
-    # Load MITN Posteriors data
-    #####################################
-    snf_post_filename = "$(ISO)_SUBNAT_draws.jld2"
-    snf_post_draws = JLD2.load(snf_post_dir*snf_post_filename)
+    # Get Country geometry to mask raster
+    admin0_geometry = admin0_shapes_geoIO[admin0_shapes_geoIO.ISO .== ISO,:].geometry
 
-    # Extract relevant household survey data based on current ISO
-    snf_post_draws["YEAR_START_NAT"]
-    
-    country_hh_data = hh_data[(hh_data.ISO .== ISO) .&
-                            (.!ismissing.(hh_data.area_id)) .&
-                            (hh_data.interview_year .>= snf_post_draws["YEAR_START_NAT"]),:]
-    # Compress raw survey data into weighted average estimates at unique latlon entries
-    sid_lat_lons = unique([(country_hh_data.SurveyId[i], 
-                        country_hh_data.latitude[i], 
-                        country_hh_data.longitude[i],
-                        country_hh_data.interview_month[i],
-                        country_hh_data.interview_year[i]) for i in 1:size(country_hh_data)[1]])
+    # Get masked population raster
+    pop_masked = Rasters.trim(mask(population_raster, with = admin0_geometry); pad=0)
 
-    # Define storage variables
-    n_unique_obs = length(sid_lat_lons)
-    surveyids = Vector{String}(undef, n_unique_obs)
-    ISOs = Vector{String}(undef, n_unique_obs)
-    admin1_names = Vector{String}(undef, n_unique_obs)
-    area_ids = Vector{Int64}(undef, n_unique_obs)
-    latitude = Vector{Float64}(undef, n_unique_obs)
-    longitude = Vector{Float64}(undef, n_unique_obs)
-    interview_month = Vector{Int64}(undef, n_unique_obs)
-    interview_year = Vector{Int64}(undef, n_unique_obs)
-    cluster_sample_wt = Vector{Float64}(undef, n_unique_obs)
-    npc_vals = Vector{Float64}(undef, n_unique_obs)
-    access_vals = Vector{Float64}(undef, n_unique_obs)
-    use_vals = Vector{Float64}(undef, n_unique_obs)
-    npc_gap_vals = Vector{Float64}(undef, n_unique_obs)
-    access_gap_vals = Vector{Float64}(undef, n_unique_obs)
-    use_gap_vals = Vector{Float64}(undef, n_unique_obs)
+    # Calculate total population of country
+    total_pop = sum(pop_masked[.!isnan.(pop_masked)])
 
-    Threads.@threads for i in 1:n_unique_obs
-        surveyid, lat, lon, mth, year = sid_lat_lons[i]
-
-        filt_ISOs = country_hh_data[(country_hh_data.SurveyId .== surveyid) .& (country_hh_data.latitude .== lat) .& (country_hh_data.longitude .== lon),:]
-
-        #####################################
-        # Extract required metadata
-        #####################################
-        area_id = filt_ISOs[1,"area_id"]
-        admin1_name = admin1_legend[findfirst(admin1_legend.area_id .== area_id),"Name_1"]
-        snf_dict = snf_post_draws["merged_outputs"][findfirst(snf_post_draws["admin1_names"] .== admin1_name)]
-
-        # Get required month index
-        monthidx = monthyear_to_monthidx(mth, year, YEAR_START = snf_post_draws["YEAR_START_NAT"])
-
-        # Get MITN snf estimates of admin1 region NPC and access
-        snf_npc = mean(snf_dict["ADJ_NPC_MONTHLY_TOTAL_samples"][:,monthidx])
-        snf_access = mean(snf_dict["ADJ_λ_ACCESS_samples"][:,monthidx])
-
-        #####################################
-        # Calculate survey estimates of NPC, access, use and cluster weight
-        #####################################
-        npc_entries = filt_ISOs.n_itn./filt_ISOs.hh_size
-        access_entries = min.(0.5, npc_entries)./0.5
-        # use_entries = filt_ISOs.n_itn_used./filt_ISOs.hh_size
-        weights = filt_ISOs.hh_sample_wt
-        npc = sum(filt_ISOs.n_itn.*weights)/sum(filt_ISOs.hh_size.*weights) #sum(weights.*npc_entries)/sum(weights)
-        access = sum(min.((2 .*filt_ISOs.n_itn)./(filt_ISOs.hh_size),1).*(filt_ISOs.hh_size).*weights)/sum((filt_ISOs.hh_size).*weights) #sum(weights.*access_entries)/sum(weights)
-        use = sum(min.(2 .*filt_ISOs.n_itn_used, filt_ISOs.hh_size).*(filt_ISOs.hh_size).*weights )/sum(weights .* filt_ISOs.hh_size) #sum(weights.*use_entries)/sum(weights)
-        # use = dot(weights, filt_ISOs.n_slept_under_itn)/dot(weights, filt_ISOs.hh_size)
-        sample_weight = sum(weights)
-
-        #####################################
-        # Calculate NPC and access gap
-        #####################################
-        npc_gap = npc-snf_npc
-        access_gap = access-snf_access
-        use_gap = access-use
-
-        #####################################
-        # Save results to storage variable
-        #####################################
-        surveyids[i] = surveyid
-        ISOs[i] = ISO
-        admin1_names[i] = admin1_name
-        area_ids[i] = area_id
-        latitude[i] = lat
-        longitude[i] = lon
-        interview_month[i] = mth
-        interview_year[i] = year
-        cluster_sample_wt[i] = sample_weight
-        npc_vals[i] = npc
-        access_vals[i] = access
-        use_vals[i] = use
-        npc_gap_vals[i] = npc_gap
-        access_gap_vals[i] = access_gap
-        use_gap_vals[i] = use_gap
-    end
-
-    # Construct Data Frame
-    df = DataFrame(ISO = ISOs, admin1_name = admin1_names, area_id = area_ids,
-                        latitude = latitude, longitude = longitude,
-                        interview_month = interview_month, interview_year = interview_year,
-                        cluster_sample_wt = cluster_sample_wt,
-                        npc = npc_vals, access = access_vals, use = use_vals, 
-                        npc_gap = npc_gap_vals, access_gap = access_gap_vals,
-                        use_gap = use_gap_vals)
-
-    push!(df_collection, df)
+    # Construct probability weight matrix and save to storage variable
+    country_weight_raster = pop_masked./total_pop
+    push!(weight_rasters, country_weight_raster)
 end
 
-# %% Concatenate all dataframe fragments
+# %%
+combined_weight_raster = mosaic(first, weight_rasters..., atol = 0.01)
+
+# %% Construct sampling settings and weights
+n_samples = 3000
+
+# Extract all nonnan locations
+nonnan_idxs = findall(.!isnan.(combined_weight_raster))
+sampling_weights = Weights(combined_weight_raster[nonnan_idxs])
+
+# %% Sample and extract data, save to data frame
+df_collection = []
+for year in ProgressBar(YEAR_NAT_START:YEAR_NAT_END)
+    for month in ProgressBar(1:12)
+        month_str = "$(month)"
+        if month < 10
+            month_str = "0$(month)"
+        end
+
+        # Import npc and access rasters
+        npc_snf_raster = replace_missing(Raster(raster_dir*"final_npc/snf_npc/npc_$(year)_$(month_str)_mean.tif"), missingval = NaN)
+        access_snf_raster = replace_missing(Raster(raster_dir*"final_npc/snf_npc/npc_$(year)_$(month_str)_mean.tif"), missingval = NaN)
+        adj_npc_mean_raster = replace_missing(Raster(raster_dir*"final_npc/logmodel_npc/adj_npc_$(year)_$(month_str)_mean.tif"), missingval = NaN)
+        adj_access_mean_raster = replace_missing(Raster(raster_dir*"final_access/pmodel_access/adj_access_$(year)_$(month_str)_mean.tif"), missingval = NaN)
+
+        # Sample from weighted distribution
+        sampled_idxs = sample(nonnan_idxs, sampling_weights, n_samples)
+
+        # Extract all lat and lon values
+        lat_vals = zeros(length(sampled_idxs))
+        lon_vals = zeros(length(sampled_idxs))
+        combined_weight_raster
+        for i in 1:length(sampled_idxs)
+            lat_vals[i] = lookup(combined_weight_raster, Y)[sampled_idxs[i][2]]
+            lon_vals[i] = lookup(combined_weight_raster, X)[sampled_idxs[i][1]]
+        end
+
+        # Storage variables for npc and access
+        npc_snf_vals = zeros(n_samples)
+        access_snf_vals = zeros(n_samples)
+        npc_vals = zeros(n_samples)
+        access_vals = zeros(n_samples)
+
+        # Extract required data values from rasters
+        # Get list of lat lons from npc and access rasters
+        npc_model_lats = lookup(adj_npc_mean_raster, Y)
+        npc_model_lons = lookup(adj_npc_mean_raster, X)
+        access_model_lats = lookup(adj_access_mean_raster, Y)
+        access_model_lons = lookup(adj_access_mean_raster, X)
+
+        # Retrieve npc and access from each sampled points
+        for i in 1:n_samples
+            lat = lat_vals[i]
+            lon = lon_vals[i]
+
+            # Lookup raster idx location
+            npc_model_lat_idx = argmin(abs.(npc_model_lats .- lat))
+            npc_model_lon_idx = argmin(abs.(npc_model_lons .- lon))
+            access_model_lat_idx = argmin(abs.(access_model_lats .- lat))
+            access_model_lon_idx = argmin(abs.(access_model_lons .- lon))
+
+            # Use idx to sample value
+            npc_snf_vals[i] = Float64(npc_snf_raster[npc_model_lon_idx, npc_model_lat_idx])
+            access_snf_vals[i] = Float64(access_snf_raster[access_model_lon_idx, access_model_lat_idx])
+            npc_vals[i] = Float64(adj_npc_mean_raster[npc_model_lon_idx, npc_model_lat_idx])
+            access_vals[i] = Float64(adj_access_mean_raster[access_model_lon_idx, access_model_lat_idx])
+        end
+
+
+        df = DataFrame(ISO = "XXX", admin1_name = "generated", area_id = 123456789,
+                                latitude = lat_vals, longitude = lon_vals,
+                                interview_month = month, interview_year = year,
+                                cluster_sample_wt = 1,
+                                npc = npc_vals, access = access_vals, use = NaN, 
+                                npc_gap = npc_vals .- npc_snf_vals, 
+                                access_gap = access_vals .- access_snf_vals,
+                                use_gap = NaN)
+        push!(df_collection, df)
+    end
+end
+
+# Concatenate all dataframe fragments
 hh_data_summary = vcat(df_collection...)
 
 ####################################
@@ -188,7 +164,7 @@ hh_data_summary = vcat(df_collection...)
 YEAR_VALS = sort(unique(hh_data_summary.interview_year))
 
 ####################################
-# %% Get Covariates from Raster at each survey value
+# %% Get Covariates from Raster at each generated survey value
 ####################################
 
 #######
@@ -400,10 +376,10 @@ global cov_raster_filepath = COV_EVI_DIR
 for year_idx in ProgressBar(1:length(YEAR_VALS))
     year = YEAR_VALS[year_idx]
 
-    # Temporary truncation of data (covariate data not avaialable after 2016)
-    if year > 2022
-        year = 2022
-    end
+    # # Temporary truncation of data (covariate data not avaialable after 2016)
+    # if year > 2022
+    #     year = 2022
+    # end
 
     # Get list of required months
     months = unique(hh_data_summary[hh_data_summary.interview_year .== year,"interview_month"])
@@ -421,9 +397,9 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
         global cov_raster_filename = "NA"
         
         if month < 10
-            global cov_raster_filename = "EVI_v6.$(year).0$(month).max.5km.max.tif"
+            global cov_raster_filename = "EVI_v061.$(year).0$(month).max.5km.max.tif"
         else
-            global cov_raster_filename =  "EVI_v6.$(year).$(month).max.5km.max.tif"
+            global cov_raster_filename =  "EVI_v061.$(year).$(month).max.5km.max.tif"
         end
 
         # Load raster
@@ -471,10 +447,10 @@ global cov_raster_filepath = COV_LSTD_DIR
 for year_idx in ProgressBar(1:length(YEAR_VALS))
     year = YEAR_VALS[year_idx]
 
-    # Temporary truncation of data (covariate data not avaialable after 2016)
-    if year > 2021
-        year = 2021
-    end
+    # # Temporary truncation of data (covariate data not avaialable after 2016)
+    # if year > 2021
+    #     year = 2021
+    # end
 
     # Get list of required months
     months = unique(hh_data_summary[hh_data_summary.interview_year .== year,"interview_month"])
@@ -492,9 +468,9 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
         global cov_raster_filename = "NA"
         
         if month < 10
-            global cov_raster_filename = "LST_Day_v6.$(year).0$(month).max.5km.max.tif"
+            global cov_raster_filename = "LST_Day_v061.$(year).0$(month).max.5km.max.tif"
         else
-            global cov_raster_filename =  "LST_Day_v6.$(year).$(month).max.5km.max.tif"
+            global cov_raster_filename =  "LST_Day_v061.$(year).$(month).max.5km.max.tif"
         end
 
         # Load raster
@@ -542,10 +518,10 @@ global cov_raster_filepath = COV_LSTN_DIR
 for year_idx in ProgressBar(1:length(YEAR_VALS))
     year = YEAR_VALS[year_idx]
 
-    # Temporary truncation of data (covariate data not avaialable after 2016)
-    if year > 2021
-        year = 2021
-    end
+    # # Temporary truncation of data (covariate data not avaialable after 2016)
+    # if year > 2021
+    #     year = 2021
+    # end
 
     # Get list of required months
     months = unique(hh_data_summary[hh_data_summary.interview_year .== year,"interview_month"])
@@ -563,9 +539,9 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
         global cov_raster_filename = "NA"
         
         if month < 10
-            global cov_raster_filename = "LST_Night_v6.$(year).0$(month).max.5km.max.tif"
+            global cov_raster_filename = "LST_Night_v061.$(year).0$(month).max.5km.max.tif"
         else
-            global cov_raster_filename =  "LST_Night_v6.$(year).$(month).max.5km.max.tif"
+            global cov_raster_filename =  "LST_Night_v061.$(year).$(month).max.5km.max.tif"
         end
 
         # Load raster
@@ -613,11 +589,6 @@ global cov_raster_filepath = COV_LSTDELTA_DIR
 for year_idx in ProgressBar(1:length(YEAR_VALS))
     year = YEAR_VALS[year_idx]
 
-    # Temporary truncation of data (covariate data not avaialable after 2016)
-    if year > 2021
-        year = 2021
-    end
-
     # Get list of required months
     months = unique(hh_data_summary[hh_data_summary.interview_year .== year,"interview_month"])
 
@@ -634,9 +605,9 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
         global cov_raster_filename = "NA"
         
         if month < 10
-            global cov_raster_filename = "LST_DiurnalDiff_v6.$(year).0$(month).max.5km.max.tif"
+            global cov_raster_filename = "LST_DiurnalDifference.$(year).0$(month).max.5km.max.tif"
         else
-            global cov_raster_filename =  "LST_DiurnalDiff_v6.$(year).$(month).max.5km.max.tif"
+            global cov_raster_filename =  "LST_DiurnalDifference.$(year).$(month).max.5km.max.tif"
         end
 
         # Load raster
@@ -684,11 +655,6 @@ global cov_raster_filepath = COV_TCW_DIR
 for year_idx in ProgressBar(1:length(YEAR_VALS))
     year = YEAR_VALS[year_idx]
 
-    # Temporary truncation of data (covariate data not avaialable after 2016)
-    if year > 2022
-        year = 2022
-    end
-
     # Get list of required months
     months = unique(hh_data_summary[hh_data_summary.interview_year .== year,"interview_month"])
 
@@ -705,9 +671,9 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
         global cov_raster_filename = "NA"
         
         if month < 10
-            global cov_raster_filename = "TCW_v6.$(year).0$(month).max.5km.max.tif"
+            global cov_raster_filename = "TCW_v061.$(year).0$(month).max.5km.max.tif"
         else
-            global cov_raster_filename =  "TCW_v6.$(year).$(month).max.5km.max.tif"
+            global cov_raster_filename =  "TCW_v061.$(year).$(month).max.5km.max.tif"
         end
 
         # Load raster
@@ -751,14 +717,14 @@ TSI_cov = zeros(size(hh_data_summary)[1])
 # Define raster filepath
 global cov_raster_filepath = COV_TSI_DIR
 
-# Select ayear
+# Select a year
 for year_idx in ProgressBar(1:length(YEAR_VALS))
     year = YEAR_VALS[year_idx]
 
-    # Temporary truncation of data (covariate data not avaialable after 2016)
-    if year > 2022
-        year = 2022
-    end
+    # # Temporary truncation of data (covariate data not avaialable after 2016)
+    # if year > 2022
+    #     year = 2022
+    # end
 
     # Get list of required months
     months = unique(hh_data_summary[hh_data_summary.interview_year .== year,"interview_month"])
@@ -768,8 +734,8 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
         month = months[month_idx]
 
         # If required time period is not available, just take closest one
-        if (year == 2000) && (month < 2)
-            month = 2
+        if (year == 2000) && (month < 4)
+            month = 4
         end
 
         # Define raster filename
@@ -826,10 +792,10 @@ global cov_raster_filepath = COV_TCB_DIR
 for year_idx in ProgressBar(1:length(YEAR_VALS))
     year = YEAR_VALS[year_idx]
 
-    # Temporary truncation of data (covariate data not avaialable after 2016)
-    if year > 2022
-        year = 2022
-    end
+    # # Temporary truncation of data (covariate data not avaialable after 2016)
+    # if year > 2022
+    #     year = 2022
+    # end
 
     # Get list of required months
     months = unique(hh_data_summary[hh_data_summary.interview_year .== year,"interview_month"])
@@ -847,9 +813,9 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
         global cov_raster_filename = "NA"
         
         if month < 10
-            global cov_raster_filename = "TCB_v6.$(year).0$(month).max.5km.max.tif"
+            global cov_raster_filename = "TCB_v061.$(year).0$(month).max.5km.max.tif"
         else
-            global cov_raster_filename =  "TCB_v6.$(year).$(month).max.5km.max.tif"
+            global cov_raster_filename =  "TCB_v061.$(year).$(month).max.5km.max.tif"
         end
 
         # Load raster
@@ -1903,12 +1869,6 @@ INLA_dataset = hcat(hh_data_summary, DataFrame(monthidx = monthidxs,
                                                 cov_LAND16 = LAND16_cov,
                                                 cov_LAND17 = LAND17_cov))
 
-
-#######
-# %% Save dataset
-#######
-CSV.write(output_dir*"unfiltered_inla_dataset.csv", INLA_dataset)
-
 #######
 # %% Find list of all entries with missing covariate data and remove/filter out
 #######
@@ -1917,10 +1877,7 @@ missing_cov_idxs = findall(sum(cov_values .== -9999, dims = 2)[:].>0)
 valid_entries_idx = setdiff(1:size(INLA_dataset)[1], missing_cov_idxs)
 filt_INLA_dataset = INLA_dataset[valid_entries_idx,:]
 
-
 #######
 # %% Save dataset
 #######
 CSV.write(output_dir*output_filename, filt_INLA_dataset)
-
-

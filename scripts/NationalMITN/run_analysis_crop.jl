@@ -57,7 +57,7 @@ end
 
 
 # %%
-for i in 1:length(filt_ISOs)
+for i in  (length(filt_ISOs)+1):length(ISO_list)
     # Select ISO
     ISO = ISO_list[i]
 
@@ -78,7 +78,7 @@ for i in 1:length(filt_ISOs)
     end
 end
 
-@sync @distributed for i in 1:length(filt_ISOs)
+@sync @distributed for i in (length(filt_ISOs)+1):length(ISO_list)
     # Select ISO
     ISO = ISO_list[i]
 

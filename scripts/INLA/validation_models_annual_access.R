@@ -9,7 +9,7 @@ library(terra)
 source("scripts/INLA/transforms.R")
 
 # Import Models
-load("outputs/INLA/model1_access_complete_pmodel.RData")
+load("outputs/INLA/model1_final_access_complete_pmodel.RData")
 
 # Check summary
 summary(m1)
@@ -120,10 +120,10 @@ for (i in 1:length(p_pred)){
 }
 
 # Calculate performance metrics
-RMSE <- round(sqrt(mean((inla_data$access - access_pred)^2)), digits = 4)
-MAE <- round(mean(abs(inla_data$access - access_pred)), digits = 4)
-CORR <- round(cor(inla_data$access, as.numeric(access_pred)), digits = 4)
 
+RMSE <- round(sqrt(mean((inla_data$access[which(!is.na(access_pred))] - access_pred[which(!is.na(access_pred))])^2)), digits = 4)
+MAE <- round(mean(abs(inla_data$access[which(!is.na(access_pred))] - access_pred[which(!is.na(access_pred))])), digits = 4)
+CORR <- round(cor(inla_data$access[which(!is.na(access_pred))], as.numeric(access_pred[which(!is.na(access_pred))])), digits = 4)
 # Make Fit Plot
 title <- str_glue("Access Fit (Gap Model) Full Training Data\nMAE = {MAE}, RMSE = {RMSE}, CORR = {CORR}")
 # title <- str_glue("Access Fit (Gap Model) 50% Training, Out of Sample \nMAE = {MAE}, RMSE = {RMSE}, CORR = {CORR}")

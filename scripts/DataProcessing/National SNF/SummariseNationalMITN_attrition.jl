@@ -19,7 +19,6 @@ using ProgressBars
 using LinearAlgebra
 using StatsBase
 using KernelDensity
-using Plots
 
 
 # %% Extraction Settings
@@ -52,7 +51,7 @@ exclusion_ISOs = ["CPV","ZAF"]
 filt_ISOs = setdiff(ISO_list, exclusion_ISOs)
 
 # %% Extract net attrition parameters for all countries
-net_attrition_summary = DataFrame()
+global net_attrition_summary = DataFrame()
 
 for ISO in filt_ISOs
     # Get Net Attrition Posteriors MCMC chain
@@ -85,7 +84,7 @@ for ISO in filt_ISOs
                                                 kde_gaussian_kappa_sigma = net_summary_values[:,6])
     
     # Update combined data frame
-    net_attrition_summary = vcat(net_attrition_summary, country_net_attrition_summary)
+    global net_attrition_summary = vcat(net_attrition_summary, country_net_attrition_summary)
 end
 
 # Save summary as CSV

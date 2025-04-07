@@ -9,7 +9,7 @@ library(terra)
 source("scripts/INLA/transforms.R")
 
 # Import Models
-load("outputs/INLA/model1_npc_complete_logmodel.RData")
+load("outputs/INLA/model1_final_npc_complete_logmodel.RData")
 
 # Check summary
 summary(m1)
@@ -128,6 +128,7 @@ title <- str_glue("NPC Fit (Gap Model) Full Training Data\nMAE = {MAE}, RMSE = {
 
 plot(inla_data$npc, npc_pred, 
      col = rgb(red = 0, green = 0, blue = 1, alpha = 0.1), cex=0.1,
+     xlim = c(0,1), ylim = c(0,1),
      xlab = "Survey NPC", ylab = "Fitted NPC", main = title)
 abline(a=0, b=1)
 

@@ -83,19 +83,24 @@ Turing PPL model for modelling the ``\\rho_h``, the proportion of households of 
     h_max = size(emplogit_ρ_h_aggregated)[2]
     
     # Priors
-    β_0 ~ Uniform(-50,50)
-    β_1 ~ Uniform(-3,3)
-    β_2 ~ Uniform(-1,1)
-    β_3 ~ Uniform(-100,100)
+    # β_0 ~ Uniform(-50,50)
+    # β_1 ~ Uniform(-3,3)
+    # β_2 ~ Uniform(-1,1)
+    β_0 ~ Uniform(-300,300)
+    β_1 ~ Uniform(-300,300)
+    β_2 ~ Uniform(-300,300)
+    β_3 ~ Uniform(-300,300)
+    # β_3 ~ Uniform(-100,100)
     β_4 ~ Uniform(-300,300)
-    β_5 ~ Uniform(-300,300)
+    # β_5 ~ Uniform(-300,300)
     τ_ρ ~ Gamma(0.1,0.1)
 
     # Intermediate variables
     for h in 1:h_max
         for i in 1:n_surveys
             γ = γ_aggregated[i]
-            nu_h = β_0 + β_1*h + β_2*(h^2) + β_3*γ + β_4*(γ^2) + β_5*(γ^3)
+            # nu_h = β_0 + β_1*h + β_2*(h^2) + β_3*γ + β_4*(γ^2) + β_5*(γ^3)
+            nu_h = γ*(β_0 + β_1*h + β_2*(h^2) + β_3*γ + β_4*(γ^2))
             emplogit_ρ_h_aggregated[i,h] ~ Normal(nu_h, τ_ρ)
         end
     end

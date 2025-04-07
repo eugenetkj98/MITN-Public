@@ -11,10 +11,16 @@ source("scripts/INLA/transforms.R")
 
 # Random fix
 sf_use_s2(FALSE)
+# load INLA regression survey data
+inla_survey_data <- read.csv('outputs/data_prep/INLA/inla_dataset_reduced.csv')
 
-# load INLA regression data
-inla_data <- read.csv('outputs/data_prep/INLA/inla_dataset_reduced_use.csv')
+# load INLA snf adjusted (generated data)
+inla_gen_data <- read.csv('outputs/data_prep/INLA/inla_dataset_snf_adj_reduced.csv')
+
+# Merge and Filter data as needed
+inla_data <- rbind(inla_survey_data, inla_gen_data)
 # inla_data <- inla_data[seq(1,dim(inla_data)[1],2),]
+# inla_data <- inla_data[sample(dim(inla_data)[1], 25000, replace = FALSE),]
 inla_data <- inla_data[which(inla_data$access > 0),]
 inla_data$yearidx <- (inla_data$monthidx %/% 12)#*12
 inla_data$yearidx
@@ -36,48 +42,39 @@ africa_mesh <- inla.mesh.2d(loc = coords,
                             boundary = africa_geometry,
                             max.edge = c(1.25,3),
                             offset = c(1,5),
-                            cutoff = 0.6)
+                            cutoff = 0.75)
 africa_spde <- inla.spde2.matern(mesh = africa_mesh)
 
 plot(africa_mesh)
-
 
 # Construct temporal parts of model
 start_year = 2000
 end_year = 2023
 n_years = (end_year-start_year + 1)
-n_months = n_years*12
-
 
 # generate temporal mesh
-temporal_mesh_monthly <- inla.mesh.1d(seq(1,n_months,by=6),interval=c(1, n_months),degree=2)
+temporal_mesh_annual <- inla.mesh.1d(seq(1,n_years,by=2),interval=c(1, n_years),degree=2)
 
 # Make projection matrices
-A_proj_monthly <- inla.spde.make.A(mesh = africa_spde, loc = coords,
-                                   group = inla_data$monthidx,
-                                   group.mesh = temporal_mesh_monthly)
+A_proj_annual <- inla.spde.make.A(mesh = africa_spde, loc = coords,
+                                  group = inla_data$yearidx,
+                                  group.mesh = temporal_mesh_annual)
 
-S_index_monthly <- inla.spde.make.index(name = "field",
-                                        n.spde = africa_mesh$n,
-                                        n.group = temporal_mesh_monthly$m)
+S_index_annual <- inla.spde.make.index(name = "field",
+                                       n.spde = africa_mesh$n,
+                                       n.group = temporal_mesh_annual$m)
 
 # Construct INLA stack for spatial
-# Calculate optimum ihs theta and transformation for use response
-# Use gap
-epsilon <- 1e-5
-for (i in 1:length(inla_data$use)){
-  inla_data$p_use[i] <- p_transform(inla_data$use[i], inla_data$adj_access[i], n = 2)
+# Calculate optimum ihs theta and transformation for access response
+inla_data$access_subnat <- inla_data$access - inla_data$access_gap
+for (i in 1:length(inla_data$access)){
+  inla_data$p_access[i] <- p_transform(inla_data$access[i], inla_data$access_subnat[i], n = 2)
 }
-gap_emplogit(inla_data$p_use)
-use_theta <- optimise(ihs_loglik, lower = 0.001, upper = 1000, x = gap_emplogit(inla_data$p_use), maximum = TRUE)$maximum
-res_use_gap <- ihs(gap_emplogit(inla_data$p_use), use_theta)
 
-# use_ratios <- (inla_data$use_gap + epsilon)/(inla_data$access + epsilon)
-# use_ratios[which(use_ratios < 0)] <- 0 # Correct negatives to restrict to valid values
-# use_theta <- optimise(ihs_loglik, lower = 0.0001, upper = 50, x = gap_emplogit(use_ratios), maximum = TRUE)$maximum
-# res_use_gap <- ihs(gap_emplogit(use_ratios), use_theta)
+access_theta <- optimise(ihs_loglik, lower = 0.001, upper = 250, x = gap_emplogit(inla_data$p_access), maximum = TRUE)$maximum
+res_access_gap <- ihs(gap_emplogit(inla_data$p_access), access_theta)
 
-response_data <- list(res_use_gap = res_use_gap)
+response_data <- list(res_access_gap = res_access_gap)
 
 cov_data <- list(yearidx = inla_data$yearidx,
                  monthidx = inla_data$monthidx,
@@ -103,18 +100,18 @@ cov_data <- list(yearidx = inla_data$yearidx,
                  monthly_2 = inla_data$monthly_2
 )
 
-effects_data_monthly <- list(c(S_index_monthly, list(Intercept = 1)),cov_data)
+effects_data_annual <- list(c(S_index_annual, list(Intercept = 1)),cov_data)
 
-africa_stack_monthly <- inla.stack(data = response_data,
-                                   A = list(A_proj_monthly,1),
-                                   effects = effects_data_monthly,
-                                   tag = "npc.data")
+africa_stack_annual <- inla.stack(data = response_data,
+                                  A = list(A_proj_annual,1),
+                                  effects = effects_data_annual,
+                                  tag = "npc.data")
 
 #############################
-# Fit USE GAP model
+# Fit ACCESS GAP model
 #############################
-print("Fitting Use gap spatio-temporal model...")
-m1 <- inla(res_use_gap ~ -1 + Intercept + 
+print("Fitting Access gap spatio-temporal model...")
+m1 <- inla(res_access_gap ~ -1 + Intercept + 
              static_1 +
              static_2 +
              static_3 +
@@ -133,20 +130,19 @@ m1 <- inla(res_use_gap ~ -1 + Intercept +
              annual_13 +
              annual_14 +
              annual_15 +
-             monthly_1 +
-             monthly_2 +
              f(field, model = spde, group = field.group, 
                control.group = list(model = 'ar1') ),
-           data = inla.stack.data(africa_stack_monthly, spde = africa_spde),
+           data = inla.stack.data(africa_stack_annual, spde = africa_spde),
            family = "gaussian",
-           control.predictor = list(A = inla.stack.A(africa_stack_monthly), compute = TRUE),
+           control.predictor = list(A = inla.stack.A(africa_stack_annual), compute = TRUE),
            control.compute = list(cpo = TRUE, dic = TRUE, config = TRUE), 
            control.inla = list(strategy = "adaptive", int.strategy = "eb"),
            verbose = TRUE)
 
-print("Saving Use gap model outputs...")
+print("Saving Access gap model outputs...")
 
-save(africa_mesh, africa_spde, temporal_mesh_monthly, m1, use_theta, file = "outputs/INLA/model1_use_complete_logis.RData")
+save(africa_mesh, africa_spde, temporal_mesh_annual, m1, access_theta, file = "outputs/INLA/model1_final_access_complete_pmodel.RData")
 
-print("Saved Use model Part")
+print("Saved Access model")
+
 

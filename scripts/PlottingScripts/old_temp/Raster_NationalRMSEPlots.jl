@@ -21,6 +21,7 @@ using StatsBase
 
 # %% Import Dataset for Plotting
 model_nat_est_timeseries = load(OUTPUT_DIR*"coverage_timeseries/adj_nat_model_coverage.jld2")
+
 survey_pred_data = CSV.read(OUTPUT_DIR*"coverage_timeseries/adj_model_prediction_comparisons.csv", DataFrame)
 
 
@@ -34,9 +35,8 @@ sqrt(mean((survey_pred_data.use[idxs] .- survey_pred_data.mitn_use[idxs]).^2))
 
 sqrt(mean((survey_pred_data.use[idxs] .- survey_pred_data.bv_use[idxs]).^2))
 
-
 # %% Get ISO List
-ISO_list = intersect(model_nat_est_timeseries["filt_ISOs"], survey_pred_data.ISO)
+ISO_list = intersect(model_nat_est_timeseries["filt_ISOs"])
 n_countries = length(ISO_list)
 tiling_dim = (5,9)
 

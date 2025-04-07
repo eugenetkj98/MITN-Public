@@ -48,6 +48,8 @@ YEAR_END = YEAR_NAT_END
 # %% Perform draws and save outputs
 filt_ISOs = setdiff(ISO_list, exclusion_ISOs)
 
+net_access_chain = load(OUTPUT_REGRESSIONS_DIR*"access/netaccesschains.jld2")
+
 for ISO in filt_ISOs
     println("Generating draws of national crop and access for $(ISO)...")
     # Import Data

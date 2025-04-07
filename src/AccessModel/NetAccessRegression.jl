@@ -130,7 +130,8 @@ function bayes_access(access_survey_globaldata;
     
 
     # Convert MCMC Chain to DataFrame for storage
-    ρ_chain_df = DataFrame(ρ_h_chain[:,1:7,:])[:,3:end]
+    # ρ_chain_df = DataFrame(ρ_h_chain[:,1:7,:])[:,3:end]
+    ρ_chain_df = DataFrame(ρ_h_chain[:,1:6,:])[:,3:end]
     μ_chain_df = DataFrame(μ_h_chain[:,1:7,:])[:,3:end]
 
     # Save data

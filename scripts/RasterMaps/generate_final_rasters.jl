@@ -25,6 +25,9 @@ using GeoInterface
 using GeoIO
 using JLD2
 using StatsBase
+
+using Plots
+
 # Custom packages
 using DateConversions
 using UsefulTransformations
@@ -73,13 +76,16 @@ exclusion_ISOs = ["CPV","ZAF"]
 filt_ISOs = setdiff(ISO_list, exclusion_ISOs)
 
 # %% Time bounds
-YEAR_START = 2005#YEAR_NAT_START
-YEAR_END = YEAR_NAT_END
+YEAR_START = 2022#YEAR_NAT_START
+YEAR_END = 2023#YEAR_NAT_END
+
+# %%
 
 # %% Loop to first construct SNF block map upto subnational resolution
 # Import log model npc rasters (any calibrated raster will do 5x5km resolution)
 raster_base = replace_missing(Raster(OUTPUT_RASTERS_DIR*"inla_logmodel_npc/NPC_logmodel_$(2000)_mean.tif"), missingval = NaN)
 
+# %%
 # # %% Loop to construct raster
 # for year in ProgressBar(YEAR_START:YEAR_END)
 #     for month in 1:12
@@ -299,17 +305,284 @@ raster_base = replace_missing(Raster(OUTPUT_RASTERS_DIR*"inla_logmodel_npc/NPC_l
 #     end
 # end
 
-# # %% # Calculate adjusted NPC and Access Rasters (Raking on a country level)
-# # Subnat estimates of NPC should be close to national estimates when summed by population (SNF Calibration step)
-# # Subnat estimates of access may be considered unreliable for raking as it assumes household demographic distribution to be consistent across whole country
+# %% # Calculate adjusted NPC and Access Rasters (Raking on a country level)
+# Subnat estimates of NPC should be close to national estimates when summed by population (SNF Calibration step)
+# Subnat estimates of access may be considered unreliable for raking as it assumes household demographic distribution to be consistent across whole country
 
-# # Load INLA dataset
-# survey_data = CSV.read(survey_data_dir*survey_data_filename, DataFrame)
+# Load INLA dataset
+survey_data = CSV.read(OUTPUT_DATAPREP_DIR*HOUSEHOLD_SURVEY_DATA_FILENAME, DataFrame)
+survey_data = survey_data[.!ismissing.(survey_data.latitude),:]
 
+for year in ProgressBar(YEAR_START:YEAR_END, leave = false)
+    # Import population raster
+    pop_year = min(max(year, 2000), 2020)
+    
+    pop_dir*"WorldPop_UNAdj_v3_DRC_fix.$(pop_year).Annual.Data.5km.sum.tif"
+    population_raster = replace_missing(Raster(pop_dir*"WorldPop_UNAdj_v3_DRC_fix.$(pop_year).Annual.Data.5km.sum.tif"), missingval = NaN)
+
+    for month in ProgressBar(1:12, leave = false)
+        println("Processing raster year [$(year)/$(YEAR_END)], month [$(month)/12]")
+
+        # Calculate reference monthidx to access data
+        monthidx = monthyear_to_monthidx(month, year, YEAR_START = YEAR_NAT_START)
+
+        # Get correct year/month string for importing file
+        year_str = "$(year)"
+        month_str = "$(month)"
+        if month < 10
+            month_str = "0"*month_str
+        end
+
+        println("Importing rasters...")
+        # Import calculated NPC rasters
+        npc_mean_raster = replace_missing(Raster(input_dir*"final_npc/logmodel_npc/npc_$(year)_$(month_str)_mean.tif"), missingval = NaN)
+        npc_upper_raster = replace_missing(Raster(input_dir*"final_npc/logmodel_npc/npc_$(year)_$(month_str)_upper.tif"), missingval = NaN)
+        npc_lower_raster = replace_missing(Raster(input_dir*"final_npc/logmodel_npc/npc_$(year)_$(month_str)_lower.tif"), missingval = NaN)
+        
+        # Import calculated Access rasters 
+        access_mean_raster = replace_missing(Raster(input_dir*"final_access/pmodel_access/access_$(year)_$(month_str)_mean.tif"), missingval = NaN)
+        access_upper_raster = replace_missing(Raster(input_dir*"final_access/pmodel_access/access_$(year)_$(month_str)_upper.tif"), missingval = NaN)
+        access_lower_raster = replace_missing(Raster(input_dir*"final_access/pmodel_access/access_$(year)_$(month_str)_lower.tif"), missingval = NaN)
+
+        # Storage variables for country rasters of ITN coverage with CI
+        adj_npc_nat_mean_rasters = Vector{Raster}(undef, length(filt_ISOs))
+        adj_npc_nat_upper_rasters = Vector{Raster}(undef, length(filt_ISOs))
+        adj_npc_nat_lower_rasters = Vector{Raster}(undef, length(filt_ISOs))
+
+        adj_access_nat_mean_rasters = Vector{Raster}(undef, length(filt_ISOs))
+        adj_access_nat_upper_rasters = Vector{Raster}(undef, length(filt_ISOs))
+        adj_access_nat_lower_rasters = Vector{Raster}(undef, length(filt_ISOs))
+
+        println("Raking rasters using SNF National estimates...")
+        # Do extractions and calculations for each country
+        for ISO_i in ProgressBar(1:length(filt_ISOs), leave = false)
+            ISO = filt_ISOs[ISO_i]
+
+            # Import subnational SNF draws and construct raked rasters
+            subnat_snf_post_draws = load(snf_post_dir*"$(ISO)_SUBNAT_draws.jld2")
+            n_admin1 = length(subnat_snf_post_draws["admin1_names"])
+
+            adj_npc_mean_rasters = Vector{Any}(undef, n_admin1)
+            adj_npc_upper_rasters = Vector{Any}(undef, n_admin1)
+            adj_npc_lower_rasters = Vector{Any}(undef, n_admin1)
+
+            adj_access_mean_rasters = Vector{Any}(undef, n_admin1)
+            adj_access_upper_rasters = Vector{Any}(undef, n_admin1)
+            adj_access_lower_rasters = Vector{Any}(undef, n_admin1)
+
+            for admin1_i in ProgressBar(1:n_admin1, leave = false)
+
+                subnat_snf_npc_mean = mean(subnat_snf_post_draws["merged_outputs"][admin1_i]["ADJ_NPC_MONTHLY_TOTAL_samples"][:,monthidx])
+                subnat_snf_npc_std = std(subnat_snf_post_draws["merged_outputs"][admin1_i]["ADJ_NPC_MONTHLY_TOTAL_samples"][:,monthidx])
+                
+                subnat_snf_access_mean = mean(subnat_snf_post_draws["merged_outputs"][admin1_i]["ADJ_λ_ACCESS_samples"][:,monthidx])
+                subnat_snf_access_std = std(subnat_snf_post_draws["merged_outputs"][admin1_i]["ADJ_λ_ACCESS_samples"][:,monthidx])
+
+                # Get region geometry to mask raster
+                area_id = subnat_snf_post_draws["merged_outputs"][admin1_i]["area_id"]
+                admin1_geometry = admin1_shapes_geoIO[findfirst(admin1_shapes_geoIO.area_id .== area_id),"geometry"]
+
+                # Get masked + trimmed versions of each required component raster
+                ## Population
+                pop_masked = Rasters.trim(mask(population_raster, with = admin1_geometry); pad=0)
+                
+                ## NPC
+                npc_mean_masked = resample(Rasters.trim(mask(npc_mean_raster, with = admin1_geometry); pad=0), to = pop_masked)
+                npc_upper_masked = resample(Rasters.trim(mask(npc_upper_raster, with = admin1_geometry); pad=0), to = pop_masked)
+                npc_lower_masked = resample(Rasters.trim(mask(npc_lower_raster, with = admin1_geometry); pad=0), to = pop_masked)
+
+                ## Access
+                access_mean_masked = resample(Rasters.trim(mask(access_mean_raster, with = admin1_geometry); pad=0), to = pop_masked)
+                access_upper_masked = resample(Rasters.trim(mask(access_upper_raster, with = admin1_geometry); pad=0), to = pop_masked)
+                access_lower_masked = resample(Rasters.trim(mask(access_lower_raster, with = admin1_geometry); pad=0), to = pop_masked)
+                
+                #####
+                # Check if there is survey data to rake against. If yes get survey data slice to rake data against
+                #####
+
+                # Base estimate of scaling k (i.e. take fully from SNF estimate)
+                # for NPC
+                nonmissing_idx_npc_mean = intersect(findall(.!isnan.(pop_masked)), findall(.!isnan.(npc_mean_masked)))
+                npc_spatial_mean_estimate = sum(pop_masked[nonmissing_idx_npc_mean].*npc_mean_masked[nonmissing_idx_npc_mean])/sum(pop_masked[nonmissing_idx_npc_mean])
+
+                npc_scaling_k = subnat_snf_npc_mean/npc_spatial_mean_estimate
+                if (npc_spatial_mean_estimate == 0) && isnan(npc_scaling_k)
+                    npc_scaling_k = 1
+                end
+
+                # for Access
+                nonmissing_idx_access_mean = intersect(findall(.!isnan.(pop_masked)), findall(.!isnan.(access_mean_masked)))
+                access_spatial_mean_estimate = sum(pop_masked[nonmissing_idx_npc_mean].*access_mean_masked[nonmissing_idx_npc_mean])/sum(pop_masked[nonmissing_idx_npc_mean])
+
+                access_scaling_k = subnat_snf_access_mean/access_spatial_mean_estimate
+
+                if (access_spatial_mean_estimate == 0) && isnan(access_scaling_k)
+                    access_scaling_k = 1
+                end
+
+                # Check survey data if there is any raw surveys present (need at least 20. Arbitrarily chosen)
+                survey_data_slice = survey_data[survey_data.ISO .== ISO .&&
+                                                survey_data.interview_year .== year .&&
+                                                survey_data.interview_month .== month .&&
+                                                .!ismissing.(survey_data.area_id),:]
+                survey_data_slice = survey_data_slice[survey_data_slice.area_id .== area_id,:]
+
+                n_survey_datapoints = size(survey_data_slice)[1]
+
+                if n_survey_datapoints > 20
+                    # Get number of unique lat longs
+                    sid_lat_lons = unique([(survey_data_slice.latitude[i], 
+                                            survey_data_slice.longitude[i]) for i in 1:size(survey_data_slice)[1]])
+                    n_unique_lat_lons = length(sid_lat_lons)
+
+                    # Create storage variable with sample size, standard error, lat long estimate from INLA model, survey point estimate
+                    npc_rake_data = zeros(n_unique_lat_lons,4)
+                    access_rake_data = zeros(n_unique_lat_lons,4)
+
+                    for i in 1:n_unique_lat_lons
+                        # Target lat, lon
+                        lat, lon = sid_lat_lons[i]
+                        
+                        # Get list of all points that relate to target lat-lon
+                        survey_points = survey_data_slice[survey_data_slice.latitude .== lat .&&
+                                                        survey_data_slice.longitude .== lon,:]
+                        names(survey_points)
+                        # Calculate size of sample
+                        n_sample = size(survey_points)[1]
+
+                        # Calculate local observation estimate
+                        n_itn = survey_points.n_itn
+                        hh_size = survey_points.hh_size
+                        hh_wt = survey_points.hh_sample_wt
+                        obs_npc = sum(n_itn.*hh_wt)/sum(hh_size.*hh_wt)
+                        obs_access = sum(min.(2 .* n_itn./hh_size, 1) .* hh_size .* hh_wt)/sum(hh_size .* hh_wt)
+                        std_npc = 1
+                        std_access = 1 # Baseline uninformative values if sample size onle = 1
+                        if n_sample > 10 # If there was more than 1 sample, std must be defined
+                            std_npc = sum((((n_itn./hh_size) .- obs_npc).^2) .* hh_wt)/sum(hh_wt)
+                            std_access = sum((min.(2 .* n_itn./hh_size, 1) .- obs_access).^2 .* hh_size .* hh_wt)/sum(hh_size .* hh_wt)
+                        end
+                        std_npc
+                        std_err_npc = std_npc/sqrt(n_sample)
+                        std_err_access = std_access/sqrt(n_sample)
+
+                        # Find index of raster corresponding to latlon
+                        npc_model_lats = lookup(npc_mean_masked, Y)
+                        npc_model_lons = lookup(npc_mean_masked, X)
+                        npc_model_lat_idx = argmin(abs.(npc_model_lats .- lat))
+                        npc_model_lon_idx = argmin(abs.(npc_model_lons .- lon))
+
+                        access_model_lats = lookup(access_mean_masked, Y)
+                        access_model_lons = lookup(access_mean_masked, X)
+                        access_model_lat_idx = argmin(abs.(access_model_lats .- lat))
+                        access_model_lon_idx = argmin(abs.(access_model_lons .- lon))
+
+                        # Extract required value
+                        npc_rake_data[i,:] .= n_sample, std_err_npc, obs_npc, Float64(npc_mean_masked[npc_model_lon_idx, npc_model_lat_idx])
+                        access_rake_data[i,:] .= n_sample, std_err_access, obs_access, Float64(access_mean_masked[access_model_lon_idx, access_model_lat_idx])
+                    end
+
+                    # Get rid of all NaN entries
+                    npc_nanidx = union(findall(isnan.(npc_rake_data[:,3])),findall(isnan.(npc_rake_data[:,4])))
+                    access_nanidx = union(findall(isnan.(access_rake_data[:,3])),findall(isnan.(access_rake_data[:,4])))
+
+                    npc_rake_data = npc_rake_data[setdiff(1:size(npc_rake_data)[1],npc_nanidx),:]
+                    access_rake_data = access_rake_data[setdiff(1:size(access_rake_data)[1],access_nanidx),:]
+
+                    # Calculate modified constant that minimises the error between both raw survey data and SNF estimates. Assuming errors are gaussian.
+                    npc_RMSE = 0.1 # Taken from from model fit values
+                    npc_A = npc_spatial_mean_estimate*subnat_snf_npc_mean/((subnat_snf_npc_std^2))
+                    npc_B = sum(npc_rake_data[:,3].*npc_rake_data[:,4]./(npc_rake_data[:,2].^2 .+ npc_RMSE^2))
+                    npc_C = (npc_spatial_mean_estimate^2)/(subnat_snf_npc_std^2)
+                    npc_D = sum((npc_rake_data[:,4].^2)./(npc_rake_data[:,2].^2 .+ npc_RMSE^2))
+
+                    npc_scaling_k = (npc_A+npc_B)/(npc_C+npc_D)
+
+                    access_RMSE = 0.1 # Taken from from model fit values
+                    access_A = access_spatial_mean_estimate*subnat_snf_access_mean/((subnat_snf_access_std^2))
+                    access_B = sum(access_rake_data[:,3].*access_rake_data[:,4]./(access_rake_data[:,2].^2 .+ access_RMSE^2))
+                    access_C = (access_spatial_mean_estimate^2)/(subnat_snf_access_std^2)
+                    access_D = sum((access_rake_data[:,4].^2)./(access_rake_data[:,2].^2 .+ access_RMSE^2))
+
+                    access_scaling_k = (access_A+access_B)/(access_C+access_D)
+                end
+
+                # Calculate adjusted maps/rasters using the scaling constant
+                adj_npc_mean_masked = npc_scaling_k.*npc_mean_masked
+                adj_npc_upper_masked = npc_scaling_k.*npc_upper_masked
+                adj_npc_lower_masked = npc_scaling_k.*npc_lower_masked
+
+                adj_access_mean_masked = access_scaling_k.*access_mean_masked
+                adj_access_upper_masked = access_scaling_k.*access_upper_masked
+                adj_access_lower_masked = access_scaling_k.*access_lower_masked
+                
+                # Store raked rasters into collection
+                adj_npc_mean_rasters[admin1_i] = adj_npc_mean_masked
+                adj_npc_upper_rasters[admin1_i] = adj_npc_upper_masked
+                adj_npc_lower_rasters[admin1_i] = adj_npc_lower_masked
+                plot(npc_mean_masked)
+                adj_access_mean_rasters[admin1_i] = adj_access_mean_masked
+                adj_access_upper_rasters[admin1_i] = adj_access_upper_masked
+                adj_access_lower_rasters[admin1_i] = adj_access_lower_masked
+            end
+
+            # Combine subnational adjusted rasters into national and then save in collection variable
+            
+            adj_npc_nat_mean_rasters[ISO_i] = mosaic(first, adj_npc_mean_rasters..., atol = 0.01)
+            adj_npc_nat_upper_rasters[ISO_i] = mosaic(first, adj_npc_upper_rasters..., atol = 0.01)
+            adj_npc_nat_lower_rasters[ISO_i] = mosaic(first, adj_npc_lower_rasters..., atol = 0.01)
+
+            adj_access_nat_mean_rasters[ISO_i] = mosaic(first, adj_access_mean_rasters..., atol = 0.01)
+            adj_access_nat_upper_rasters[ISO_i] = mosaic(first, adj_access_upper_rasters..., atol = 0.01)
+            adj_access_nat_lower_rasters[ISO_i] = mosaic(first, adj_access_lower_rasters..., atol = 0.01)
+
+        end
+
+        # Combine national rasters into single raster and write (Multi threaded version - Hardcoded)
+        println("Mosaic national rasters to Africa level, save and write rasters")
+        
+        for thread_i in 1:6
+            if thread_i == 1
+                println("Constructing adjusted national NPC mean raster...")
+                combined_npc_adj_mean_raster = mosaic(first, adj_npc_nat_mean_rasters, atol = 0.01)
+                write(output_dir*"final_npc/logmodel_npc/adj_npc_$(year)_$(month_str)_mean.tif", combined_npc_adj_mean_raster, force = true)
+                println("Constructed adjusted national NPC mean raster...")
+            elseif thread_i == 2
+                println("Constructing adjusted national NPC upper CI raster...")
+                combined_npc_adj_upper_raster = mosaic(first, adj_npc_nat_upper_rasters, atol = 0.01)
+                write(output_dir*"final_npc/logmodel_npc/adj_npc_$(year)_$(month_str)_upper.tif", combined_npc_adj_upper_raster, force = true)
+                println("Constructed adjusted national NPC upper CI raster...")
+            elseif thread_i == 3
+                println("Constructing adjusted national NPC lower CI raster...")
+                combined_npc_adj_lower_raster = mosaic(first, adj_npc_nat_lower_rasters, atol = 0.01)
+                write(output_dir*"final_npc/logmodel_npc/adj_npc_$(year)_$(month_str)_lower.tif", combined_npc_adj_lower_raster, force = true)
+                println("Constructed adjusted national NPC lower CI raster...")
+            elseif thread_i == 4
+                println("Constructing adjusted national access mean raster...")
+                combined_access_adj_mean_raster = mosaic(first, adj_access_nat_mean_rasters, atol = 0.01)
+                write(output_dir*"final_access/pmodel_access/adj_access_$(year)_$(month_str)_mean.tif", combined_access_adj_mean_raster, force = true)
+                println("Constructed adjusted national access mean raster...")
+            elseif thread_i == 5
+                println("Constructing adjusted national access upper CI raster...")
+                combined_access_adj_upper_raster = mosaic(first, adj_access_nat_upper_rasters, atol = 0.01)
+                write(output_dir*"final_access/pmodel_access/adj_access_$(year)_$(month_str)_upper.tif", combined_access_adj_upper_raster, force = true)
+                println("Constructed adjusted national access upper CI raster...")
+            elseif thread_i == 6
+                println("Constructing adjusted national access lower CI raster...")
+                combined_access_adj_lower_raster = mosaic(first, adj_access_nat_lower_rasters, atol = 0.01)
+                write(output_dir*"final_access/pmodel_access/adj_access_$(year)_$(month_str)_lower.tif", combined_access_adj_lower_raster, force = true)
+                println("Constructed adjusted national access upper CI raster...")
+            end
+        end 
+
+        println("Raster construction complete.")
+    end
+end
+
+# # %% # Calculate Use Rasters and country level quantiles
 # for year in ProgressBar(YEAR_START:YEAR_END, leave = false)
 #     # Import population raster
 #     pop_year = min(max(year, 2000), 2020)
-
 #     population_raster = replace_missing(Raster(pop_dir*"WorldPop_UNAdj_v3_DRC_fix.$(pop_year).Annual.Data.5km.sum.tif"), missingval = NaN)
 
 #     for month in 1:12
@@ -326,313 +599,97 @@ raster_base = replace_missing(Raster(OUTPUT_RASTERS_DIR*"inla_logmodel_npc/NPC_l
 #         end
 
 #         println("Importing rasters...")
-#         # Import calculated NPC rasters
-#         npc_mean_raster = replace_missing(Raster(input_dir*"final_npc/logmodel_npc/npc_$(year)_$(month_str)_mean.tif"), missingval = NaN)
-#         npc_upper_raster = replace_missing(Raster(input_dir*"final_npc/logmodel_npc/npc_$(year)_$(month_str)_upper.tif"), missingval = NaN)
-#         npc_lower_raster = replace_missing(Raster(input_dir*"final_npc/logmodel_npc/npc_$(year)_$(month_str)_lower.tif"), missingval = NaN)
-        
 #         # Import calculated Access rasters 
-#         access_mean_raster = replace_missing(Raster(input_dir*"final_access/pmodel_access/access_$(year)_$(month_str)_mean.tif"), missingval = NaN)
-#         access_upper_raster = replace_missing(Raster(input_dir*"final_access/pmodel_access/access_$(year)_$(month_str)_upper.tif"), missingval = NaN)
-#         access_lower_raster = replace_missing(Raster(input_dir*"final_access/pmodel_access/access_$(year)_$(month_str)_lower.tif"), missingval = NaN)
+#         adj_access_mean_raster = replace_missing(Raster(raster_dir*"final_access/pmodel_access/adj_access_$(year)_$(month_str)_mean.tif"), missingval = NaN)
+#         adj_access_upper_raster = replace_missing(Raster(raster_dir*"final_access/pmodel_access/adj_access_$(year)_$(month_str)_upper.tif"), missingval = NaN)
+#         adj_access_lower_raster = replace_missing(Raster(raster_dir*"final_access/pmodel_access/adj_access_$(year)_$(month_str)_lower.tif"), missingval = NaN)
 
-    
+#         # adj_access_mean_raster = replace_missing(Raster(raster_dir*"final_access/snf_access/access_$(year)_$(month_str)_mean.tif"), missingval = NaN)
+#         # adj_access_upper_raster = replace_missing(Raster(raster_dir*"final_access/snf_access/access_$(year)_$(month_str)_upper.tif"), missingval = NaN)
+#         # adj_access_lower_raster = replace_missing(Raster(raster_dir*"final_access/snf_access/access_$(year)_$(month_str)_lower.tif"), missingval = NaN)
+        
+#         # Import INLA regression of use rasters
+#         # logis_use_mean_raster = resample(replace_missing(Raster(inla_dir*"inla_use_logis/USE_logismodel_$(year)_$(month)_mean.tif"), missingval = NaN), to = adj_access_mean_raster) # OLD
+#         # logis_use_mean_raster = resample(replace_missing(Raster(inla_dir*"use_logis/USE_logismodel_$(year)_$(month)_mean.tif"), missingval = NaN), to = adj_access_mean_raster) # OLD
+#         # logis_use_mean_raster = resample(replace_missing(Raster("outputs/INLA/rasters/inla_use_logis/USE_logismodel_$(year)_$(month)_mean.tif"), missingval = NaN), to = adj_access_mean_raster)
+#         logis_use_mean_raster = resample(replace_missing(Raster("outputs/INLA/rasters/inla_adj_use_logis/adj_USE_logismodel_$(year)_$(month)_mean.tif"), missingval = NaN), to = adj_access_mean_raster)
+        
+#         logis_use_sample_rasters = Vector{Raster}(undef, n_samples)
+#         for sample_i in 1:n_samples
+#             # logis_use_sample_rasters[sample_i] = resample(replace_missing(Raster(inla_dir*"inla_use_logis/USE_logismodel_$(year)_$(month)_sample_$(sample_i).tif"), missingval = NaN), to = adj_access_mean_raster) # OLD
+#             # logis_use_sample_rasters[sample_i] = resample(replace_missing(Raster(inla_dir*"use_logis/USE_logismodel_$(year)_$(month)_sample_$(sample_i).tif"), missingval = NaN), to = adj_access_mean_raster) # OLD
+#             # logis_use_sample_rasters[sample_i] = resample(replace_missing(Raster("outputs/INLA/rasters/inla_use_logis/USE_logismodel_$(year)_$(month)_sample_$(sample_i).tif"), missingval = NaN), to = adj_access_mean_raster)
+#             logis_use_sample_rasters[sample_i] = resample(replace_missing(Raster("outputs/INLA/rasters/inla_adj_use_logis/adj_USE_logismodel_$(year)_$(month)_sample_$(sample_i).tif"), missingval = NaN), to = adj_access_mean_raster)
+#         end
+
+#         println("Calculating use rasters for each country (with CI)")
+#         # Pre-calculate continent level use rasters for mean and samples
+#         use_mean_raster = inv_p_transform.(logis_use_mean_raster, adj_access_mean_raster, n=2)
+
+#         use_sample_upper_rasters = Vector{Raster}(undef, n_samples)
+#         use_sample_lower_rasters = Vector{Raster}(undef, n_samples)
+#         for sample_i in 1:n_samples
+#             use_sample_upper_rasters[sample_i] = inv_p_transform.(logis_use_sample_rasters[sample_i], adj_access_upper_raster, n=2)
+#             use_sample_lower_rasters[sample_i] = inv_p_transform.(logis_use_sample_rasters[sample_i], adj_access_lower_raster, n=2)
+#         end
+
 #         # Storage variables for country rasters of ITN coverage with CI
-#         adj_npc_nat_mean_rasters = Vector{Raster}(undef, length(filt_ISOs))
-#         adj_npc_nat_upper_rasters = Vector{Raster}(undef, length(filt_ISOs))
-#         adj_npc_nat_lower_rasters = Vector{Raster}(undef, length(filt_ISOs))
+#         use_nat_upper_rasters = Vector{Raster}(undef, length(filt_ISOs))
+#         use_nat_lower_rasters = Vector{Raster}(undef, length(filt_ISOs))
 
-#         adj_access_nat_mean_rasters = Vector{Raster}(undef, length(filt_ISOs))
-#         adj_access_nat_upper_rasters = Vector{Raster}(undef, length(filt_ISOs))
-#         adj_access_nat_lower_rasters = Vector{Raster}(undef, length(filt_ISOs))
-
-#         println("Raking rasters using SNF National estimates...")
 #         # Do extractions and calculations for each country
 #         for ISO_i in ProgressBar(1:length(filt_ISOs), leave = false)
+#             # Get ISO
 #             ISO = filt_ISOs[ISO_i]
 
-#             # Extract national SNF draws to rake rasters
-#             nat_snf_post_draws = load("outputs/draws/national/crop_access/$(ISO)_2000_2023_post_crop_access.jld2")
-#             nat_population = nat_snf_post_draws["POPULATION_MONTHLY"][monthidx]
-#             nat_npc_draws = sum(nat_snf_post_draws["Γ_MONTHLY_samples_BYNET"], dims = 3)[:,monthidx,1]./nat_population
-#             nat_access_draws = nat_snf_post_draws["λ_access_samples"][:, monthidx]
-
-#             # Calculate npc and access estimates to rake country raster by
-#             npc_snf_mean_estimate = mean(nat_npc_draws)
-#             npc_snf_upper_estimate = quantile(nat_npc_draws, 0.95)
-#             npc_snf_lower_estimate = quantile(nat_npc_draws, 0.05)
-
-#             access_snf_mean_estimate = mean(nat_access_draws)
-#             access_snf_upper_estimate = quantile(nat_access_draws, 0.95)
-#             access_snf_lower_estimate = quantile(nat_access_draws, 0.05)
-
-#             # Get Country geometry to mask raster
+#             # Get required national geometry
 #             admin0_geometry = admin0_shapes_geoIO[admin0_shapes_geoIO.ISO .== ISO,:].geometry
 
-#             # Get masked + trimmed versions of each required component raster
-#             ## Population
-#             pop_masked = Rasters.trim(mask(population_raster, with = admin0_geometry); pad=0)
-            
-#             ## NPC
-#             npc_mean_masked = resample(Rasters.trim(mask(npc_mean_raster, with = admin0_geometry); pad=0), to = pop_masked)
-#             npc_upper_masked = resample(Rasters.trim(mask(npc_upper_raster, with = admin0_geometry); pad=0), to = pop_masked)
-#             npc_lower_masked = resample(Rasters.trim(mask(npc_lower_raster, with = admin0_geometry); pad=0), to = pop_masked)
+#             # Get trimmed subset of population raster for target country
+#             pop_nat_masked = Rasters.trim(mask(population_raster, with = admin0_geometry); pad=0)
 
-#             ## Access
-#             access_mean_masked = resample(Rasters.trim(mask(access_mean_raster, with = admin0_geometry); pad=0), to = pop_masked)
-#             access_upper_masked = resample(Rasters.trim(mask(access_upper_raster, with = admin0_geometry); pad=0), to = pop_masked)
-#             access_lower_masked = resample(Rasters.trim(mask(access_lower_raster, with = admin0_geometry); pad=0), to = pop_masked)
+#             # Get trimmed subset of use rasters for target country
+#             # This line is not needed, but really just used to make code more readable in population weighting line
+#             use_mean_raster_masked = resample(Rasters.trim(mask(use_mean_raster, with = admin0_geometry); pad=0), to = pop_nat_masked)
 
-#             # #####
-#             # # Get survey data slice to rake data against
-#             # #####
-#             # survey_data_slice = survey_data[survey_data.ISO .== ISO .&&
-#             #                                 survey_data.interview_year .== year .&&
-#             #                                 survey_data.interview_month .== month,:]
-
-#             # n_survey_datapoints = size(survey_data_slice)[1]
-#             # npc_model_data = zeros(n_survey_datapoints,3)
-#             # access_model_data = zeros(n_survey_datapoints,3)
-
-#             # for row_i in 1:size(survey_data_slice)[1]
-#             #     # Get lat, lon valuyes
-#             #     lat, lon = survey_data_slice[row_i,["latitude", "longitude"]]
-
-#             #     # Find index of raster corresponding to latlon
-#             #     npc_model_lats = lookup(npc_mean_masked, Y)
-#             #     npc_model_lons = lookup(npc_mean_masked, X)
-#             #     npc_model_lat_idx = argmin(abs.(npc_model_lats .- lat))
-#             #     npc_model_lon_idx = argmin(abs.(npc_model_lons .- lon))
-
-#             #     access_model_lats = lookup(access_mean_masked, Y)
-#             #     access_model_lons = lookup(access_mean_masked, X)
-#             #     access_model_lat_idx = argmin(abs.(access_model_lats .- lat))
-#             #     access_model_lon_idx = argmin(abs.(access_model_lons .- lon))
-
-#             #     # Extract required value
-#             #     npc_model_data[row_i,2] = Float64(npc_mean_masked[npc_model_lon_idx, npc_model_lat_idx])
-#             #     npc_model_data[row_i,3] = Float64(npc_upper_masked[npc_model_lon_idx, npc_model_lat_idx])
-#             #     npc_model_data[row_i,1] = Float64(npc_lower_masked[npc_model_lon_idx, npc_model_lat_idx])
-#             #     access_model_data[row_i,2] = Float64(access_mean_masked[access_model_lon_idx, access_model_lat_idx])
-#             #     access_model_data[row_i,3] = Float64(access_upper_masked[access_model_lon_idx, access_model_lat_idx])
-#             #     access_model_data[row_i,1] = Float64(access_lower_masked[access_model_lon_idx, access_model_lat_idx])
-#             # end
-
-#             #####
-#             # NPC Raster Calculations
-#             #####
-
-#             # TEMP FIX: Calculate separate nonmissing_idxs for npc, access and use (INLA transformation function didn't deal with access = 0 and 1 very well)
-#             # Calculate population weighted mean npc for subnational region
-#             nonmissing_idx_npc_mean = intersect(findall(.!isnan.(pop_masked)), findall(.!isnan.(npc_mean_masked)))
-#             nonmissing_idx_npc_upper = intersect(findall(.!isnan.(pop_masked)), findall(.!isnan.(npc_upper_masked)))
-#             nonmissing_idx_npc_lower = intersect(findall(.!isnan.(pop_masked)), findall(.!isnan.(npc_lower_masked)))
-#             npc_spatial_mean_estimate = sum(pop_masked[nonmissing_idx_npc_mean].*npc_mean_masked[nonmissing_idx_npc_mean])/sum(pop_masked[nonmissing_idx_npc_mean])
-#             npc_spatial_upper_estimate = sum(pop_masked[nonmissing_idx_npc_upper].*npc_upper_masked[nonmissing_idx_npc_upper])/sum(pop_masked[nonmissing_idx_npc_upper])
-#             npc_spatial_lower_estimate = sum(pop_masked[nonmissing_idx_npc_lower].*npc_lower_masked[nonmissing_idx_npc_lower])/sum(pop_masked[nonmissing_idx_npc_lower])
-
-#             # Calculate scaling constant required to adjust map estimates of NPC to match SNF estimates of NPC
-#             nonnan_idx_npc = findall(.!isnan.(npc_model_data[:,2]))
-#             n_nonnan_data = length(nonnan_idx_npc)
-
-#             # Basic naive estimate
-#             npc_mean_scaling_k = npc_snf_mean_estimate/npc_spatial_mean_estimate
-#             npc_upper_scaling_k = npc_snf_upper_estimate/npc_spatial_upper_estimate
-#             npc_lower_scaling_k = npc_snf_lower_estimate/npc_spatial_lower_estimate
-
-#             npc_mean_scaling_k = npc_snf_mean_estimate/npc_spatial_mean_estimate
-#             npc_upper_scaling_k = npc_snf_upper_estimate/npc_spatial_upper_estimate
-#             npc_lower_scaling_k = npc_snf_lower_estimate/npc_spatial_lower_estimate
-
-#             # Calculate adjusted maps/rasters using the scaling constant
-#             adj_npc_mean_masked = npc_mean_scaling_k.*npc_mean_masked
-#             adj_npc_upper_masked = npc_upper_scaling_k.*npc_upper_masked
-#             adj_npc_lower_masked = npc_lower_scaling_k.*npc_lower_masked
-
-#             #####
-#             # Access Raster Calculations
-#             #####
-#             # TEMP FIX
-#             nonmissing_idx_access_mean = intersect(findall(.!isnan.(pop_masked)), findall(.!isnan.(access_mean_masked)))
-#             nonmissing_idx_access_upper = intersect(findall(.!isnan.(pop_masked)), findall(.!isnan.(access_upper_masked)))
-#             nonmissing_idx_access_lower = intersect(findall(.!isnan.(pop_masked)), findall(.!isnan.(access_lower_masked)))
-
-#             # Calculate population weighted mean access for subnational region
-#             access_spatial_mean_estimate = sum(pop_masked[nonmissing_idx_access_mean].*access_mean_masked[nonmissing_idx_access_mean])/sum(pop_masked[nonmissing_idx_access_mean])
-#             access_spatial_upper_estimate = sum(pop_masked[nonmissing_idx_access_upper].*access_upper_masked[nonmissing_idx_access_upper])/sum(pop_masked[nonmissing_idx_access_upper])
-#             access_spatial_lower_estimate = sum(pop_masked[nonmissing_idx_access_lower].*access_lower_masked[nonmissing_idx_access_lower])/sum(pop_masked[nonmissing_idx_access_lower])
-            
-#             # Calculate scaling constant required to adjust map estimates of NPC to match SNF estimates of access
-#             access_mean_scaling_k = access_snf_mean_estimate/access_spatial_mean_estimate
-#             access_upper_scaling_k = access_snf_upper_estimate/access_spatial_upper_estimate
-#             access_lower_scaling_k = access_snf_lower_estimate/access_spatial_lower_estimate
-
-#             # Calcualte adjusted maps/rasters using the scaling constant + appropriate truncation
-#             adj_access_mean_masked = max.(min.(access_mean_scaling_k.*access_mean_masked, 1), 0)
-#             adj_access_upper_masked = max.(min.(access_upper_scaling_k.*access_upper_masked, 1), 0)
-#             adj_access_lower_masked = max.(min.(access_lower_scaling_k.*access_lower_masked, 1), 0)
-
-#             ### Save to storage variables
-#             adj_npc_nat_mean_rasters[ISO_i] = adj_npc_mean_masked
-#             adj_npc_nat_upper_rasters[ISO_i] = adj_npc_upper_masked
-#             adj_npc_nat_lower_rasters[ISO_i] = adj_npc_lower_masked
-
-#             adj_access_nat_mean_rasters[ISO_i] = adj_access_mean_masked
-#             adj_access_nat_upper_rasters[ISO_i] = adj_access_upper_masked
-#             adj_access_nat_lower_rasters[ISO_i] = adj_access_lower_masked
-#         end
-        
-#         # Combine national rasters into single raster and write (Multi threaded version - Hardcoded)
-#         println("Mosaic national rasters to Africa level, save and write rasters")
-#         for thread_i in 1:6
-#             if thread_i == 1
-#                 println("Constructing adjusted national NPC mean raster...")
-#                 combined_npc_adj_mean_raster = mosaic(first, adj_npc_nat_mean_rasters, atol = 0.01)
-#                 write(output_dir*"final_npc/logmodel_npc/adj_npc_$(year)_$(month_str)_mean.tif", combined_npc_adj_mean_raster, force = true)
-#                 println("Constructed adjusted national NPC mean raster...")
-#             elseif thread_i == 2
-#                 println("Constructing adjusted national NPC upper CI raster...")
-#                 combined_npc_adj_upper_raster = mosaic(first, adj_npc_nat_upper_rasters, atol = 0.01)
-#                 write(output_dir*"final_npc/logmodel_npc/adj_npc_$(year)_$(month_str)_upper.tif", combined_npc_adj_upper_raster, force = true)
-#                 println("Constructed adjusted national NPC upper CI raster...")
-#             elseif thread_i == 3
-#                 println("Constructing adjusted national NPC lower CI raster...")
-#                 combined_npc_adj_lower_raster = mosaic(first, adj_npc_nat_lower_rasters, atol = 0.01)
-#                 write(output_dir*"final_npc/logmodel_npc/adj_npc_$(year)_$(month_str)_lower.tif", combined_npc_adj_lower_raster, force = true)
-#                 println("Constructed adjusted national NPC lower CI raster...")
-#             elseif thread_i == 4
-#                 println("Constructing adjusted national access mean raster...")
-#                 combined_access_adj_mean_raster = mosaic(first, adj_access_nat_mean_rasters, atol = 0.01)
-#                 write(output_dir*"final_access/pmodel_access/adj_access_$(year)_$(month_str)_mean.tif", combined_access_adj_mean_raster, force = true)
-#                 println("Constructed adjusted national access mean raster...")
-#             elseif thread_i == 5
-#                 println("Constructing adjusted national access upper CI raster...")
-#                 combined_access_adj_upper_raster = mosaic(first, adj_access_nat_upper_rasters, atol = 0.01)
-#                 write(output_dir*"final_access/pmodel_access/adj_access_$(year)_$(month_str)_upper.tif", combined_access_adj_upper_raster, force = true)
-#                 println("Constructed adjusted national access upper CI raster...")
-#             elseif thread_i == 6
-#                 println("Constructing adjusted national access lower CI raster...")
-#                 combined_access_adj_lower_raster = mosaic(first, adj_access_nat_lower_rasters, atol = 0.01)
-#                 write(output_dir*"final_access/pmodel_access/adj_access_$(year)_$(month_str)_lower.tif", combined_access_adj_lower_raster, force = true)
-#                 println("Constructed adjusted national access upper CI raster...")
+#             use_sample_upper_rasters_masked = Vector{Raster}(undef, n_samples)
+#             use_sample_lower_rasters_masked = Vector{Raster}(undef, n_samples)
+#             for sample_i in 1:n_samples
+#                 use_sample_upper_rasters_masked[sample_i] = resample(Rasters.trim(mask(use_sample_upper_rasters[sample_i], with = admin0_geometry); pad=0), to = pop_nat_masked)
+#                 use_sample_lower_rasters_masked[sample_i] = resample(Rasters.trim(mask(use_sample_lower_rasters[sample_i], with = admin0_geometry); pad=0), to = pop_nat_masked)
 #             end
+
+#             # Calculate the population weighted average the upper and lower use rasters to get joint CI
+
+#             # Find non-missing entries in raster
+#             nonmissing_idxs = intersect(findall(.!isnan.(pop_nat_masked)),findall(.!isnan.(use_mean_raster_masked)))
+
+#             # Calculated weighted means
+#             use_rates_samples_upper = Vector{Float64}(undef, n_samples)
+#             use_rates_samples_lower = Vector{Float64}(undef, n_samples)
+#             for sample_i in 1:n_samples
+#                 use_rates_samples_upper[sample_i] = sum(pop_nat_masked[nonmissing_idxs].*use_sample_upper_rasters_masked[sample_i][nonmissing_idxs])/sum(pop_nat_masked[nonmissing_idxs])
+#                 use_rates_samples_lower[sample_i] = sum(pop_nat_masked[nonmissing_idxs].*use_sample_lower_rasters_masked[sample_i][nonmissing_idxs])/sum(pop_nat_masked[nonmissing_idxs])
+#             end
+
+#             # Get the quantile rasters based on population weighted means on national level
+#             upper_rank_idx = round(Int,0.95*n_samples)
+#             lower_rank_idx = max(round(Int, 0.05*n_samples),1)
+
+#             use_nat_upper_rasters[ISO_i] = use_sample_upper_rasters_masked[sortperm(use_rates_samples_upper)][upper_rank_idx]
+#             use_nat_lower_rasters[ISO_i] = use_sample_lower_rasters_masked[sortperm(use_rates_samples_lower)][lower_rank_idx]
 #         end
+
+#         # Mosaic together the upper and lower national rasters
+#         use_upper_raster = resample(mosaic(first, use_nat_upper_rasters, atol = 0.01), to = use_mean_raster)
+#         use_lower_raster = resample(mosaic(first, use_nat_lower_rasters, atol = 0.01), to = use_mean_raster)
+        
+#         # # Write rasters
+#         println("Saving rasters...")
+#         write(output_dir*"final_use/logis_use/use_$(year)_$(month_str)_mean.tif", use_mean_raster, force = true)
+#         write(output_dir*"final_use/logis_use/use_$(year)_$(month_str)_upper.tif", use_upper_raster, force = true)
+#         write(output_dir*"final_use/logis_use/use_$(year)_$(month_str)_lower.tif", use_lower_raster, force = true)
 
 #         println("Raster construction complete.")
 #     end
 # end
-
-# %% # Calculate Use Rasters and country level quantiles
-for year in ProgressBar(YEAR_START:YEAR_END, leave = false)
-    # Import population raster
-    pop_year = min(max(year, 2000), 2020)
-    population_raster = replace_missing(Raster(pop_dir*"WorldPop_UNAdj_v3_DRC_fix.$(pop_year).Annual.Data.5km.sum.tif"), missingval = NaN)
-
-    for month in 1:12
-        println("Processing raster year [$(year)/$(YEAR_END)], month [$(month)/12]")
-
-        # Calculate reference monthidx to access data
-        monthidx = monthyear_to_monthidx(month, year, YEAR_START = YEAR_START)
-
-        # Get correct year/month string for importing file
-        year_str = "$(year)"
-        month_str = "$(month)"
-        if month < 10
-            month_str = "0"*month_str
-        end
-
-        println("Importing rasters...")
-        # Import calculated Access rasters 
-        adj_access_mean_raster = replace_missing(Raster(raster_dir*"final_access/pmodel_access/adj_access_$(year)_$(month_str)_mean.tif"), missingval = NaN)
-        adj_access_upper_raster = replace_missing(Raster(raster_dir*"final_access/pmodel_access/adj_access_$(year)_$(month_str)_upper.tif"), missingval = NaN)
-        adj_access_lower_raster = replace_missing(Raster(raster_dir*"final_access/pmodel_access/adj_access_$(year)_$(month_str)_lower.tif"), missingval = NaN)
-
-        # adj_access_mean_raster = replace_missing(Raster(raster_dir*"final_access/snf_access/access_$(year)_$(month_str)_mean.tif"), missingval = NaN)
-        # adj_access_upper_raster = replace_missing(Raster(raster_dir*"final_access/snf_access/access_$(year)_$(month_str)_upper.tif"), missingval = NaN)
-        # adj_access_lower_raster = replace_missing(Raster(raster_dir*"final_access/snf_access/access_$(year)_$(month_str)_lower.tif"), missingval = NaN)
-        
-        # Import INLA regression of use rasters
-        # logis_use_mean_raster = resample(replace_missing(Raster(inla_dir*"inla_use_logis/USE_logismodel_$(year)_$(month)_mean.tif"), missingval = NaN), to = adj_access_mean_raster) # OLD
-        # logis_use_mean_raster = resample(replace_missing(Raster(inla_dir*"use_logis/USE_logismodel_$(year)_$(month)_mean.tif"), missingval = NaN), to = adj_access_mean_raster) # OLD
-        # logis_use_mean_raster = resample(replace_missing(Raster("outputs/INLA/rasters/inla_use_logis/USE_logismodel_$(year)_$(month)_mean.tif"), missingval = NaN), to = adj_access_mean_raster)
-        logis_use_mean_raster = resample(replace_missing(Raster("outputs/INLA/rasters/inla_adj_use_logis/adj_USE_logismodel_$(year)_$(month)_mean.tif"), missingval = NaN), to = adj_access_mean_raster)
-        
-        logis_use_sample_rasters = Vector{Raster}(undef, n_samples)
-        for sample_i in 1:n_samples
-            # logis_use_sample_rasters[sample_i] = resample(replace_missing(Raster(inla_dir*"inla_use_logis/USE_logismodel_$(year)_$(month)_sample_$(sample_i).tif"), missingval = NaN), to = adj_access_mean_raster) # OLD
-            # logis_use_sample_rasters[sample_i] = resample(replace_missing(Raster(inla_dir*"use_logis/USE_logismodel_$(year)_$(month)_sample_$(sample_i).tif"), missingval = NaN), to = adj_access_mean_raster) # OLD
-            # logis_use_sample_rasters[sample_i] = resample(replace_missing(Raster("outputs/INLA/rasters/inla_use_logis/USE_logismodel_$(year)_$(month)_sample_$(sample_i).tif"), missingval = NaN), to = adj_access_mean_raster)
-            logis_use_sample_rasters[sample_i] = resample(replace_missing(Raster("outputs/INLA/rasters/inla_adj_use_logis/adj_USE_logismodel_$(year)_$(month)_sample_$(sample_i).tif"), missingval = NaN), to = adj_access_mean_raster)
-        end
-
-        println("Calculating use rasters for each country (with CI)")
-        # Pre-calculate continent level use rasters for mean and samples
-        use_mean_raster = inv_p_transform.(logis_use_mean_raster, adj_access_mean_raster, n=2)
-
-        use_sample_upper_rasters = Vector{Raster}(undef, n_samples)
-        use_sample_lower_rasters = Vector{Raster}(undef, n_samples)
-        for sample_i in 1:n_samples
-            use_sample_upper_rasters[sample_i] = inv_p_transform.(logis_use_sample_rasters[sample_i], adj_access_upper_raster, n=2)
-            use_sample_lower_rasters[sample_i] = inv_p_transform.(logis_use_sample_rasters[sample_i], adj_access_lower_raster, n=2)
-        end
-
-        # Storage variables for country rasters of ITN coverage with CI
-        use_nat_upper_rasters = Vector{Raster}(undef, length(filt_ISOs))
-        use_nat_lower_rasters = Vector{Raster}(undef, length(filt_ISOs))
-
-        # Do extractions and calculations for each country
-        for ISO_i in ProgressBar(1:length(filt_ISOs), leave = false)
-            # Get ISO
-            ISO = filt_ISOs[ISO_i]
-
-            # Get required national geometry
-            admin0_geometry = admin0_shapes_geoIO[admin0_shapes_geoIO.ISO .== ISO,:].geometry
-
-            # Get trimmed subset of population raster for target country
-            pop_nat_masked = Rasters.trim(mask(population_raster, with = admin0_geometry); pad=0)
-
-            # Get trimmed subset of use rasters for target country
-            # This line is not needed, but really just used to make code more readable in population weighting line
-            use_mean_raster_masked = resample(Rasters.trim(mask(use_mean_raster, with = admin0_geometry); pad=0), to = pop_nat_masked)
-
-            use_sample_upper_rasters_masked = Vector{Raster}(undef, n_samples)
-            use_sample_lower_rasters_masked = Vector{Raster}(undef, n_samples)
-            for sample_i in 1:n_samples
-                use_sample_upper_rasters_masked[sample_i] = resample(Rasters.trim(mask(use_sample_upper_rasters[sample_i], with = admin0_geometry); pad=0), to = pop_nat_masked)
-                use_sample_lower_rasters_masked[sample_i] = resample(Rasters.trim(mask(use_sample_lower_rasters[sample_i], with = admin0_geometry); pad=0), to = pop_nat_masked)
-            end
-
-            # Calculate the population weighted average the upper and lower use rasters to get joint CI
-
-            # Find non-missing entries in raster
-            nonmissing_idxs = intersect(findall(.!isnan.(pop_nat_masked)),findall(.!isnan.(use_mean_raster_masked)))
-
-            # Calculated weighted means
-            use_rates_samples_upper = Vector{Float64}(undef, n_samples)
-            use_rates_samples_lower = Vector{Float64}(undef, n_samples)
-            for sample_i in 1:n_samples
-                use_rates_samples_upper[sample_i] = sum(pop_nat_masked[nonmissing_idxs].*use_sample_upper_rasters_masked[sample_i][nonmissing_idxs])/sum(pop_nat_masked[nonmissing_idxs])
-                use_rates_samples_lower[sample_i] = sum(pop_nat_masked[nonmissing_idxs].*use_sample_lower_rasters_masked[sample_i][nonmissing_idxs])/sum(pop_nat_masked[nonmissing_idxs])
-            end
-
-            # Get the quantile rasters based on population weighted means on national level
-            upper_rank_idx = round(Int,0.95*n_samples)
-            lower_rank_idx = max(round(Int, 0.05*n_samples),1)
-
-            use_nat_upper_rasters[ISO_i] = use_sample_upper_rasters_masked[sortperm(use_rates_samples_upper)][upper_rank_idx]
-            use_nat_lower_rasters[ISO_i] = use_sample_lower_rasters_masked[sortperm(use_rates_samples_lower)][lower_rank_idx]
-        end
-
-        # Mosaic together the upper and lower national rasters
-        use_upper_raster = resample(mosaic(first, use_nat_upper_rasters, atol = 0.01), to = use_mean_raster)
-        use_lower_raster = resample(mosaic(first, use_nat_lower_rasters, atol = 0.01), to = use_mean_raster)
-        
-        # # Write rasters
-        println("Saving rasters...")
-        write(output_dir*"final_use/logis_use/use_$(year)_$(month_str)_mean.tif", use_mean_raster, force = true)
-        write(output_dir*"final_use/logis_use/use_$(year)_$(month_str)_upper.tif", use_upper_raster, force = true)
-        write(output_dir*"final_use/logis_use/use_$(year)_$(month_str)_lower.tif", use_lower_raster, force = true)
-
-        println("Raster construction complete.")
-    end
-end

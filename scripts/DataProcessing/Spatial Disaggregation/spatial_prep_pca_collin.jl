@@ -22,11 +22,12 @@ using LinearAlgebra
 using SparseArrays
 
 # %% Directories
-input_dir = OUTPUT_DATAPREP_DIR
+input_dir = OUTPUT_DATAPREP_DIR*"INLA/"
 input_filename = INLA_DATAPREP_FILENAME
+cov_legend_dir = RAW_DATASET_DIR*"INLA/"
 cov_legend_filename = COV_LEGEND_FILENAME
 
-output_dir = OUTPUT_DATAPREP_DIR
+output_dir = OUTPUT_DATAPREP_DIR*"INLA/"
 output_filename = INLA_REDUCED_DATAPREP_FILENAME
 
 # %% Load extracted household data
@@ -36,7 +37,7 @@ data = CSV.read(input_dir*input_filename, DataFrame)
 data[:,"cov_ACCESS"] .= log.(data[:,"cov_ACCESS"] .+ 1e-5)
 data[:,"cov_ARID"] .= sqrt.(data[:,"cov_ARID"])
 
-cov_legend = CSV.read(input_dir*cov_legend_filename, DataFrame)
+cov_legend = CSV.read(cov_legend_dir*cov_legend_filename, DataFrame)
 
 # %% Find all columns with "cov_" prefix (i.e. the covariates)
 col_names = names(data)

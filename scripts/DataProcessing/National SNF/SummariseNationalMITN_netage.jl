@@ -19,7 +19,6 @@ using ProgressBars
 using LinearAlgebra
 using StatsBase
 using KernelDensity
-using Plots
 using NetCropModel
 using DateConversions
 
@@ -32,15 +31,15 @@ max_age_months = 4*12
 
 
 # %% Define Posterior Models data location
-netcrop_extractions_dir = OUTPUT_EXTRACTIONS_DIR*"extractions/crop/$(YEAR_START)_$(YEAR_END)/"
-netcrop_regressions_dir = OUTPUT_REGRESSIONS_DIR*"regressions/crop/$(YEAR_START)_$(YEAR_END)/"
+netcrop_extractions_dir = OUTPUT_EXTRACTIONS_DIR*"crop/$(YEAR_START)_$(YEAR_END)/"
+netcrop_regressions_dir = OUTPUT_REGRESSIONS_DIR*"crop/$(YEAR_START)_$(YEAR_END)/"
 
 # %% Define save directory
 save_dir = OUTPUT_DRAWS_DIR*"national/demography/"
 mkpath(save_dir)
 # %%
 ISO_list = String.(CSV.read(RAW_DATASET_DIR*ISO_LIST_FILENAME, DataFrame)[:,1])
-exclusion_ISOs = []
+exclusion_ISOs = ["CPV", "ZAF"]
 filt_ISOs = setdiff(ISO_list, exclusion_ISOs)
 
 # %% Extract net attrition parameters for all countries

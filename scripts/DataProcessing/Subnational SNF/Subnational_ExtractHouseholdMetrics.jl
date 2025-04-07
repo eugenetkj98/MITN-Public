@@ -44,7 +44,7 @@ output_filename = HOUSEHOLD_SUBNAT_SUMMARY_DATA_FILENAME
 
 # %% Import datasets
 master_id_legend = CSV.read(dataset_dir*id_legend_filename, DataFrame)
-nat_npc_monthly_data = CSV.read(RAW_DATASET_DIR*nat_npc_monthly_data_filename, DataFrame)
+nat_npc_monthly_data = CSV.read(OUTPUT_DATAPREP_DIR*nat_npc_monthly_data_filename, DataFrame)
 subnat_full_survey_data = CSV.read(hh_survey_data_filename, DataFrame)
 # Exclude data entries with missing ISO
 subnat_full_survey_data = subnat_full_survey_data[.!ismissing.(subnat_full_survey_data.ISO),:]

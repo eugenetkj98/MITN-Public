@@ -146,7 +146,7 @@ for year_i in ProgressBar(1:n_years, leave = false)
 			npc_mean_nat_masked = resample(Rasters.trim(mask(npc_mean_raster, with = admin0_geometry); pad=0), to = pop_nat_masked)
 			npc_upper_nat_masked = resample(Rasters.trim(mask(npc_upper_raster, with = admin0_geometry); pad=0), to = pop_nat_masked)
 			npc_lower_nat_masked = resample(Rasters.trim(mask(npc_lower_raster, with = admin0_geometry); pad=0), to = pop_nat_masked)
-
+			
 			access_mean_nat_masked = resample(Rasters.trim(mask(access_mean_raster, with = admin0_geometry); pad=0), to = pop_nat_masked)
 			access_upper_nat_masked = resample(Rasters.trim(mask(access_upper_raster, with = admin0_geometry); pad=0), to = pop_nat_masked)
 			access_lower_nat_masked = resample(Rasters.trim(mask(access_lower_raster, with = admin0_geometry); pad=0), to = pop_nat_masked)
@@ -154,7 +154,7 @@ for year_i in ProgressBar(1:n_years, leave = false)
 			use_mean_nat_masked = resample(Rasters.trim(mask(use_mean_raster, with = admin0_geometry); pad=0), to = pop_nat_masked)
 			use_upper_nat_masked = resample(Rasters.trim(mask(use_upper_raster, with = admin0_geometry); pad=0), to = pop_nat_masked)
 			use_lower_nat_masked = resample(Rasters.trim(mask(use_lower_raster, with = admin0_geometry); pad=0), to = pop_nat_masked)
-
+			
 			# Get all locations with non-missing values and calculate population weighted averages
 			# TEMP FIX: Calculate separate nonmissing_idxs for npc, access and use (INLA transformation function didn't deal with access = 0 and 1 very well)
 			nonmissing_idxs_npc = intersect(findall(.!isnan.(pop_nat_masked)), findall(.!isnan.(npc_mean_nat_masked)))
@@ -195,6 +195,7 @@ for year in ProgressBar(YEAR_START:YEAR_END, leave = false)
 		monthidx = monthyear_to_monthidx(month, year, YEAR_START = YEAR_START)
 		Threads.@threads for ISO_i in 1:length(filt_ISOs)
 			ISO = filt_ISOs[ISO_i]
+			
 
 			filt_data = bv_data[(bv_data.month .== "$(month)") .* (bv_data.iso3 .== ISO),:]
 			if size(filt_data)[1] == 0# Country didn't have a prediction
@@ -226,6 +227,7 @@ for year in ProgressBar(YEAR_START:YEAR_END, leave = false)
 		end
 	end
 end
+
 
 # %% Save model predictions to .jld2 file
 jldsave(output_dir*"adj_nat_model_coverage.jld2";

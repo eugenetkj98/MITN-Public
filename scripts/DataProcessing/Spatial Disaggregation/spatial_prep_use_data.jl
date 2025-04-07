@@ -52,9 +52,9 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
         # Load raster
         adj_access_raster_filename = "NA"
         if month < 10
-            adj_access_raster_filename = "access_$(year)_0$(month)_mean.tif"
+            adj_access_raster_filename = "adj_access_$(year)_0$(month)_mean.tif"
         else
-            adj_access_raster_filename =  "access_$(year)_$(month)_mean.tif"
+            adj_access_raster_filename =  "adj_access_$(year)_$(month)_mean.tif"
         end
         adj_access_raster = Raster(adj_access_raster_dir*adj_access_raster_filename)
 

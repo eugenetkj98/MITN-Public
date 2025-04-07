@@ -38,9 +38,9 @@ YEAR_END = YEAR_NAT_END
 # %%
 for i in 1:length(filt_ISOs)
     # Select ISO
-    ISO = ISO_list[i]
+    ISO = filt_ISOs[i]
 
-    println("Fitting model for Country $(i) of $(length(ISO_list)) → $(ISO)...")
+    println("Extracting access data for Country $(i) of $(length(filt_ISOs)) → $(ISO)...")
     
     if ISO ∈ exclusion_ISOs
         println("$(ISO) is on exclusion list. Moving to next country.")
@@ -61,16 +61,16 @@ end
 println("Extracted all required net access data.")
 
 # %% Aggregate survey data for regressing net access parameters and save .jld2
-init_variables = false
+global init_variables = false
 
 p_h_globaldata = zeros(0,10)
 ρ_h_globaldata = zeros(0,10)
 μ_h_globaldata = zeros(0,10)
 γ_globaldata = zeros(0)
 
-for i in 1:length(ISO_list)
+for i in 1:length(filt_ISOs)
     # Select ISO
-    ISO = ISO_list[i]
+    ISO = filt_ISOs[i]
 
     if ISO ∈ exclusion_ISOs
         continue
@@ -86,12 +86,12 @@ for i in 1:length(ISO_list)
         h_max = size(p_h)[2]
         # Check if storage variable for aggregated global data has been made.
         if init_variables == false
-            p_h_globaldata = zeros(0,h_max)
-            ρ_h_globaldata = zeros(0,h_max)
-            μ_h_globaldata = zeros(0,h_max)
-            γ_globaldata = zeros(0)
+            global p_h_globaldata = zeros(0,h_max)
+            global ρ_h_globaldata = zeros(0,h_max)
+            global μ_h_globaldata = zeros(0,h_max)
+            global γ_globaldata = zeros(0)
 
-            init_variables = true
+            global init_variables = true
         end
 
         # Add to aggregate storage variable

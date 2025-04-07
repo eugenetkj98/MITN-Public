@@ -9,8 +9,7 @@ using ProgressBars
 using JLD2
 using CSV
 using DataFrames
-
-# %% Import National MITN Plotting functions
+using Plots# %% Import National MITN Plotting functions
 using NationalMITN_Plots
 
 # %% Define save paths
