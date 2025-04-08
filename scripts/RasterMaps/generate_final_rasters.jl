@@ -26,8 +26,6 @@ using GeoIO
 using JLD2
 using StatsBase
 
-using Plots
-
 # Custom packages
 using DateConversions
 using UsefulTransformations

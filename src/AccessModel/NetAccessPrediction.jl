@@ -51,17 +51,11 @@ function sample_net_access(ρ_chain_df, μ_chain_df, p_h,
     μ_h_samples = zeros(n_samples, size(Γ_MONTHLY_samples)[2], h_max)
 
     # Get posterior samples from dataframe chain and arrange in neat format
-    # β_ρ_samples = ρ_chain_df[sample_idxs,1:6]
-    # τ_ρ_samples = ρ_chain_df[sample_idxs,7]
-
-    β_ρ_samples = ρ_chain_df[sample_idxs,1:5]
-    τ_ρ_samples = ρ_chain_df[sample_idxs,6]
+    β_ρ_samples = ρ_chain_df[sample_idxs,1:6]
+    τ_ρ_samples = ρ_chain_df[sample_idxs,7]
 
     β_μ_samples = μ_chain_df[sample_idxs,1:6]
     τ_μ_samples = μ_chain_df[sample_idxs,7]
-
-    
-
 
     Threads.@threads for i in ProgressBar(1:n_samples, leave = false)
         γ_MONTHLY = Γ_MONTHLY_samples[i,:]./POPULATION_MONTHLY
@@ -70,10 +64,17 @@ function sample_net_access(ρ_chain_df, μ_chain_df, p_h,
             # Sample ρ_h from posterior
             β_vec = Vector(β_ρ_samples[i,:])
             for h in 1:h_max
-                # input_vec = [1, h, h^2, γ, γ^2, γ^3]
-                input_vec = [γ, γ*h, γ*(h^2), γ^2, γ^3]
-                nu_h = β_vec'*input_vec
-                ρ_h_samples[i,month_idx,h] = inv_emplogit(rand(Normal(nu_h,τ_ρ_samples[i])))
+
+                # # OLD BV INSPIRED MODEL
+                # input_vec = [1/γ, h, h^2, γ, γ^2, γ^3]
+                # nu_h = β_vec'*input_vec
+                # ρ_h_samples[i,month_idx,h] = inv_emplogit(rand(Normal(nu_h,τ_ρ_samples[i])))
+
+                # NEW MODEL ADJUSTED FOR NPC = 0
+                input_vec = [asinh(((1+0.001)/(γ+0.001))-1), h, h^2, γ*h, γ^2, γ^3]
+                nu_h = (β_vec'*input_vec) - (τ_ρ_samples[i]^2)/2
+
+                ρ_h_samples[i,month_idx,h] = 2*inv_emplogit(rand(LogNormal(nu_h, τ_ρ_samples[i])))-1
             end
     
             # Sample μ_h from posterior

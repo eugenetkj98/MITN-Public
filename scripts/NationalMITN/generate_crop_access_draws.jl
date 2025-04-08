@@ -48,8 +48,6 @@ YEAR_END = YEAR_NAT_END
 # %% Perform draws and save outputs
 filt_ISOs = setdiff(ISO_list, exclusion_ISOs)
 
-net_access_chain = load(OUTPUT_REGRESSIONS_DIR*"access/netaccesschains.jld2")
-
 for ISO in filt_ISOs
     println("Generating draws of national crop and access for $(ISO)...")
     # Import Data
@@ -84,7 +82,7 @@ for ISO in filt_ISOs
     
     ### Draw posterior samples of model parameters
     # Randomly generate sample indexes to sample from chain
-    chain_length = size(chain)[1]
+    chain_length = 1000#size(chain)[1]
     sample_idxs = sample(1:chain_length, n_samples, replace = false)
 
     # Extract MCMC draws for parameters
@@ -101,7 +99,6 @@ for ISO in filt_ISOs
         n_missing_nets_posterior_draws = zeros(size(chain)[1], 0)
     end
 
-
     ##### Generate Net Crop Trajectories
     Γ_MONTHLY_samples_BYNET = zeros(n_samples, length(MONTHS_MONTHLY), n_net_types)
     A_samples_BYNET = zeros(n_samples, length(MONTHS_MONTHLY), length(MONTHS_MONTHLY), n_net_types)
@@ -116,18 +113,18 @@ for ISO in filt_ISOs
         k_nets = k_net_posterior_draws[i,:]
         missing_nets = n_missing_nets_posterior_draws[i,:]
 
-        
-        
         Γ_MONTHLY_BYNET, A_BYNET, 
         COUNTRY_LLIN_STOCK_ANNUAL_EOY, 
         UNADJUSTED_DISTRIBUTION_ANNUAL_BYNET, 
-        ADJUSTED_DISTRIBUTION_ANNUAL_BYNET = model_evolve_forward(YEARS_ANNUAL, MONTHS_MONTHLY,
-                                                                                    DELIVERIES_ANNUAL, DISTRIBUTION_ANNUAL,
-                                                                                    ϕ, b_nets, k_nets,
-                                                                                    α_init, α_LLIN,
-                                                                                    missing_nets; 
-                                                                                    monthly_p = monthly_p,
-                                                                                    return_age = true, return_stock = true)
+        ADJUSTED_DISTRIBUTION_ANNUAL_BYNET = model_evolve_forward(YEARS_ANNUAL, MONTHS_MONTHLY, 
+                                                        DELIVERIES_ANNUAL, DISTRIBUTION_ANNUAL,
+                                                        ϕ, b_nets, k_nets,
+                                                        α_init, α_LLIN,
+                                                        missing_nets; 
+                                                        monthly_p = monthly_p,
+                                                        return_age = true, return_stock = true)
+
+                                                        
 
         Γ_MONTHLY_samples_BYNET[i,:,:,:] = Γ_MONTHLY_BYNET
         A_samples_BYNET[i,:,:,:] = A_BYNET
@@ -159,7 +156,7 @@ for ISO in filt_ISOs
     λ_access_samples = sample_net_access(ρ_chain_df, μ_chain_df, p_h,
                                         POPULATION_MONTHLY, Γ_MONTHLY_samples_TOTAL) # Need to temporarily unscale input by mil for calculating access
 
-    λ_access_mean = mean(λ_access_samples, dims = 1)[:]
+    λ_access_mean = mean(λ_access_samples, dims = 1)[:]  
 
     #### Save posterior estimate as a JLD2 file
     filename = "$(ISO)_$(YEAR_START)_$(YEAR_END)_post_crop_access.jld2"

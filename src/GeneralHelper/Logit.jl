@@ -13,7 +13,7 @@ export inv_emplogit
     emplogit(x; ϵ = 0.001)
 Function that calculates the empirical logit transform of x.
 """
-function emplogit(x; ϵ = 0.001)
+function emplogit(x; ϵ = 0.00001)
     return log.((x+ϵ)/(1-x+ϵ))
 end
 
@@ -21,8 +21,14 @@ end
     inv_emplogit(x; ϵ = 0.001)
 Inverse of `emplogit()`
 """
-function inv_emplogit(x; ϵ = 0.001)
-    return (exp.(x).*(1-ϵ).-ϵ)./(1 .+ exp.(x))
+function inv_emplogit(x; ϵ = 0.00001)
+    if x > 10
+        return 1
+    elseif x < -10
+        return 0
+    else
+        return (exp.(x).*(1-ϵ).-ϵ)./(1 .+ exp.(x))
+    end
 end
 
 end

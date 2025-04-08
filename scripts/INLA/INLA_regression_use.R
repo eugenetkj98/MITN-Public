@@ -36,7 +36,7 @@ africa_mesh <- inla.mesh.2d(loc = coords,
                             boundary = africa_geometry,
                             max.edge = c(1.25,3),
                             offset = c(1,5),
-                            cutoff = 0.6)
+                            cutoff = 0.75)
 africa_spde <- inla.spde2.matern(mesh = africa_mesh)
 
 plot(africa_mesh)

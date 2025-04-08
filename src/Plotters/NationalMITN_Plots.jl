@@ -94,18 +94,18 @@ function plot_nat_timeseries(input_dict, net_access_input_dict, post_snf)
         
         NPC_MONTHLY_TOTAL[i,[1,3]] = quantile(NPC_MONTHLY_samples_TOTAL[:,i], [0.025, 0.975])
         NPC_MONTHLY_TOTAL[i,2] = mean(NPC_MONTHLY_samples_TOTAL[:,i])
-
-        λ_MONTHLY_TOTAL[i,[1,3]] = quantile(λ_access_samples[:,i], [0.025, 0.975])
-        λ_MONTHLY_TOTAL[i,2] = mean(λ_access_samples[:,i])
+        
+        λ_MONTHLY_TOTAL[i,[1,3]] = quantile(λ_access_samples[findall(.!isnan.(λ_access_samples[:,i])),i], [0.025, 0.975])
+        λ_MONTHLY_TOTAL[i,2] = mean(λ_access_samples[findall(.!isnan.(λ_access_samples[:,i])),i])
     end
 
     # %% Make Plot
     fig = plot(title = "$(ISO) Net Coverage", 
-                xlims = (-1,290), ylims = ((-100)./1e6, quantile(Γ_MONTHLY_TOTAL[:], 0.99)*1.2)./1e6,
-                xticks = xticks = (MONTHS_MONTHLY[1:12:end],YEARS_ANNUAL[1]:YEARS_ANNUAL[end]), xtickfontrotation = 90,
+                xlims = (-1,290), ylims = (-100000, quantile(Γ_MONTHLY_TOTAL[:], 0.99)*1.2)./1e6,
+                xticks = (MONTHS_MONTHLY[1:12:end],YEARS_ANNUAL[1]:YEARS_ANNUAL[end]), xtickfontrotation = 90,
                 xlabel = "Year", ylabel = "Net Crop", legend = :topleft)
     fig_2 = twinx(fig)
-    plot!(fig_2, ylabel = "NPC, Access")
+    plot!(fig_2, ylabel = "NPC, Access", xlims = (-1,290))
 
     # Annual guidelines
     vline!(fig, MONTHS_MONTHLY[1:12:end], 
@@ -200,7 +200,7 @@ function plot_netcrop_demography(input_dict, post_net_demography_mean)
 
     # Make demography plot
     fig = plot(title = "$(ISO) Net Demography", 
-                xlims = (-1,290), ylims = (-100 ./1e6, quantile(cumul_net_crop_demography[:]./1e6, 0.99)*1.2),
+                xlims = (-1,290), ylims = (-100000, quantile(cumul_net_crop_demography[:], 0.99)*1.2)./1e6,
                 xticks = (MONTHS_MONTHLY[1:12:end],YEARS_ANNUAL[1]:YEARS_ANNUAL[end]), xtickfontrotation = 90,
                 xlabel = "Year", ylabel = "Net Crop (mil)", legend = :topleft)
     colors = palette(:roma, size(quarterly_cumul_net_crop_demography)[2])
@@ -335,7 +335,7 @@ function plot_netcrop_bytype(input_dict, post_snf)
 
     # Make plot
     fig = plot(title = "$(ISO) Net Crop", 
-                xlims = (-1,290), ylims = (-100 ./1e6, quantile(cumul_Γ_MONTHLY_mean_BYNET[:]./1e6, 0.99)*1.2),
+                xlims = (-1,290), ylims = (-100000, quantile(cumul_Γ_MONTHLY_mean_BYNET[:], 0.99)*1.2)./1e6,
                 xticks = (MONTHS_MONTHLY[1:12:end],YEARS_ANNUAL[1]:YEARS_ANNUAL[end]), xtickfontrotation = 90,
                 xlabel = "Year", ylabel = "Net Crop (mil)", legend = :topleft)
     vline!(fig, MONTHS_MONTHLY[1:12:end], 

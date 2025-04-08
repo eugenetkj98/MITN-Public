@@ -32,24 +32,3 @@ recurse_loaddir(src_dir)
 # Package manager (This should install the required packages. If not, run the "instantiate" command via Pkg)
 using Pkg
 Pkg.activate("env_files")
-
-# %% Temp install packages
-Pkg.add(["JLD2",
-            "CSV",
-            "DataFrames",
-            "Missings",
-            "LinearAlgebra",
-            "StatsBase",
-            "StatsPlots",
-            "Random",
-            "Unicode",
-            "Dates",
-            "ProgressBars"])
-
-Pkg.add(["GeoIO",
-            "GeoInterface",
-            "Shapefile",
-            "Rasters",
-            "MultivariateStats",
-            "SparseArrays",
-            "Documenter"])

@@ -107,6 +107,8 @@ mkpath(OUTPUT_EXTRACTIONS_DIR*"access/reg_data/aggregated_inputs/")
 jldsave(OUTPUT_EXTRACTIONS_DIR*"access/reg_data/aggregated_inputs/netaccess_allsurvey_inputs.jld2";
             p_h_globaldata, ρ_h_globaldata, μ_h_globaldata, γ_globaldata)
 
+
+
 # %% MCMC Regression for Net Access model
 access_survey_globaldata = load(OUTPUT_EXTRACTIONS_DIR*"access/reg_data/aggregated_inputs/netaccess_allsurvey_inputs.jld2")
 bayes_access(access_survey_globaldata)

@@ -22,7 +22,7 @@ summary(m1)
 
 # Define number of posterior samples
 n_samples_large <- 50
-n_samples_saved <- 10
+n_samples_saved <- 20
 
 # Get raster image for coordinates to predict on (i.e. only restrict predictions to Africa)
 reference_image <- raster('datasets/INLA/MAP_Regions_Unclipped_5k.tif')
@@ -102,6 +102,11 @@ for (year in start_year:end_year) {
     
     # Adjust month string as needed
     adj_month = month
+
+    # Adjustment for LST Day
+    if ((month < 2) && (year == 2000)){
+      adj_month = 2
+    }
     
     # Get string interpolate for month
     if (adj_month < 10){
@@ -114,12 +119,12 @@ for (year in start_year:end_year) {
     # Extract required covariates (Monthly)
     ##############################
     # Type 3 Covariates: Monthly varying
-    cov_EVI <- raster::extract(raster(str_glue('/mnt/s3/mastergrids/MODIS_Global/MCD43D6_v6_BRDF_Reflectance/EVI_v6/5km/Monthly/EVI_v6.{year_str}.{month_str}.max.5km.max.tif')), pred.points, df = TRUE)
-    cov_LSTD <- raster::extract(raster(str_glue('/mnt/s3/mastergrids/MODIS_Global/MOD11A2_v6_LST/LST_Day/5km/Monthly/LST_Day_v6.{year_str}.{month_str}.max.5km.max.tif')), pred.points, df = TRUE)
-    cov_LSTN <- raster::extract(raster(str_glue('/mnt/s3/mastergrids/MODIS_Global/MOD11A2_v6_LST/LST_Night/5km/Monthly/LST_Night_v6.{year_str}.{month_str}.max.5km.max.tif')), pred.points, df = TRUE)
-    cov_LSTDELTA <- raster::extract(raster(str_glue('/mnt/s3/mastergrids/MODIS_Global/MOD11A2_v6_LST/LST_DiurnalDifference/5km/Monthly/LST_DiurnalDiff_v6.{year_str}.{month_str}.max.5km.max.tif')), pred.points, df = TRUE)
+    cov_EVI <- raster::extract(raster(str_glue('/mnt/s3/mastergrids/MODIS_Global/MCD43D6_v061_BRDF_Reflectance/EVI_v061/5km/Monthly/EVI_v061.{year_str}.{month_str}.max.5km.max.tif')), pred.points, df = TRUE)
+    cov_LSTD <- raster::extract(raster(str_glue('/mnt/s3/mastergrids/MODIS_Global/MOD11A2_v061_LST/LST_Day_v061/5km/Monthly/LST_Day_v061.{year_str}.{month_str}.max.5km.max.tif')), pred.points, df = TRUE)
+    cov_LSTN <- raster::extract(raster(str_glue('/mnt/s3/mastergrids/MODIS_Global/MOD11A2_v061_LST/LST_Night_v061/5km/Monthly/LST_Night_v061.{year_str}.{month_str}.max.5km.max.tif')), pred.points, df = TRUE)
+    cov_LSTDELTA <- raster::extract(raster(str_glue('/mnt/s3/mastergrids/MODIS_Global/MOD11A2_v061_LST/LST_DiurnalDifference_v061/5km/Monthly/LST_DiurnalDifference.{year_str}.{month_str}.max.5km.max.tif')), pred.points, df = TRUE)
     cov_TSI <- raster::extract(raster(str_glue('/mnt/s3/mastergrids/Other_Global_Covariates/TemperatureSuitability/TSI_Pf_Dynamic/5km/Monthly/TSI-Martens2-Pf.{year_str}.{month_str}.Data.5km.Data.tif')), pred.points, df = TRUE)
-    cov_TCB <- raster::extract(raster(str_glue('/mnt/s3/mastergrids/MODIS_Global/MCD43D6_v6_BRDF_Reflectance/TCB_v6/5km/Monthly/TCB_v6.{year_str}.{month_str}.max.5km.max.tif')), pred.points, df = TRUE)
+    cov_TCB <- raster::extract(raster(str_glue('/mnt/s3/mastergrids/MODIS_Global/MCD43D6_v061_BRDF_Reflectance/TCB_v061/5km/Monthly/TCB_v061.{year_str}.{month_str}.max.5km.max.tif')), pred.points, df = TRUE)
     
     ##############################
     # Preprocess Covariate Values

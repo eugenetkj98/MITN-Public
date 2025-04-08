@@ -111,7 +111,8 @@ function bayes_access(access_survey_globaldata;
     γ_globaldata = access_survey_globaldata["γ_globaldata"]
 
     # Pre-process data to be in required form for model
-    emplogit_ρ_h_globaldata = emplogit.(ρ_h_globaldata)
+    # emplogit_ρ_h_globaldata = emplogit.(ρ_h_globaldata) # FOR OLD BV INSPIRED MODEL
+    emplogit_ρ_h_globaldata = emplogit.((ρ_h_globaldata .+ 1)./2) # FOR NEW ACCESS MODEL
 
     # Construct PPL models and do MCMC regression
     model_ρ = model_prop_h_nonets(emplogit_ρ_h_globaldata, γ_globaldata)
@@ -130,8 +131,7 @@ function bayes_access(access_survey_globaldata;
     
 
     # Convert MCMC Chain to DataFrame for storage
-    # ρ_chain_df = DataFrame(ρ_h_chain[:,1:7,:])[:,3:end]
-    ρ_chain_df = DataFrame(ρ_h_chain[:,1:6,:])[:,3:end]
+    ρ_chain_df = DataFrame(ρ_h_chain[:,1:7,:])[:,3:end]
     μ_chain_df = DataFrame(μ_h_chain[:,1:7,:])[:,3:end]
 
     # Save data

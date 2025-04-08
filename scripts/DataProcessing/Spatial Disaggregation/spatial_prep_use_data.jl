@@ -16,6 +16,8 @@ include(pwd()*"/scripts/dir_configs.jl")
 using ProgressBars
 using DataFrames
 using CSV
+using Rasters
+using GeoIO
 using StatsBase
 using Statistics
 using MultivariateStats
