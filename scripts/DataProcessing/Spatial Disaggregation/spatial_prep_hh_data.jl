@@ -136,7 +136,8 @@ for ISO_i in ProgressBar(1:length(filt_ISOs))
         weights = filt_ISOs.hh_sample_wt
         npc = sum(filt_ISOs.n_itn.*weights)/sum(filt_ISOs.hh_size.*weights) #sum(weights.*npc_entries)/sum(weights)
         access = sum(min.((2 .*filt_ISOs.n_itn)./(filt_ISOs.hh_size),1).*(filt_ISOs.hh_size).*weights)/sum((filt_ISOs.hh_size).*weights) #sum(weights.*access_entries)/sum(weights)
-        use = sum(min.(2 .*filt_ISOs.n_itn_used, filt_ISOs.hh_size).*(filt_ISOs.hh_size).*weights )/sum(weights .* filt_ISOs.hh_size) #sum(weights.*use_entries)/sum(weights)
+        use = sum(min.(2 .*filt_ISOs.n_itn_used ./ filt_ISOs.hh_size, 1).*(filt_ISOs.hh_size).*weights)/sum(weights .* filt_ISOs.hh_size) #sum(weights.*use_entries)/sum(weights)
+        
         # use = dot(weights, filt_ISOs.n_slept_under_itn)/dot(weights, filt_ISOs.hh_size)
         sample_weight = sum(weights)
 
@@ -400,10 +401,10 @@ global cov_raster_filepath = COV_EVI_DIR
 for year_idx in ProgressBar(1:length(YEAR_VALS))
     year = YEAR_VALS[year_idx]
 
-    # Temporary truncation of data (covariate data not avaialable after 2016)
-    if year > 2022
-        year = 2022
-    end
+    # # Temporary truncation of data (covariate data not avaialable after 2016)
+    # if year > 2022
+    #     year = 2022
+    # end
 
     # Get list of required months
     months = unique(hh_data_summary[hh_data_summary.interview_year .== year,"interview_month"])
@@ -421,9 +422,9 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
         global cov_raster_filename = "NA"
         
         if month < 10
-            global cov_raster_filename = "EVI_v6.$(year).0$(month).max.5km.max.tif"
+            global cov_raster_filename = "EVI_v061.$(year).0$(month).max.5km.max.tif"
         else
-            global cov_raster_filename =  "EVI_v6.$(year).$(month).max.5km.max.tif"
+            global cov_raster_filename =  "EVI_v061.$(year).$(month).max.5km.max.tif"
         end
 
         # Load raster
@@ -471,10 +472,10 @@ global cov_raster_filepath = COV_LSTD_DIR
 for year_idx in ProgressBar(1:length(YEAR_VALS))
     year = YEAR_VALS[year_idx]
 
-    # Temporary truncation of data (covariate data not avaialable after 2016)
-    if year > 2021
-        year = 2021
-    end
+    # # Temporary truncation of data (covariate data not avaialable after 2016)
+    # if year > 2021
+    #     year = 2021
+    # end
 
     # Get list of required months
     months = unique(hh_data_summary[hh_data_summary.interview_year .== year,"interview_month"])
@@ -492,9 +493,9 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
         global cov_raster_filename = "NA"
         
         if month < 10
-            global cov_raster_filename = "LST_Day_v6.$(year).0$(month).max.5km.max.tif"
+            global cov_raster_filename = "LST_Day_v061.$(year).0$(month).max.5km.max.tif"
         else
-            global cov_raster_filename =  "LST_Day_v6.$(year).$(month).max.5km.max.tif"
+            global cov_raster_filename =  "LST_Day_v061.$(year).$(month).max.5km.max.tif"
         end
 
         # Load raster
@@ -542,10 +543,10 @@ global cov_raster_filepath = COV_LSTN_DIR
 for year_idx in ProgressBar(1:length(YEAR_VALS))
     year = YEAR_VALS[year_idx]
 
-    # Temporary truncation of data (covariate data not avaialable after 2016)
-    if year > 2021
-        year = 2021
-    end
+    # # Temporary truncation of data (covariate data not avaialable after 2016)
+    # if year > 2021
+    #     year = 2021
+    # end
 
     # Get list of required months
     months = unique(hh_data_summary[hh_data_summary.interview_year .== year,"interview_month"])
@@ -563,9 +564,9 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
         global cov_raster_filename = "NA"
         
         if month < 10
-            global cov_raster_filename = "LST_Night_v6.$(year).0$(month).max.5km.max.tif"
+            global cov_raster_filename = "LST_Night_v061.$(year).0$(month).max.5km.max.tif"
         else
-            global cov_raster_filename =  "LST_Night_v6.$(year).$(month).max.5km.max.tif"
+            global cov_raster_filename =  "LST_Night_v061.$(year).$(month).max.5km.max.tif"
         end
 
         # Load raster
@@ -613,11 +614,6 @@ global cov_raster_filepath = COV_LSTDELTA_DIR
 for year_idx in ProgressBar(1:length(YEAR_VALS))
     year = YEAR_VALS[year_idx]
 
-    # Temporary truncation of data (covariate data not avaialable after 2016)
-    if year > 2021
-        year = 2021
-    end
-
     # Get list of required months
     months = unique(hh_data_summary[hh_data_summary.interview_year .== year,"interview_month"])
 
@@ -634,9 +630,9 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
         global cov_raster_filename = "NA"
         
         if month < 10
-            global cov_raster_filename = "LST_DiurnalDiff_v6.$(year).0$(month).max.5km.max.tif"
+            global cov_raster_filename = "LST_DiurnalDifference.$(year).0$(month).max.5km.max.tif"
         else
-            global cov_raster_filename =  "LST_DiurnalDiff_v6.$(year).$(month).max.5km.max.tif"
+            global cov_raster_filename =  "LST_DiurnalDifference.$(year).$(month).max.5km.max.tif"
         end
 
         # Load raster
@@ -684,11 +680,6 @@ global cov_raster_filepath = COV_TCW_DIR
 for year_idx in ProgressBar(1:length(YEAR_VALS))
     year = YEAR_VALS[year_idx]
 
-    # Temporary truncation of data (covariate data not avaialable after 2016)
-    if year > 2022
-        year = 2022
-    end
-
     # Get list of required months
     months = unique(hh_data_summary[hh_data_summary.interview_year .== year,"interview_month"])
 
@@ -705,9 +696,9 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
         global cov_raster_filename = "NA"
         
         if month < 10
-            global cov_raster_filename = "TCW_v6.$(year).0$(month).max.5km.max.tif"
+            global cov_raster_filename = "TCW_v061.$(year).0$(month).max.5km.max.tif"
         else
-            global cov_raster_filename =  "TCW_v6.$(year).$(month).max.5km.max.tif"
+            global cov_raster_filename =  "TCW_v061.$(year).$(month).max.5km.max.tif"
         end
 
         # Load raster
@@ -751,14 +742,14 @@ TSI_cov = zeros(size(hh_data_summary)[1])
 # Define raster filepath
 global cov_raster_filepath = COV_TSI_DIR
 
-# Select ayear
+# Select a year
 for year_idx in ProgressBar(1:length(YEAR_VALS))
     year = YEAR_VALS[year_idx]
 
-    # Temporary truncation of data (covariate data not avaialable after 2016)
-    if year > 2022
-        year = 2022
-    end
+    # # Temporary truncation of data (covariate data not avaialable after 2016)
+    # if year > 2022
+    #     year = 2022
+    # end
 
     # Get list of required months
     months = unique(hh_data_summary[hh_data_summary.interview_year .== year,"interview_month"])
@@ -768,8 +759,8 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
         month = months[month_idx]
 
         # If required time period is not available, just take closest one
-        if (year == 2000) && (month < 2)
-            month = 2
+        if (year == 2000) && (month < 4)
+            month = 4
         end
 
         # Define raster filename
@@ -826,10 +817,10 @@ global cov_raster_filepath = COV_TCB_DIR
 for year_idx in ProgressBar(1:length(YEAR_VALS))
     year = YEAR_VALS[year_idx]
 
-    # Temporary truncation of data (covariate data not avaialable after 2016)
-    if year > 2022
-        year = 2022
-    end
+    # # Temporary truncation of data (covariate data not avaialable after 2016)
+    # if year > 2022
+    #     year = 2022
+    # end
 
     # Get list of required months
     months = unique(hh_data_summary[hh_data_summary.interview_year .== year,"interview_month"])
@@ -847,9 +838,9 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
         global cov_raster_filename = "NA"
         
         if month < 10
-            global cov_raster_filename = "TCB_v6.$(year).0$(month).max.5km.max.tif"
+            global cov_raster_filename = "TCB_v061.$(year).0$(month).max.5km.max.tif"
         else
-            global cov_raster_filename =  "TCB_v6.$(year).$(month).max.5km.max.tif"
+            global cov_raster_filename =  "TCB_v061.$(year).$(month).max.5km.max.tif"
         end
 
         # Load raster

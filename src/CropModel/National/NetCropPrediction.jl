@@ -5,9 +5,14 @@ Last Updated: 31/3/2025
 Helper function to generate posterior predictions/draws of NPC given model outputs
 """
 
-module NetCropRegression
+module NetCropPrediction
 export mitn_national_predict
 export mitn_national_noredist_predict
+
+using Missings
+using DateConversions
+using NetLoss
+using NetCropModel
 
 # %% Prediction using the full National MITN model with stock piling and redistributions
 function mitn_national_predict(YEARS_ANNUAL,
@@ -17,7 +22,7 @@ function mitn_national_predict(YEARS_ANNUAL,
                                 monthly_p = nothing)
 
     # Get Number of net types from parameter MCMC chain
-    n_net_types = length(NET_NAMES)
+    n_net_types = size(DISTRIBUTION_ANNUAL)[2]
     
     # Calculate total net Distributions
     DISTRIBUTION_ANNUAL_TOTAL = sum(Array(DISTRIBUTION_ANNUAL), dims = 2)[:]
@@ -163,7 +168,7 @@ function mitn_national_noredist_predict(YEARS_ANNUAL,
                                 monthly_p = monthly_p)
 
     # Get Number of net types from parameter MCMC chain
-    n_net_types = length(NET_NAMES)
+    n_net_types = size(DISTRIBUTION_ANNUAL)[2]
     
     # Calculate total net Distributions
     DISTRIBUTION_ANNUAL_TOTAL = sum(Array(DISTRIBUTION_ANNUAL), dims = 2)[:]

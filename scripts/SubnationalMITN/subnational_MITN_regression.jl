@@ -129,7 +129,7 @@ end
     # National input dict used for the national net crop regression (used to get monthly population numbers)
     nat_netcrop_input_dict = load(OUTPUT_EXTRACTIONS_DIR*"crop/$(YEAR_START_NAT)_$(YEAR_END)/"*nat_netcrop_input_dict_filename)
     # Subnational filtered household survey data
-    subnat_npc_monthly_data = CSV.read(dataprep_dir*"subnational/"subnat_npc_monthly_data_filename, DataFrame)
+    subnat_npc_monthly_data = CSV.read(dataprep_dir*"subnational/"*subnat_npc_monthly_data_filename, DataFrame)
     # Load national net crop draws
     nat_netcrop_post_data = load(nat_netcrop_post_dir*nat_netcrop_post_filename)
     # Load National regression MCMC chain (for monthly disaggregation ratios)

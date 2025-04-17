@@ -1,7 +1,7 @@
 """
 Author: Eugene Tan
 Date Created: 6/4/2025
-Last Updated: 6/4/2025
+Last Updated: 14/4/2025
 Calculate prediction error of the entire summarised survey dataset w.r.t to the final regressed rasters
 """
 
@@ -22,6 +22,8 @@ using GeoIO
 using JLD2
 using StatsBase
 
+using RasterLookup
+
 # %% Dataset Directories
 raster_dir = OUTPUT_RASTERS_DIR
 dataprep_dir = OUTPUT_DATAPREP_DIR*"INLA/"
@@ -33,7 +35,7 @@ inla_data_filename = "inla_dataset_reduced.csv"
 country_summaries_filename = HOUSEHOLD_NAT_SUMMARY_DATA_FILENAME
 
 # %% Load Datasets
-inla_data = CSV.read(dataprep_dir*inla_data, DataFrame)
+inla_data = CSV.read(dataprep_dir*inla_data_filename, DataFrame)
 country_summaries = CSV.read(OUTPUT_DATAPREP_DIR*country_summaries_filename, DataFrame)
 hh_survey_data = CSV.read(OUTPUT_DATAPREP_DIR*HOUSEHOLD_SURVEY_DATA_FILENAME, DataFrame)
 
@@ -50,21 +52,33 @@ YEAR_LIST = unique(inla_data.interview_year)
 
 # Extract model estimates at local cluster level and compile dataframe
 for year in YEAR_LIST
-    # Select Year
-    year = YEAR_LIST[1]
+
+    # For BV models, interpolate between two years' rasters
+    bv_year_1 = year
+    if year < 2023
+        bv_year_2 = year + 1
+    else
+        bv_year_2 = 2023
+    end
 
     # Import annual resolution final rasters (i.e. BV model) and get require lat lon collection
-    bv_npc_raster = replace_missing(Raster(BV_OUTPUT_DIR*"nets_per_capita/ITN_$(year)_percapita_nets_mean.tif"), missing_val = NaN)
-    bv_use_raster = replace_missing(Raster(BV_OUTPUT_DIR*"ITN_$(year)_use_mean.tif"), missingval = NaN)
-    bv_model_lats = lookup(bv_npc_raster, Y)
-    bv_model_lons = lookup(bv_npc_raster, X)
+    bv_npc_raster_1 = replace_missing(Raster(BV_OUTPUT_DIR*"nets_per_capita/ITN_$(bv_year_1)_percapita_nets_mean.tif"), missingval = NaN)
+    bv_access_raster_1 = replace_missing(Raster("datasets/BV_MODEL_ACCESS_RASTERS/access/ITN_$(bv_year_1)_access_mean.tif"), missingval = NaN)
+    bv_use_raster_1 = replace_missing(Raster(BV_OUTPUT_DIR*"ITN_$(bv_year_1)_use_mean.tif"), missingval = NaN)
+
+    bv_npc_raster_2 = replace_missing(Raster(BV_OUTPUT_DIR*"nets_per_capita/ITN_$(bv_year_2)_percapita_nets_mean.tif"), missingval = NaN)
+    bv_access_raster_2 = replace_missing(Raster("datasets/BV_MODEL_ACCESS_RASTERS/access/ITN_$(bv_year_2)_access_mean.tif"), missingval = NaN)
+    bv_use_raster_2 = replace_missing(Raster(BV_OUTPUT_DIR*"ITN_$(bv_year_2)_use_mean.tif"), missingval = NaN)
+
+    bv_model_lats = lookup(bv_npc_raster_1, Y)
+    bv_model_lons = lookup(bv_npc_raster_1, X)
 
     # Filter survey data and get list of unique month values
     data_yearslice = inla_data[inla_data.interview_year .== year,:]
     monthidxs = unique(data_yearslice.interview_month)
 
     for month in monthidxs
-
+        # Filter data
         data_monthslice = data_yearslice[data_yearslice.interview_month .== month,:]
 
         lats = data_monthslice.latitude
@@ -72,19 +86,20 @@ for year in YEAR_LIST
 
         # Scrape BV local prediction values
         bv_npc_vals = zeros(size(data_monthslice)[1])
+        bv_access_vals = zeros(size(data_monthslice)[1])
         bv_use_vals = zeros(size(data_monthslice)[1])
 
         for j in 1:size(data_monthslice)[1]
             lat = lats[j]
             lon = lons[j]
-
-            # Lookup raster idx location
-            bv_model_lat_idx = argmin(abs.(bv_model_lats .- lat))
-            bv_model_lon_idx = argmin(abs.(bv_model_lons .- lon))
-
+            
+            # Interpolation mixing parameter
+            α = (1-(month-1)/12)
+            
             # Use raster idx to lookup value
-            bv_npc_vals[j] = bv_npc_raster[bv_model_lon_idx, bv_model_lat_idx]
-            bv_use_vals[j] = bv_use_raster[bv_model_lon_idx, bv_model_lat_idx]
+            bv_npc_vals[j] = α*interp_lookup(bv_npc_raster_1, lat, lon) + (1-α)*interp_lookup(bv_npc_raster_2, lat, lon)
+            bv_access_vals[j] = α*interp_lookup(bv_access_raster_1, lat, lon) + (1-α)*interp_lookup(bv_access_raster_2, lat, lon)
+            bv_use_vals[j] = α*interp_lookup(bv_use_raster_1, lat, lon) + (1-α)*interp_lookup(bv_use_raster_2, lat, lon)
         end
 
         # Scrape MITN local prediction values
@@ -95,15 +110,10 @@ for year in YEAR_LIST
 
         # Import MITN rasters
         mitn_npc_raster = replace_missing(Raster(raster_dir*"final_npc/logmodel_npc/npc_$(year)_$(month_str)_mean.tif"), missingval = NaN)
-        mitn_adj_npc_raster = replace_missing(Raster(raster_dir*"final_npc/logmodel_npc/adj_npc_$(year)_$(month_str)_mean.tif"), missingval = NaN)
-        # mitn_final_npc_raster = replace_missing(Raster(raster_dir*"final_npc/logmodel_npc/final_npc_$(year)_$(month_str)_mean.tif"), missingval = NaN)
 
         mitn_access_raster = replace_missing(Raster(raster_dir*"final_access/pmodel_access/access_$(year)_$(month_str)_mean.tif"), missingval = NaN)
-        mitn_adj_access_raster = replace_missing(Raster(raster_dir*"final_access/pmodel_access/adj_access_$(year)_$(month_str)_mean.tif"), missingval = NaN)
-        # mitn_final_access_raster = replace_missing(Raster(raster_dir*"final_access/pmodel_access/final_access_$(year)_$(month_str)_mean.tif"), missingval = NaN)
 
-        mitn_use_raster = replace_missing(Raster(raster_dir*"final_use/logis_use/use_$(year)_$(month_str)_mean.tif"), missingval = NaN)
-        mitn_final_use_raster = replace_missing(Raster(raster_dir*"final_use/logis_use/final_use_$(year)_$(month_str)_mean.tif"), missingval = NaN)
+        # mitn_use_raster = replace_missing(Raster(raster_dir*"final_use/logis_use/use_$(year)_$(month_str)_mean.tif"), missingval = NaN)
 
         mitn_model_lats = lookup(mitn_npc_raster, Y)
         mitn_model_lons = lookup(mitn_npc_raster, X)
@@ -112,32 +122,14 @@ for year in YEAR_LIST
         mitn_access_vals = zeros(size(data_monthslice)[1])
         mitn_use_vals = zeros(size(data_monthslice)[1])
 
-        mitn_adj_npc_vals = zeros(size(data_monthslice)[1])
-        mitn_adj_access_vals = zeros(size(data_monthslice)[1])
-
-        mitn_final_npc_vals = zeros(size(data_monthslice)[1])
-        mitn_final_access_vals = zeros(size(data_monthslice)[1])
-        mitn_final_use_vals = zeros(size(data_monthslice)[1])
-
         for j in 1:size(data_monthslice)[1]
             lat = lats[j]
             lon = lons[j]
 
-            # Lookup raster idx location
-            mitn_model_lat_idx = argmin(abs.(mitn_model_lats .- lat))
-            mitn_model_lon_idx = argmin(abs.(mitn_model_lons .- lon))
-
             # Use raster idx to lookup value
-            mitn_npc_vals[j] = mitn_npc_raster[mitn_model_lon_idx, mitn_model_lat_idx]
-            mitn_access_vals[j] = mitn_access_raster[mitn_model_lon_idx, mitn_model_lat_idx]
-            # mitn_use_vals[j] = mitn_use_raster[mitn_model_lon_idx, mitn_model_lat_idx]
-
-            mitn_adj_npc_vals[j] = mitn_adj_npc_raster[mitn_model_lon_idx, mitn_model_lat_idx]
-            mitn_adj_access_vals[j] = mitn_adj_access_raster[mitn_model_lon_idx, mitn_model_lat_idx]
-
-            # mitn_final_npc_vals[j] = mitn_final_npc_raster[mitn_model_lon_idx, mitn_model_lat_idx]
-            # mitn_final_access_vals[j] = mitn_final_access_raster[mitn_model_lon_idx, mitn_model_lat_idx]
-            # mitn_final_use_vals[j] = mitn_final_use_raster[mitn_model_lon_idx, mitn_model_lat_idx]
+            mitn_npc_vals[j] = interp_lookup(mitn_npc_raster, lat, lon)
+            mitn_access_vals[j] = interp_lookup(mitn_access_raster, lat, lon) 
+            # mitn_use_vals[j] = interp_lookup(mitn_use_raster, lat, lon) 
         end
 
         # Construct Dataframe for year-month survey entries
@@ -153,20 +145,38 @@ for year in YEAR_LIST
                     npc = data_monthslice.npc,
                     bv_npc = bv_npc_vals,
                     mitn_npc = mitn_npc_vals,
-                    mitn_adj_npc = mitn_adj_npc_vals,
-                    mitn_final_npc = mitn_final_npc_vals,
                     access = data_monthslice.access,
-                    bv_access = NaN,
+                    bv_access = bv_access_vals,
                     mitn_access = mitn_access_vals,
-                    mitn_adj_access = mitn_adj_access_vals,
-                    mitn_final_access = mitn_final_access_vals,
                     use = data_monthslice.use,
                     bv_use = bv_use_vals,
-                    mitn_use = mitn_use_vals,
-                    mitn_final_use = mitn_final_use_vals)
+                    # mitn_use = mitn_use_vals
+                    )
         push!(df_local_collection, df)
     end
 end
+
+
+# %%
+df_comb = vcat(df_local_collection...)
+
+df_filt = df_comb[.!isnan.(df_comb.npc) .&&
+        .!isnan.(df_comb.bv_npc) .&&
+        .!isnan.(df_comb.mitn_npc) .&&
+        .!isnan.(df_comb.access) .&&
+        .!isnan.(df_comb.bv_access) .&&
+        .!isnan.(df_comb.mitn_access),:]
+
+# %%
+sqrt(mean((df_filt.npc .- df_filt.bv_npc).^2))
+sqrt(mean((df_filt.npc .- df_filt.mitn_npc).^2))
+
+
+sqrt(mean((df_filt.access .- df_filt.bv_access).^2))
+sqrt(mean((df_filt.access .- df_filt.mitn_access).^2))
+
+sqrt(mean((df_filt.use .- df_filt.bv_use).^2))
+# sqrt(mean((df_filt.use .- df_filt.mitn_use).^2))
 
 ################################
 # %% COUNTRY LEVEL
@@ -236,14 +246,14 @@ for ISO_i in ProgressBar(1:length(filt_ISOs))
 
         # Import MITN model rasters
         mitn_npc_raster = replace_missing(Raster(raster_dir*"final_npc/logmodel_npc/npc_$(year)_$(month_str)_mean.tif"), missingval = NaN)
-        mitn_adj_npc_raster = replace_missing(Raster(raster_dir*"final_npc/logmodel_npc/adj_npc_$(year)_$(month_str)_mean.tif"), missingval = NaN)
+        # mitn_adj_npc_raster = replace_missing(Raster(raster_dir*"final_npc/logmodel_npc/adj_npc_$(year)_$(month_str)_mean.tif"), missingval = NaN)
         # mitn_final_npc_raster = replace_missing(Raster(raster_dir*"final_npc/logmodel_npc/final_npc_$(year)_$(month_str)_mean.tif"), missingval = NaN)
 
         mitn_access_raster = replace_missing(Raster(raster_dir*"final_access/pmodel_access/access_$(year)_$(month_str)_mean.tif"), missingval = NaN)
-        mitn_adj_access_raster = replace_missing(Raster(raster_dir*"final_access/pmodel_access/adj_access_$(year)_$(month_str)_mean.tif"), missingval = NaN)
+        # mitn_adj_access_raster = replace_missing(Raster(raster_dir*"final_access/pmodel_access/adj_access_$(year)_$(month_str)_mean.tif"), missingval = NaN)
         # mitn_final_access_raster = replace_missing(Raster(raster_dir*"final_access/pmodel_access/final_access_$(year)_$(month_str)_mean.tif"), missingval = NaN)
 
-        mitn_use_raster = replace_missing(Raster(raster_dir*"final_use/logis_use/use_$(year)_$(month_str)_mean.tif"), missingval = NaN)
+        # mitn_use_raster = replace_missing(Raster(raster_dir*"final_use/logis_use/use_$(year)_$(month_str)_mean.tif"), missingval = NaN)
         # mitn_final_use_raster = replace_missing(Raster(raster_dir*"final_use/logis_use/final_use_$(year)_$(month_str)_mean.tif"), missingval = NaN)
 
         # Extract summary for admin0 region based on population weights

@@ -9,7 +9,8 @@ library(terra)
 source("scripts/INLA/transforms.R")
 
 # Import Models
-load("outputs/INLA/model1_final_access_complete_pmodel.RData")
+# load("outputs/INLA/model1_access_complete_pmodel.RData")
+load("outputs/INLA/model1_access_half_pmodel.RData")
 
 # Check summary
 summary(m1)
@@ -26,7 +27,7 @@ inla_data <- read.csv('outputs/data_prep/INLA/inla_dataset_reduced.csv')
 inla_data <- inla_data[seq(2,dim(inla_data)[1],2),]
 inla_data <- inla_data[which(inla_data$access > 0),]
 # inla_data <- inla_data[1:1000,]
-inla_data$yearidx <- (inla_data$monthidx %/% 12)#*12
+inla_data$yearidx <- (inla_data$monthidx %/% 12)+1#*12
 inla_data$yearidx
 
 # load Africa shapefile

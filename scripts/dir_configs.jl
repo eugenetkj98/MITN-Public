@@ -98,6 +98,7 @@ COUNTRY_CODES_FILENAME = "country_codes.csv"
 ISO_LIST_FILENAME = "ISO_list.csv"
 DELIVERIES_DATA_FILENAME = "base_manufacturer_deliveries.csv"
 DISTRIBUTION_DATA_FILENAME = "net_distributions_cITN_adjusted.csv"
+MULTITYPE_DISTRIBUTION_DATA_FILENAME = "net_distributions_cITN_adjusted_multitype.csv"
 POPULATION_DATA_FILENAME = "ihme_populations.csv"
 
 ## Subnational
@@ -109,9 +110,9 @@ SUBNAT_DISTRIBUTION_DATA_FILENAME = "net_distributions_admin1_dummy_combined_amp
 HOUSEHOLD_SURVEY_DATA_FILENAME = "itn_hh_surveydata_complete_dataeng.csv"
 HOUSEHOLD_NAT_SUMMARY_DATA_FILENAME = "npc_monthly_data.csv"
 HOUSEHOLD_SUBNAT_SUMMARY_DATA_FILENAME = "subnat_npc_monthly_data.csv"
-INLA_DATAPREP_FILENAME = "INLA/inla_dataset.csv"
-INLA_REDUCED_DATAPREP_FILENAME = "INLA/inla_dataset_reduced.csv"
-INLA_USE_REDUCED_DATAPREP_FILENAME = "INLA/inla_dataset_reduced_use.csv"
+INLA_DATAPREP_FILENAME = "inla_dataset.csv"
+INLA_REDUCED_DATAPREP_FILENAME = "inla_dataset_reduced.csv"
+INLA_USE_REDUCED_DATAPREP_FILENAME = "inla_dataset_reduced_use.csv"
 COV_LEGEND_FILENAME = "inla_raw_covariates_legend.csv"
 
 
@@ -172,5 +173,6 @@ SUBNAT_CROP_ATR_SCALING_CONSTANT = 0.1
 SUBNAT_CROP_ATR_PROPOSAL_SAMPLING_VAR = SUBNAT_CROP_ATR_SCALING_CONSTANT .*[0.15,8,0.15] # Compact support sampling
 
 # INLA Raster Sample
+INLA_N_SAMPLES = 20
 INLA_USE_N_SAMPLES = 10 # Number of samples to draw for INLA use deviation
-INLA_USE_UNCERTAINTY_N_SAMPLES = 10 # Number of samples to draw for calculating INLA use deviation uncertainty
+INLA_UNCERTAINTY_N_SAMPLES = 20 # Number of samples to draw for calculating INLA use deviation uncertainty

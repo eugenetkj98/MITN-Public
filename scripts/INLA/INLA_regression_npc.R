@@ -14,9 +14,9 @@ sf_use_s2(FALSE)
 
 # load INLA regression data
 inla_data <- read.csv('outputs/data_prep/INLA/inla_dataset_reduced.csv')
-# inla_data <- inla_data[seq(1,dim(inla_data)[1],2),]
+inla_data <- inla_data[seq(1,dim(inla_data)[1],2),]
 # inla_data <- inla_data[sample(dim(inla_data)[1], 25000, replace = FALSE),]
-inla_data$yearidx <- (inla_data$monthidx %/% 12)#*12
+inla_data$yearidx <- (inla_data$monthidx %/% 12)+1#*12
 inla_data$yearidx
 
 # load Africa shapefile
@@ -48,7 +48,7 @@ end_year = 2023
 n_years = (end_year-start_year+1)
 
 # generate temporal mesh
-temporal_mesh_annual <- inla.mesh.1d(seq(1,n_years,by=2),interval=c(1, n_years),degree=2)
+temporal_mesh_annual <- inla.mesh.1d(seq(1,n_years+1,by=2),interval=c(1, n_years+1),degree=2)
 
 # Make projection matrices
 A_proj_annual <- inla.spde.make.A(mesh = africa_spde, loc = coords,
@@ -134,7 +134,7 @@ m1 <- inla(res_npc_gap ~ -1 + Intercept +
 
 print("Saving NPC gap model outputs...")
 
-save(africa_mesh, africa_spde, temporal_mesh_annual, m1, epsilon, file = "outputs/INLA/model1_npc_complete_logmodel.RData")
+save(africa_mesh, africa_spde, temporal_mesh_annual, m1, epsilon, file = "outputs/INLA/model1_npc_half_logmodel.RData")
 
 print("Saved NPC gap model")
 
