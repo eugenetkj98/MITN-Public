@@ -26,6 +26,7 @@ using StatsBase
 # Custom packages
 using DateConversions
 using UsefulTransformations
+using RasterLookup
 
 # %% File paths
 # MITN Posterior Estimates
@@ -54,42 +55,24 @@ n_samples = INLA_N_SAMPLES # Number of samples that were saved in the INLA raste
 
 # %% Get list of countries to analyse
 ISO_list = String.(CSV.read(RAW_DATASET_DIR*ISO_LIST_FILENAME, DataFrame)[:,1])
-exclusion_ISOs = ["CPV","ZAF"]
+exclusion_ISOs = EXCLUSION_ISOS
 filt_ISOs = setdiff(ISO_list, exclusion_ISOs)
 
 # %% Time bounds
-YEAR_START = 2022
-YEAR_END = 2023
+YEAR_START = YEAR_NAT_START
+YEAR_END = YEAR_NAT_END
 
 # %% Location to save data to
 output_dir = OUTPUT_DIR*"coverage_timeseries/master_extractions_parts/"
 output_filename = "extraction_$(YEAR_START)_$(YEAR_END).csv"
 
-# %% Helper function to quickly aggregate values
-function aggregate_raster_weighted_mean(raster, weights)
-    aligned_raster = resample(raster, to = weights)
-    nonmissing_idxs = intersect(findall(.!isnan.(weights)),findall(.!isnan.(aligned_raster)))
-    weight_total = sum(weights[nonmissing_idxs])
-    weighted_sum = sum((aligned_raster.*weights)[nonmissing_idxs])
-
-    if !((weight_total == 0) || isnan(weighted_sum))
-        return weighted_sum/weight_total
-    else
-        return 0
-    end
-end
-
-# %%
-
-
 # Loop extraction code for each year and month
-# for year in YEAR_START:YEAR_END
-    year = 2023
+for year in YEAR_START:YEAR_END
     # Import population raster
     pop_year = min(max(year, 2000), 2020)
     population_raster = replace_missing(Raster(pop_dir*"WorldPop_UNAdj_v3_DRC_fix.$(pop_year).Annual.Data.5km.sum.tif"), missingval = NaN)
 
-    for month in 12:12
+    for month in 1:12
         println("Extracting time series for $(year)-$(month)...")
         df0_full_collection = []
         df1_full_collection = []

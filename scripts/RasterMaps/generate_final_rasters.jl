@@ -53,7 +53,7 @@ survey_data_filename = INLA_REDUCED_DATAPREP_FILENAME
 n_samples = INLA_UNCERTAINTY_N_SAMPLES
 
 # Get base raster with required resolution to build from
-# raster_base = replace_missing(Raster("outputs/rasters/inla_logmodel_npc/NPC_logmodel_$(2000)_mean.tif"), missingval = -NaN)
+raster_base = replace_missing(Raster("outputs/rasters/inla_logmodel_npc/NPC_logmodel_$(2000)_mean.tif"), missingval = -NaN)
 
 # Input and output directory for rasters
 inla_dir = OUTPUT_RASTERS_DIR
@@ -70,181 +70,174 @@ mkpath(output_dir*"final_use/logis_use/")
 
 # %% Perform draws and save outputs. Filter out unwanted countries
 ISO_list = String.(CSV.read(RAW_DATASET_DIR*ISO_LIST_FILENAME, DataFrame)[:,1])
-exclusion_ISOs = ["CPV","ZAF"]
+exclusion_ISOs = EXCLUSION_ISOS
 filt_ISOs = setdiff(ISO_list, exclusion_ISOs)
 
 # %% Time bounds
-YEAR_START = 2022 #YEAR_NAT_START
-YEAR_END = 2023 #YEAR_NAT_END
+YEAR_START = YEAR_NAT_START
+YEAR_END = YEAR_NAT_END
 
 # %%
 
 # %% Loop to first construct SNF block map upto subnational resolution
-# Import log model npc rasters (any calibrated raster will do 5x5km resolution)
-raster_base = replace_missing(Raster(OUTPUT_RASTERS_DIR*"inla_logmodel_npc/NPC_logmodel_$(2000)_mean.tif"), missingval = NaN)
+for year in ProgressBar(YEAR_START:YEAR_END)
+    for month in 1:12
+        monthidx = monthyear_to_monthidx(month, year, YEAR_START = YEAR_START)
 
+        println("Constructing stock and flow rasters year [$(year)/$(YEAR_END)], month [$(month)/12]")
 
-# # %% Loop to construct raster
-# for year in ProgressBar(YEAR_START:YEAR_END)
-#     for month in 1:12
-#         monthidx = monthyear_to_monthidx(month, year, YEAR_START = YEAR_START)
+        # %% Declare storage variables
+        npc_nat_snf_mean_rasters = Vector{Any}(undef, length(filt_ISOs))
+        npc_nat_snf_upper_rasters = Vector{Any}(undef, length(filt_ISOs))
+        npc_nat_snf_lower_rasters = Vector{Any}(undef, length(filt_ISOs))
 
-#         println("Constructing stock and flow rasters year [$(year)/$(YEAR_END)], month [$(month)/12]")
+        access_nat_snf_mean_rasters = Vector{Any}(undef, length(filt_ISOs))
+        access_nat_snf_upper_rasters = Vector{Any}(undef, length(filt_ISOs))
+        access_nat_snf_lower_rasters = Vector{Any}(undef, length(filt_ISOs))
 
-#         # %% Declare storage variables
-#         npc_nat_snf_mean_rasters = Vector{Any}(undef, length(filt_ISOs))
-#         npc_nat_snf_upper_rasters = Vector{Any}(undef, length(filt_ISOs))
-#         npc_nat_snf_lower_rasters = Vector{Any}(undef, length(filt_ISOs))
+        println("Constructing rasters using subnational SNF values...")
+        for ISO_i in ProgressBar(1:length(filt_ISOs), leave = false)
+            ISO = filt_ISOs[ISO_i]
+            snf_post_filename = "$(ISO)_SUBNAT_draws.jld2"
+            snf_post_draws = load(snf_post_dir*snf_post_filename)
+            n_admin1 = length(snf_post_draws["merged_outputs"])
 
-#         access_nat_snf_mean_rasters = Vector{Any}(undef, length(filt_ISOs))
-#         access_nat_snf_upper_rasters = Vector{Any}(undef, length(filt_ISOs))
-#         access_nat_snf_lower_rasters = Vector{Any}(undef, length(filt_ISOs))
+            # Declare storage variables
+            npc_subnat_snf_mean_rasters = []
+            npc_subnat_snf_upper_rasters = []
+            npc_subnat_snf_lower_rasters = []
 
-#         println("Constructing rasters using subnational SNF values...")
-#         for ISO_i in ProgressBar(1:length(filt_ISOs), leave = false)
-#             ISO = filt_ISOs[ISO_i]
-#             snf_post_filename = "$(ISO)_SUBNAT_draws.jld2"
-#             snf_post_draws = load(snf_post_dir*snf_post_filename)
-#             n_admin1 = length(snf_post_draws["merged_outputs"])
+            access_subnat_snf_mean_rasters = []
+            access_subnat_snf_upper_rasters = []
+            access_subnat_snf_lower_rasters = []
 
-#             # Declare storage variables
-#             npc_subnat_snf_mean_rasters = []
-#             npc_subnat_snf_upper_rasters = []
-#             npc_subnat_snf_lower_rasters = []
+            for subnat_i in ProgressBar(1:n_admin1, leave = false)
+                admin1_id = snf_post_draws["merged_outputs"][subnat_i]["area_id"]
+                npc_subnat_mean_estimate = mean(snf_post_draws["merged_outputs"][subnat_i]["ADJ_NPC_MONTHLY_TOTAL_samples"][:,monthidx])
+                npc_subnat_upper_estimate = quantile(snf_post_draws["merged_outputs"][subnat_i]["ADJ_NPC_MONTHLY_TOTAL_samples"][:,monthidx], 0.975)
+                npc_subnat_lower_estimate = quantile(snf_post_draws["merged_outputs"][subnat_i]["ADJ_NPC_MONTHLY_TOTAL_samples"][:,monthidx], 0.025)
 
-#             access_subnat_snf_mean_rasters = []
-#             access_subnat_snf_upper_rasters = []
-#             access_subnat_snf_lower_rasters = []
-
-#             for subnat_i in ProgressBar(1:n_admin1, leave = false)
-#                 admin1_id = snf_post_draws["merged_outputs"][subnat_i]["area_id"]
-#                 npc_subnat_mean_estimate = mean(snf_post_draws["merged_outputs"][subnat_i]["ADJ_NPC_MONTHLY_TOTAL_samples"][:,monthidx])
-#                 npc_subnat_upper_estimate = quantile(snf_post_draws["merged_outputs"][subnat_i]["ADJ_NPC_MONTHLY_TOTAL_samples"][:,monthidx], 0.975)
-#                 npc_subnat_lower_estimate = quantile(snf_post_draws["merged_outputs"][subnat_i]["ADJ_NPC_MONTHLY_TOTAL_samples"][:,monthidx], 0.025)
-
-#                 # Remove NaNs for this draw possibly due to transition period in problematic countries (MIGHT WANT TO CHECK)
-#                 access_subnat_draws = snf_post_draws["merged_outputs"][subnat_i]["ADJ_λ_ACCESS_samples"][:,monthidx]
-#                 access_subnat_draws = access_subnat_draws[findall(.!isnan.(access_subnat_draws))]
-#                 access_subnat_mean_estimate = mean(access_subnat_draws)
-#                 access_subnat_upper_estimate = quantile(access_subnat_draws, 0.975)
-#                 access_subnat_lower_estimate = quantile(access_subnat_draws, 0.025)
+                # Remove NaNs for this draw possibly due to transition period in problematic countries (MIGHT WANT TO CHECK)
+                access_subnat_draws = snf_post_draws["merged_outputs"][subnat_i]["ADJ_λ_ACCESS_samples"][:,monthidx]
+                access_subnat_draws = access_subnat_draws[findall(.!isnan.(access_subnat_draws))]
+                access_subnat_mean_estimate = mean(access_subnat_draws)
+                access_subnat_upper_estimate = quantile(access_subnat_draws, 0.975)
+                access_subnat_lower_estimate = quantile(access_subnat_draws, 0.025)
                 
-#                 if isnan(access_subnat_mean_estimate) # i.e. no data available, so no valid access. Assume 0 access
-#                     access_subnat_mean_estimate = 0
-#                     access_subnat_std_estimate = 0
-#                 end
+                if isnan(access_subnat_mean_estimate) # i.e. no data available, so no valid access. Assume 0 access
+                    access_subnat_mean_estimate = 0
+                    access_subnat_std_estimate = 0
+                end
                 
-#                 # Get required geometry
-#                 admin1_geometry = admin1_shapes_geoIO[admin1_shapes_geoIO.area_id .== admin1_id,:].geometry
+                # Get required geometry
+                admin1_geometry = admin1_shapes_geoIO[admin1_shapes_geoIO.area_id .== admin1_id,:].geometry
 
-#                 # Mask raster base and trim to desired subregion and set values to SNF estimates of NPC and access
-#                 subnat_masked = Rasters.trim(mask(raster_base, with = admin1_geometry); pad=0)
+                # Mask raster base and trim to desired subregion and set values to SNF estimates of NPC and access
+                subnat_masked = Rasters.trim(mask(raster_base, with = admin1_geometry); pad=0)
                 
-#                  # check if able to find region in default tiling. If region is too small, then skip in analysis
-#                 if size(raster_base) == size(subnat_masked)
-#                     continue
-#                 end
+                 # check if able to find region in default tiling. If region is too small, then skip in analysis
+                if size(raster_base) == size(subnat_masked)
+                    continue
+                end
 
-#                 npc_subnat_mean_raster = copy(subnat_masked)
-#                 npc_subnat_upper_raster = copy(subnat_masked)
-#                 npc_subnat_lower_raster = copy(subnat_masked)
-#                 access_subnat_mean_raster = copy(subnat_masked)
-#                 access_subnat_upper_raster = copy(subnat_masked)
-#                 access_subnat_lower_raster = copy(subnat_masked)
+                npc_subnat_mean_raster = copy(subnat_masked)
+                npc_subnat_upper_raster = copy(subnat_masked)
+                npc_subnat_lower_raster = copy(subnat_masked)
+                access_subnat_mean_raster = copy(subnat_masked)
+                access_subnat_upper_raster = copy(subnat_masked)
+                access_subnat_lower_raster = copy(subnat_masked)
 
-#                 # Check if regions were valid to begin with
-#                 if isempty(findall(.!isnan.(npc_subnat_mean_raster))) # For some reason if not accounted for, causes problems with mosaic()
-#                     continue
-#                 end
+                # Check if regions were valid to begin with
+                if isempty(findall(.!isnan.(npc_subnat_mean_raster))) # For some reason if not accounted for, causes problems with mosaic()
+                    continue
+                end
 
-#                 npc_subnat_mean_raster[findall(.!isnan.(npc_subnat_mean_raster))] .= npc_subnat_mean_estimate
-#                 npc_subnat_upper_raster[findall(.!isnan.(npc_subnat_upper_raster))] .= npc_subnat_upper_estimate
-#                 npc_subnat_lower_raster[findall(.!isnan.(npc_subnat_lower_raster))] .= npc_subnat_lower_estimate
-#                 access_subnat_mean_raster[findall(.!isnan.(access_subnat_mean_raster))] .= access_subnat_mean_estimate
-#                 access_subnat_upper_raster[findall(.!isnan.(access_subnat_upper_raster))] .= access_subnat_upper_estimate
-#                 access_subnat_lower_raster[findall(.!isnan.(access_subnat_lower_raster))] .= access_subnat_lower_estimate
+                npc_subnat_mean_raster[findall(.!isnan.(npc_subnat_mean_raster))] .= npc_subnat_mean_estimate
+                npc_subnat_upper_raster[findall(.!isnan.(npc_subnat_upper_raster))] .= npc_subnat_upper_estimate
+                npc_subnat_lower_raster[findall(.!isnan.(npc_subnat_lower_raster))] .= npc_subnat_lower_estimate
+                access_subnat_mean_raster[findall(.!isnan.(access_subnat_mean_raster))] .= access_subnat_mean_estimate
+                access_subnat_upper_raster[findall(.!isnan.(access_subnat_upper_raster))] .= access_subnat_upper_estimate
+                access_subnat_lower_raster[findall(.!isnan.(access_subnat_lower_raster))] .= access_subnat_lower_estimate
 
-#                 push!(npc_subnat_snf_mean_rasters, npc_subnat_mean_raster)
-#                 push!(npc_subnat_snf_upper_rasters, npc_subnat_upper_raster)
-#                 push!(npc_subnat_snf_lower_rasters, npc_subnat_lower_raster)
+                push!(npc_subnat_snf_mean_rasters, npc_subnat_mean_raster)
+                push!(npc_subnat_snf_upper_rasters, npc_subnat_upper_raster)
+                push!(npc_subnat_snf_lower_rasters, npc_subnat_lower_raster)
 
-#                 push!(access_subnat_snf_mean_rasters, access_subnat_mean_raster)
-#                 push!(access_subnat_snf_upper_rasters, access_subnat_upper_raster)
-#                 push!(access_subnat_snf_lower_rasters, access_subnat_lower_raster)
-#             end
+                push!(access_subnat_snf_mean_rasters, access_subnat_mean_raster)
+                push!(access_subnat_snf_upper_rasters, access_subnat_upper_raster)
+                push!(access_subnat_snf_lower_rasters, access_subnat_lower_raster)
+            end
 
-#             npc_nat_snf_mean_rasters[ISO_i] = copy(npc_subnat_snf_mean_rasters)
-#             npc_nat_snf_upper_rasters[ISO_i] = copy(npc_subnat_snf_upper_rasters)
-#             npc_nat_snf_lower_rasters[ISO_i] = copy(npc_subnat_snf_lower_rasters)
+            npc_nat_snf_mean_rasters[ISO_i] = copy(npc_subnat_snf_mean_rasters)
+            npc_nat_snf_upper_rasters[ISO_i] = copy(npc_subnat_snf_upper_rasters)
+            npc_nat_snf_lower_rasters[ISO_i] = copy(npc_subnat_snf_lower_rasters)
 
-#             access_nat_snf_mean_rasters[ISO_i] = copy(access_subnat_snf_mean_rasters)
-#             access_nat_snf_upper_rasters[ISO_i] = copy(access_subnat_snf_upper_rasters)
-#             access_nat_snf_lower_rasters[ISO_i] = copy(access_subnat_snf_lower_rasters)
-#         end
+            access_nat_snf_mean_rasters[ISO_i] = copy(access_subnat_snf_mean_rasters)
+            access_nat_snf_upper_rasters[ISO_i] = copy(access_subnat_snf_upper_rasters)
+            access_nat_snf_lower_rasters[ISO_i] = copy(access_subnat_snf_lower_rasters)
+        end
 
-#         # Combine Subnational rasters into national level rasters
-#         Threads.@threads for ISO_i in ProgressBar(1:length(filt_ISOs), leave = false)
-#             npc_nat_snf_mean_rasters[ISO_i] = mosaic(first, npc_nat_snf_mean_rasters[ISO_i]..., atol = 0.01)
-#             npc_nat_snf_upper_rasters[ISO_i] =  mosaic(first, npc_nat_snf_upper_rasters[ISO_i]..., atol = 0.01)
-#             npc_nat_snf_lower_rasters[ISO_i] =  mosaic(first, npc_nat_snf_lower_rasters[ISO_i]..., atol = 0.01)
+        # Combine Subnational rasters into national level rasters
+        Threads.@threads for ISO_i in ProgressBar(1:length(filt_ISOs), leave = false)
+            npc_nat_snf_mean_rasters[ISO_i] = mosaic(first, npc_nat_snf_mean_rasters[ISO_i]..., atol = 0.01)
+            npc_nat_snf_upper_rasters[ISO_i] =  mosaic(first, npc_nat_snf_upper_rasters[ISO_i]..., atol = 0.01)
+            npc_nat_snf_lower_rasters[ISO_i] =  mosaic(first, npc_nat_snf_lower_rasters[ISO_i]..., atol = 0.01)
 
-#             access_nat_snf_mean_rasters[ISO_i] = mosaic(first, access_nat_snf_mean_rasters[ISO_i]..., atol = 0.01)
-#             access_nat_snf_upper_rasters[ISO_i] =  mosaic(first, access_nat_snf_upper_rasters[ISO_i]..., atol = 0.01)
-#             access_nat_snf_lower_rasters[ISO_i] =  mosaic(first, access_nat_snf_lower_rasters[ISO_i]..., atol = 0.01)
-#         end
+            access_nat_snf_mean_rasters[ISO_i] = mosaic(first, access_nat_snf_mean_rasters[ISO_i]..., atol = 0.01)
+            access_nat_snf_upper_rasters[ISO_i] =  mosaic(first, access_nat_snf_upper_rasters[ISO_i]..., atol = 0.01)
+            access_nat_snf_lower_rasters[ISO_i] =  mosaic(first, access_nat_snf_lower_rasters[ISO_i]..., atol = 0.01)
+        end
         
-#         # Combine national level rasters into Africa raster
-#         # Month string
-#         month_str = "$(month)"
-#         if month < 10
-#             month_str = "0$(month)"
-#         end
+        # Combine national level rasters into Africa raster
+        # Month string
+        month_str = "$(month)"
+        if month < 10
+            month_str = "0$(month)"
+        end
 
-#         # Mosaic and save to disk.
-#         println("Combining all national rasters into Africa level raster and write to disk...")
-#         for thread_i in 1:6
-#             if thread_i == 1
-#                 println("Constructing NPC SNF mean raster...")
-#                 combined_npc_snf_mean_raster = resample(mosaic(first, npc_nat_snf_mean_rasters..., atol = 0.01), to = raster_base)
-#                 write(output_dir*"final_npc/snf_npc/npc_$(year)_$(month_str)_mean.tif", combined_npc_snf_mean_raster, force = true)
-#                 println("Constructed NPC SNF mean raster...")
-#             elseif thread_i == 2
-#                 println("Constructing NPC SNF upper raster...")
-#                 combined_npc_snf_upper_raster = resample(mosaic(first, npc_nat_snf_upper_rasters..., atol = 0.01), to = raster_base)
-#                 write(output_dir*"final_npc/snf_npc/npc_$(year)_$(month_str)_upper.tif", combined_npc_snf_upper_raster, force = true)
-#                 println("Constructed NPC SNF upper raster...")
-#             elseif thread_i == 3
-#                 println("Constructing NPC SNF lower raster...")
-#                 combined_npc_snf_lower_raster = resample(mosaic(first, npc_nat_snf_lower_rasters..., atol = 0.01), to = raster_base)
-#                 write(output_dir*"final_npc/snf_npc/npc_$(year)_$(month_str)_lower.tif", combined_npc_snf_lower_raster, force = true)
-#                 println("Constructed NPC SNF lower raster...")
-#             elseif thread_i == 4
-#                 println("Constructing Access SNF mean raster...")
-#                 combined_access_snf_mean_raster = resample(mosaic(first, access_nat_snf_mean_rasters..., atol = 0.01), to = raster_base)
-#                 write(output_dir*"final_access/snf_access/access_$(year)_$(month_str)_mean.tif", combined_access_snf_mean_raster, force = true)
-#                 println("Constructed Access SNF mean raster...")
-#             elseif thread_i == 5
-#                 println("Constructing Access SNF upper raster...")
-#                 combined_access_snf_upper_raster = resample(mosaic(first, access_nat_snf_upper_rasters..., atol = 0.01), to = raster_base)
-#                 write(output_dir*"final_access/snf_access/access_$(year)_$(month_str)_upper.tif", combined_access_snf_upper_raster, force = true)
-#                 println("Constructed Access SNF upper raster...")
-#             else
-#                 println("Constructing Access SNF lower raster...")
-#                 combined_access_snf_lower_raster = resample(mosaic(first, access_nat_snf_lower_rasters..., atol = 0.01), to = raster_base)
-#                 write(output_dir*"final_access/snf_access/access_$(year)_$(month_str)_lower.tif", combined_access_snf_lower_raster, force = true)
-#                 println("Constructed Access SNF lower raster...")
-#             end
-#         end
+        # Mosaic and save to disk.
+        println("Combining all national rasters into Africa level raster and write to disk...")
+        for thread_i in 1:6
+            if thread_i == 1
+                println("Constructing NPC SNF mean raster...")
+                combined_npc_snf_mean_raster = resample(mosaic(first, npc_nat_snf_mean_rasters..., atol = 0.01), to = raster_base)
+                write(output_dir*"final_npc/snf_npc/npc_$(year)_$(month_str)_mean.tif", combined_npc_snf_mean_raster, force = true)
+                println("Constructed NPC SNF mean raster...")
+            elseif thread_i == 2
+                println("Constructing NPC SNF upper raster...")
+                combined_npc_snf_upper_raster = resample(mosaic(first, npc_nat_snf_upper_rasters..., atol = 0.01), to = raster_base)
+                write(output_dir*"final_npc/snf_npc/npc_$(year)_$(month_str)_upper.tif", combined_npc_snf_upper_raster, force = true)
+                println("Constructed NPC SNF upper raster...")
+            elseif thread_i == 3
+                println("Constructing NPC SNF lower raster...")
+                combined_npc_snf_lower_raster = resample(mosaic(first, npc_nat_snf_lower_rasters..., atol = 0.01), to = raster_base)
+                write(output_dir*"final_npc/snf_npc/npc_$(year)_$(month_str)_lower.tif", combined_npc_snf_lower_raster, force = true)
+                println("Constructed NPC SNF lower raster...")
+            elseif thread_i == 4
+                println("Constructing Access SNF mean raster...")
+                combined_access_snf_mean_raster = resample(mosaic(first, access_nat_snf_mean_rasters..., atol = 0.01), to = raster_base)
+                write(output_dir*"final_access/snf_access/access_$(year)_$(month_str)_mean.tif", combined_access_snf_mean_raster, force = true)
+                println("Constructed Access SNF mean raster...")
+            elseif thread_i == 5
+                println("Constructing Access SNF upper raster...")
+                combined_access_snf_upper_raster = resample(mosaic(first, access_nat_snf_upper_rasters..., atol = 0.01), to = raster_base)
+                write(output_dir*"final_access/snf_access/access_$(year)_$(month_str)_upper.tif", combined_access_snf_upper_raster, force = true)
+                println("Constructed Access SNF upper raster...")
+            else
+                println("Constructing Access SNF lower raster...")
+                combined_access_snf_lower_raster = resample(mosaic(first, access_nat_snf_lower_rasters..., atol = 0.01), to = raster_base)
+                write(output_dir*"final_access/snf_access/access_$(year)_$(month_str)_lower.tif", combined_access_snf_lower_raster, force = true)
+                println("Constructed Access SNF lower raster...")
+            end
+        end
 
-#         println("Raster construction complete.")
-#     end
-# end
+        println("Raster construction complete.")
+    end
+end
 
-
-# %% Loop to construct unadjusted NPC and Access rasters using INLA deviation regression outputs
-# for year in YEAR_START:YEAR_END
-    year = 2013
-    for month in 10:12
+# %% Loop to construct unadjusted NPC, Access and Use rasters using INLA deviation regression outputs
+for year in YEAR_START:YEAR_END
+    for month in 1:12
         println("Constructing spatial disaggregated rasters year [$(year)/$(YEAR_END)], month [$(month)/12]")
 
         # Get month string for importing files

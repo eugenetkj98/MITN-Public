@@ -18,14 +18,13 @@ using CSV
 using DataFrames
 using Missings
 
-
 # %% Import datasets
 
 # Map geometries
-dataset = GeoIO.load(raw"Z:\master_geometries\Admin_Units\Global\MAP\2023\MG_5K\admin2023_1_MG_5K.shp")
+dataset = GeoIO.load(ADMIN1_SHAPEFILE)
 
 # Household Survey Entries
-full_survey_data = CSV.read("datasets/itn_hh_surveydata_complete.csv", DataFrame)
+full_survey_data = CSV.read(RAW_DATASET_DIR*HOUSEHOLD_SURVEY_DATA_FILENAME, DataFrame)
 nonmissing_idx = findall(.!ismissing.(full_survey_data[:,"latitude"]))
 
 # %% Test for intersection and extract area_ids
@@ -69,7 +68,7 @@ end
 
 # %% Write and save subnat dataset
 subnat_full_survey_data = hcat(full_survey_data, DataFrame(area_id = area_ids))
-CSV.write("datasets/subnational/itn_hh_surveydata_complete_subnat.csv", subnat_full_survey_data)
+CSV.write(OUTPUT_SUBNAT_DATAPREP_DIR*HOUSEHOLD_SUBNAT_SURVEY_DATA_FILENAME, subnat_full_survey_data)
 
 
 

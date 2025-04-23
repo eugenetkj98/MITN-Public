@@ -39,7 +39,7 @@ master_survey_data = CSV.read(dataprep_dir*HOUSEHOLD_SURVEY_DATA_FILENAME, DataF
 # %% Get list of surveyIds that need to be extracted
 surveyid_list = unique(master_survey_data.SurveyId)
 
-# %%
+# %% Inflation factor for Std Error
 τ = STD_ERR_TAU
 
 function inflation_factor(n; saturation_size = DEFAULT_INFLATION_SAT_SIZE)

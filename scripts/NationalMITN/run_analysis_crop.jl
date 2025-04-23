@@ -2,7 +2,7 @@
 Author: Eugene Tan
 Date Created: 2/4/2025
 Last Updated: 2/4/2025
-Need to write documentation
+Script to run regression for net crop
 """
 # %% Prep environment and subdirectories
 include(pwd()*"/scripts/init_env.jl")
@@ -46,7 +46,7 @@ flush(stdout)
 
     # %% Get ISO List
     ISO_list = String.(CSV.read(RAW_DATASET_DIR*ISO_LIST_FILENAME, DataFrame)[:,1])
-    exclusion_ISOs = ["CPV", "ZAF"]
+    exclusion_ISOs = EXCLUSION_ISOS
     filt_ISOs = setdiff(ISO_list, exclusion_ISOs)
 
     # %% Run Analysis
@@ -54,10 +54,8 @@ flush(stdout)
     YEAR_END = YEAR_NAT_END
 end
 
-
-
 # %%
-for i in  (length(filt_ISOs)+1):length(ISO_list)
+for i in (length(filt_ISOs)+1):length(ISO_list)
     # Select ISO
     ISO = ISO_list[i]
 

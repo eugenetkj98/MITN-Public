@@ -135,7 +135,7 @@ m1 <- inla(res_access_gap ~ -1 + Intercept +
 
 print("Saving Access gap model outputs...")
 
-save(africa_mesh, africa_spde, temporal_mesh_annual, m1, access_theta, file = "outputs/INLA/model1_access_half_pmodel.RData")
+save(africa_mesh, africa_spde, temporal_mesh_annual, m1, access_theta, file = "outputs/INLA/model1_access_complete_pmodel.RData")
 
 print("Saved Access model")
 

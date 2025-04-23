@@ -21,7 +21,7 @@ deliveries_filepath = RAW_DATASET_DIR*DELIVERIES_DATA_FILENAME
 distributions_filepath = RAW_DATASET_DIR*MULTITYPE_DISTRIBUTION_DATA_FILENAME
 
 # %% Output filepath
-output_dir = "datasets/forward_prediction_inputs/"
+output_dir = OUTPUT_FORWARD_PRED_DIR
 mkpath(output_dir)
 
 

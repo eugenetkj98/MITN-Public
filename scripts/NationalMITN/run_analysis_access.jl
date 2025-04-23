@@ -2,7 +2,7 @@
 Author: Eugene Tan
 Date Created: 2/4/2025
 Last Updated: 2/4/2025
-Need to write documentation
+Script to run regression for net access
 """
 
 # %% Prep environment and subdirectories
@@ -28,7 +28,7 @@ using StatsBase
 
 # %% Get ISO List
 ISO_list = String.(CSV.read(RAW_DATASET_DIR*ISO_LIST_FILENAME, DataFrame)[:,1])
-exclusion_ISOs = ["CPV", "ZAF"]
+exclusion_ISOs = EXCLUSION_ISOS
 filt_ISOs = setdiff(ISO_list, exclusion_ISOs)
 
 # %% Run Analysis

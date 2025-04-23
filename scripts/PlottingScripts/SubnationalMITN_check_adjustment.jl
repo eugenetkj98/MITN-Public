@@ -22,7 +22,7 @@ using Measures
 
 # %%
 ISO_list = String.(CSV.read("datasets/ISO_list.csv", DataFrame)[:,1])
-exclusion_ISOs = ["CPV","ZAF"]#["CPV","BWA","CAF","GNQ","DJI","GAB","GNB","ERI","ETH","SOM","SDN","ZAF","SSD"]
+exclusion_ISOs = EXCLUSION_ISOS
 filt_ISOs = setdiff(ISO_list, exclusion_ISOs)
 fig_collection = []
 
@@ -39,8 +39,6 @@ for ISO_i in ProgressBar(1:length(filt_ISOs))
     n_months = 12*(YEAR_END-YEAR_START+1)
 
     # %% Declare storage variables for time series
-
-
     UNADJ_SUBNAT_Γ_MONTHLY_TOTAL_mean = zeros(n_regions, n_months)
     ADJ_SUBNAT_Γ_MONTHLY_TOTAL_mean = zeros(n_regions, n_months)
 

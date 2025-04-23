@@ -25,6 +25,10 @@ using KernelDensity
 YEAR_START = YEAR_NAT_START
 YEAR_END = YEAR_NAT_END
 
+# %%
+ISO_list = String.(CSV.read(RAW_DATASET_DIR*ISO_LIST_FILENAME, DataFrame)[:,1])
+exclusion_ISOs = EXCLUSION_ISOS
+filt_ISOs = setdiff(ISO_list, exclusion_ISOs)
 
 # %% Define Posterior Models data location
 netcrop_reg_dir = OUTPUT_REGRESSIONS_DIR*"crop/$(YEAR_START)_$(YEAR_END)/"
@@ -44,11 +48,6 @@ function kernelmode_gaussian(samples)
     
     return μ, σ
 end
-
-# %%
-ISO_list = String.(CSV.read(RAW_DATASET_DIR*ISO_LIST_FILENAME, DataFrame)[:,1])
-exclusion_ISOs = ["CPV","ZAF"]
-filt_ISOs = setdiff(ISO_list, exclusion_ISOs)
 
 # %% Extract net attrition parameters for all countries
 global net_attrition_summary = DataFrame()

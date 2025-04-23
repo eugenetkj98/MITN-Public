@@ -68,4 +68,24 @@ function interp_lookup(raster, lat, lon)
     return interp_val
 end
 
+"""
+     aggregate_raster_weighted_mean(raster::Raster, weights::Raster)
+
+Calculate the weighted average of input 'raster', w.r.t to the weights given by 'weights'
+"""
+
+function aggregate_raster_weighted_mean(raster, weights)
+    aligned_raster = resample(raster, to = weights)
+    nonmissing_idxs = intersect(findall(.!isnan.(weights)),findall(.!isnan.(aligned_raster)))
+    weight_total = sum(weights[nonmissing_idxs])
+    weighted_sum = sum((aligned_raster.*weights)[nonmissing_idxs])
+
+    if !((weight_total == 0) || isnan(weighted_sum))
+        return weighted_sum/weight_total
+    else
+        return 0
+    end
+end
+
+
 end

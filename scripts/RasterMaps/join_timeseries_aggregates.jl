@@ -30,7 +30,9 @@ for filename in filenames
     push!(df_collection, CSV.read(aggregate_parts_dir*filename, DataFrame))
 end
 
-# Concatenate all dataframes into a master frame 
+# Concatenate all dataframes into a master frame and save
+println("Compiling data extraction parts into a single CSV.")
 master_df = vcat(df_collection...)
 sort!(master_df, [order(:year), order(:month), order(:ISO), order(:category),order(:admin_name)])
 CSV.write(OUTPUT_DIR*"coverage_timeseries/master_extraction.csv", master_df)
+println("Saved time series extraction at: $(OUTPUT_DIR*"coverage_timeseries/master_extraction.csv")")

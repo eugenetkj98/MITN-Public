@@ -22,13 +22,11 @@ using KernelDensity
 using NetCropModel
 using DateConversions
 
-
 # %% Extraction Settings
-YEAR_START = 2000
-YEAR_END = 2023
-n_samples = 500
+YEAR_START = YEAR_NAT_START
+YEAR_END = YEAR_NAT_END
+n_samples = NAT_CROPAGE_N_DRAWS
 max_age_months = 4*12
-
 
 # %% Define Posterior Models data location
 netcrop_extractions_dir = OUTPUT_EXTRACTIONS_DIR*"crop/$(YEAR_START)_$(YEAR_END)/"
@@ -39,7 +37,7 @@ save_dir = OUTPUT_DRAWS_DIR*"national/demography/"
 mkpath(save_dir)
 # %%
 ISO_list = String.(CSV.read(RAW_DATASET_DIR*ISO_LIST_FILENAME, DataFrame)[:,1])
-exclusion_ISOs = ["CPV", "ZAF"]
+exclusion_ISOs = EXCLUSION_ISOS
 filt_ISOs = setdiff(ISO_list, exclusion_ISOs)
 
 # %% Extract net attrition parameters for all countries

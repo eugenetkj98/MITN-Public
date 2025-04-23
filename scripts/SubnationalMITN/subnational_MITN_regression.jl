@@ -15,8 +15,6 @@ n_workers = N_WORKERS
 addprocs(n_workers)
 println("Starting National MITN Regression with $(nprocs()) workers, each with $(Threads.nthreads())")
 
-
-
 @everywhere begin
 
     # %% Prep environment and subdirectories
@@ -74,7 +72,7 @@ println("Starting National MITN Regression with $(nprocs()) workers, each with $
 
     # %% Perform draws and save outputs. Filter out unwanted countries
     ISO_list = String.(CSV.read(RAW_DATASET_DIR*ISO_LIST_FILENAME, DataFrame)[:,1])
-    exclusion_ISOs = ["CPV", "ZAF"] #["CPV","BWA","CAF","GNQ","DJI","GAB","GNB","ERI","ETH","SOM","SDN","ZAF","SSD"]
+    exclusion_ISOs = EXCLUSION_ISOS
     filt_ISOs = setdiff(ISO_list, exclusion_ISOs)
 end
 

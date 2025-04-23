@@ -39,7 +39,7 @@ mkpath(output_path)
 YEAR_START = YEAR_NAT_START
 YEAR_END = YEAR_NAT_END
 ISO_list = String.(CSV.read(RAW_DATASET_DIR*ISO_LIST_FILENAME, DataFrame)[:,1])
-exclusion_ISOs = ["CPV","ZAF"]
+exclusion_ISOs = EXCLUSION_ISOS
 filt_ISOs = setdiff(ISO_list, exclusion_ISOs)
 
 BV_halflife = CSV.read(RAW_DATASET_DIR*BV_OUTPUTS_FILENAME, DataFrame)

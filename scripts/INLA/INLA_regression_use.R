@@ -143,7 +143,7 @@ m1 <- inla(res_use_gap ~ -1 + Intercept +
 
 print("Saving Use gap model outputs...")
 
-save(africa_mesh, africa_spde, temporal_mesh_monthly, m1, use_theta, file = "outputs/INLA/model1_use_half_logis.RData")
+save(africa_mesh, africa_spde, temporal_mesh_monthly, m1, use_theta, file = "outputs/INLA/model1_use_complete_logis.RData")
 
 print("Saved Use model Part")
 

@@ -57,8 +57,8 @@ DISTRIBUTION_ANNUAL = Array(input_timeseries[:,NET_NAMES])
 # %% Load regression chain and construct lookup datafile for posterior draws
 ########################################################
 # Regressed YEAR RANGES
-reg_YEAR_START = 2000
-reg_YEAR_END = 2023
+reg_YEAR_START = YEAR_NAT_START
+reg_YEAR_END = YEAR_NAT_END
 
 # Load required base data
 mitn_model = JLD2.load(mitn_posterior_chain)
@@ -182,7 +182,6 @@ end
 ########################################################
 # Import saved data
 # Posterior Draws
-
 
 # Reference Survey Data
 survey_net_crop = JLD2.load("outputs/extractions/crop/2000_2023/$(ISO)_2000_2023_cropextract.jld2")["NET_CROP_MONTHLY"]

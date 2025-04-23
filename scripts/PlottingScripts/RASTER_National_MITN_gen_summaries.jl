@@ -33,7 +33,7 @@ include(pwd()*"/scripts/dir_configs.jl")
 
 # %% Get list of ISOs to analyse
 ISO_list = String.(CSV.read(RAW_DATASET_DIR*ISO_LIST_FILENAME, DataFrame)[:,1])
-exclusion_ISOs = ["CPV","ZAF"]
+exclusion_ISOs = EXCLUSION_ISOS
 filt_ISOs = setdiff(ISO_list, exclusion_ISOs)
 
 # %% Load Time Series data and raw survey data (for comparison)

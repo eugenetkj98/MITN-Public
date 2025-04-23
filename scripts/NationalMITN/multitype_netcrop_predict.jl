@@ -29,11 +29,11 @@ using NetCropPrediction
 
 # %% Get ISO List
 ISO_list = String.(CSV.read(RAW_DATASET_DIR*ISO_LIST_FILENAME, DataFrame)[:,1])
-exclusion_ISOs = ["CPV","ZAF"]
+exclusion_ISOs = EXCLUSION_ISOS
 filt_ISOs = setdiff(ISO_list, exclusion_ISOs)
 
 # %% Define countries where cITNs are forced to have the same decay curve as LLINs due to lack of surveys pre 2010
-excl_citn_ISOs = ["MRT"]
+excl_citn_ISOs = EXCLUSION_CITN_ISOS
 
 # %% LOOP TO GENERATE PREDICTIONS
 # for ISO in filt_ISOs

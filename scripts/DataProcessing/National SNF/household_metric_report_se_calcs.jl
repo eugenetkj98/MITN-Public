@@ -22,8 +22,8 @@ using Distributions
 using Plots
 
 # %%
-dataprep_dir = "outputs/data_prep/"
-npc_monthly_data = CSV.read(dataprep_dir*"npc_monthly_data.csv", DataFrame)
+dataprep_dir = OUTPUT_DATAPREP_DIR
+npc_monthly_data = CSV.read(dataprep_dir*HOUSEHOLD_NAT_SUMMARY_DATA_FILENAME, DataFrame)
 
 # %%
 scatter(npc_monthly_data.NPC_unadj_se, npc_monthly_data.NPC_adj_se./npc_monthly_data.NPC_unadj_se, ylims = (0,10))

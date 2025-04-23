@@ -23,6 +23,7 @@ OUTPUT_REGRESSIONS_DIR = OUTPUT_DIR*"regressions/"
 OUTPUT_DRAWS_DIR = OUTPUT_DIR*"draws/"
 OUTPUT_RASTERS_DIR = OUTPUT_DIR*"INLA/rasters/"
 OUTPUT_PLOTS_DIR = "output_plots/"
+OUTPUT_FORWARD_PRED_DIR = OUTPUT_DIR*"forward_prediction_inputs/"
 
 # BV Output Cube Directory
 BV_OUTPUT_DIR = "/mnt/efs/userdata/mvandenberg/data/itn_cube/20241015/"
@@ -108,6 +109,7 @@ SUBNAT_DISTRIBUTION_DATA_FILENAME = "net_distributions_admin1_dummy_combined_amp
 
 # Data Prep Outputs
 HOUSEHOLD_SURVEY_DATA_FILENAME = "itn_hh_surveydata_complete_dataeng.csv"
+HOUSEHOLD_SUBNAT_SURVEY_DATA_FILENAME = "itn_hh_surveydata_complete_subnat.csv"
 HOUSEHOLD_NAT_SUMMARY_DATA_FILENAME = "npc_monthly_data.csv"
 HOUSEHOLD_SUBNAT_SUMMARY_DATA_FILENAME = "subnat_npc_monthly_data.csv"
 INLA_DATAPREP_FILENAME = "inla_dataset.csv"
@@ -120,6 +122,10 @@ COV_LEGEND_FILENAME = "inla_raw_covariates_legend.csv"
 # Model Algorithm Settings
 ########################################
 
+# Special rules for country
+EXCLUSION_ISOS = ["CPV", "ZAF"]
+EXCLUSION_CITN_ISOS = ["MRT"] # Countries to lump cITN and LLINs together when doing calculation
+ 
 # Regression Time Period
 YEAR_REF_START = 1950 # Earliest possible year for referencing survey extracts (PLEASE DO NOT TOUCH!)
 YEAR_NAT_START = 2000 # Start of National SNF Regression
@@ -154,6 +160,7 @@ NAT_ACCESS_PROPOSAL_SAMPLING_VAR = 0.004 .*[30,15,20,20,0.25,10] # Compact suppo
 
 # National MITN Posterior Draws
 NAT_CROP_ACCESS_N_DRAWS = 100
+NAT_CROPAGE_N_DRAWS = 200
 SUBNAT_CROP_ACCESS_N_DRAWS = 100
 NAT_SUBNAT_ADJ_MCMC_ITERATIONS = 20000
 NAT_SUBNAT_ADJ_MCMC_BURNIN = 5000

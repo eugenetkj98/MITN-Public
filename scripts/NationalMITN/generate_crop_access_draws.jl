@@ -39,7 +39,7 @@ n_samples = NAT_CROP_ACCESS_N_DRAWS #1000
 
 # %% Get ISO List
 ISO_list = String.(CSV.read(RAW_DATASET_DIR*ISO_LIST_FILENAME, DataFrame)[:,1])
-exclusion_ISOs = ["CPV","ZAF"]
+exclusion_ISOs = EXCLUSION_ISOS
 
 # %% Run Analysis
 YEAR_START = YEAR_NAT_START

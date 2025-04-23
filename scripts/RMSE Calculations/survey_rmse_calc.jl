@@ -1,7 +1,7 @@
 """
 Author: Eugene Tan
 Date Created: 6/4/2025
-Last Updated: 14/4/2025
+Last Updated: 22/4/2025
 Calculate prediction error of the entire summarised survey dataset w.r.t to the final regressed rasters
 """
 
@@ -21,8 +21,9 @@ using GeoInterface
 using GeoIO
 using JLD2
 using StatsBase
-
 using RasterLookup
+using NetAccessModel
+using DateConversions
 
 # %% Dataset Directories
 raster_dir = OUTPUT_RASTERS_DIR
@@ -31,7 +32,7 @@ bv_output_dir = BV_OUTPUT_DIR
 pop_rasters_dir = POPULATION_RASTER_DIR
 
 # %% Filenames
-inla_data_filename = "inla_dataset_reduced.csv"
+inla_data_filename = INLA_REDUCED_DATAPREP_FILENAME
 country_summaries_filename = HOUSEHOLD_NAT_SUMMARY_DATA_FILENAME
 
 # %% Load Datasets
@@ -113,7 +114,7 @@ for year in YEAR_LIST
 
         mitn_access_raster = replace_missing(Raster(raster_dir*"final_access/pmodel_access/access_$(year)_$(month_str)_mean.tif"), missingval = NaN)
 
-        # mitn_use_raster = replace_missing(Raster(raster_dir*"final_use/logis_use/use_$(year)_$(month_str)_mean.tif"), missingval = NaN)
+        mitn_use_raster = replace_missing(Raster(raster_dir*"final_use/logis_use/use_$(year)_$(month_str)_mean.tif"), missingval = NaN)
 
         mitn_model_lats = lookup(mitn_npc_raster, Y)
         mitn_model_lons = lookup(mitn_npc_raster, X)
@@ -129,7 +130,7 @@ for year in YEAR_LIST
             # Use raster idx to lookup value
             mitn_npc_vals[j] = interp_lookup(mitn_npc_raster, lat, lon)
             mitn_access_vals[j] = interp_lookup(mitn_access_raster, lat, lon) 
-            # mitn_use_vals[j] = interp_lookup(mitn_use_raster, lat, lon) 
+            mitn_use_vals[j] = interp_lookup(mitn_use_raster, lat, lon) 
         end
 
         # Construct Dataframe for year-month survey entries
@@ -150,40 +151,15 @@ for year in YEAR_LIST
                     mitn_access = mitn_access_vals,
                     use = data_monthslice.use,
                     bv_use = bv_use_vals,
-                    # mitn_use = mitn_use_vals
+                    mitn_use = mitn_use_vals
                     )
         push!(df_local_collection, df)
     end
 end
 
-
-# %%
-df_comb = vcat(df_local_collection...)
-
-df_filt = df_comb[.!isnan.(df_comb.npc) .&&
-        .!isnan.(df_comb.bv_npc) .&&
-        .!isnan.(df_comb.mitn_npc) .&&
-        .!isnan.(df_comb.access) .&&
-        .!isnan.(df_comb.bv_access) .&&
-        .!isnan.(df_comb.mitn_access),:]
-
-# %%
-sqrt(mean((df_filt.npc .- df_filt.bv_npc).^2))
-sqrt(mean((df_filt.npc .- df_filt.mitn_npc).^2))
-
-
-sqrt(mean((df_filt.access .- df_filt.bv_access).^2))
-sqrt(mean((df_filt.access .- df_filt.mitn_access).^2))
-
-sqrt(mean((df_filt.use .- df_filt.bv_use).^2))
-# sqrt(mean((df_filt.use .- df_filt.mitn_use).^2))
-
 ################################
 # %% COUNTRY LEVEL
 ################################
-
-
-# %%
 admin0_df_entries = []
 ISO_list = String.(CSV.read(RAW_DATASET_DIR*ISO_LIST_FILENAME, DataFrame)[:,1])
 exclusion_ISOs = ["CPV", "ZAF"]
@@ -191,9 +167,6 @@ filt_ISOs = setdiff(ISO_list, exclusion_ISOs)
 
 YEAR_START = YEAR_NAT_START
 YEAR_END = YEAR_NAT_END
-
-using NetAccessModel
-using DateConversions
 
 for ISO_i in ProgressBar(1:length(filt_ISOs))
     ISO = filt_ISOs[ISO_i]
@@ -240,28 +213,10 @@ for ISO_i in ProgressBar(1:length(filt_ISOs))
         # Import population raster
         population_raster = replace_missing(Raster(pop_rasters_dir*"WorldPop_UNAdj_v3_DRC_fix.$(min(year,2020)).Annual.Data.5km.sum.tif"), missingval = NaN)
 
-        # Import BV model rasters
-        bv_npc_raster = replace_missing(Raster(BV_OUTPUT_DIR*"nets_per_capita/ITN_$(year)_percapita_nets_mean.tif"), missingval = NaN)
-        bv_use_raster = replace_missing(Raster(BV_OUTPUT_DIR*"ITN_$(year)_use_mean.tif"), missingval = NaN)
-
-        # Import MITN model rasters
-        mitn_npc_raster = replace_missing(Raster(raster_dir*"final_npc/logmodel_npc/npc_$(year)_$(month_str)_mean.tif"), missingval = NaN)
-        # mitn_adj_npc_raster = replace_missing(Raster(raster_dir*"final_npc/logmodel_npc/adj_npc_$(year)_$(month_str)_mean.tif"), missingval = NaN)
-        # mitn_final_npc_raster = replace_missing(Raster(raster_dir*"final_npc/logmodel_npc/final_npc_$(year)_$(month_str)_mean.tif"), missingval = NaN)
-
-        mitn_access_raster = replace_missing(Raster(raster_dir*"final_access/pmodel_access/access_$(year)_$(month_str)_mean.tif"), missingval = NaN)
-        # mitn_adj_access_raster = replace_missing(Raster(raster_dir*"final_access/pmodel_access/adj_access_$(year)_$(month_str)_mean.tif"), missingval = NaN)
-        # mitn_final_access_raster = replace_missing(Raster(raster_dir*"final_access/pmodel_access/final_access_$(year)_$(month_str)_mean.tif"), missingval = NaN)
-
-        # mitn_use_raster = replace_missing(Raster(raster_dir*"final_use/logis_use/use_$(year)_$(month_str)_mean.tif"), missingval = NaN)
-        # mitn_final_use_raster = replace_missing(Raster(raster_dir*"final_use/logis_use/final_use_$(year)_$(month_str)_mean.tif"), missingval = NaN)
-
         # Extract summary for admin0 region based on population weights
         admin0_npc = NaN
         admin0_access = NaN
         admin0_use = NaN
-
-        
 
         if monthidx ∈ nat_monthidxs
             admin0_npc = country_summaries[(country_summaries.ISO .== ISO) .& 
@@ -338,20 +293,26 @@ for ISO_i in ProgressBar(1:length(filt_ISOs))
                     cluster_sample_wt = 1,
                     npc = admin0_npc,
                     bv_npc = admin0_bv_npc,
-                    mitn_npc = admin0_mitn_npc,
-                    mitn_adj_npc = admin0_mitn_adj_npc,
-                    mitn_final_npc = admin0_mitn_final_npc,
+                    mitn_npc = admin0_mitn_npc
                     access = admin0_access,
                     bv_access = admin0_bv_access,
-                    mitn_access = admin0_mitn_access,
-                    mitn_adj_access = admin0_mitn_adj_access,
-                    mitn_final_access = admin0_mitn_final_access,
+                    mitn_access = admin0_mitn_access
                     use = admin0_use,
                     bv_use = admin0_bv_use,
-                    mitn_use = admin0_mitn_use,
-                    mitn_final_use = admin0_mitn_final_use,)
+                    mitn_use = admin0_mitn_use
+                    )
 
         # Combine all entries and add to collection)
         push!(admin0_df_entries, df)
     end
 end
+
+################################
+# %% Concatenate df and save
+################################
+
+# %% Compile data frame into a 
+compiled_dataframe = vcat(df_local_collection..., admin0_df_entries...)
+
+# %% Save into outputs
+CSV.write(OUTPUT_DIR*"coverage_timeseries/bv_mitn_validation_values.csv", compiled_dataframe)

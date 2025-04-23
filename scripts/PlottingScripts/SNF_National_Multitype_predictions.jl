@@ -26,7 +26,7 @@ output_dir = OUTPUT_PLOTS_DIR*"snf/national/multitype_predictions/"
 mkpath(output_dir)
 # %% Get ISO List
 ISO_list = String.(CSV.read(RAW_DATASET_DIR*ISO_LIST_FILENAME, DataFrame)[:,1])
-exclusion_ISOs = ["CPV","ZAF"]
+exclusion_ISOs = EXCLUSION_ISOS
 filt_ISOs = setdiff(ISO_list, exclusion_ISOs)
 
 # %% Define Metadata

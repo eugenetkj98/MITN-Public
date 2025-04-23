@@ -2,7 +2,7 @@
 Author: Eugene Tan
 Date Created: 4/11/2024
 Last Updated: 12/11/2024
-Generate subnational crop and access draws
+Generate subnational crop and access draws after training subnational crop model
 """
 
 # %% Prep environment and subdirectories
@@ -61,7 +61,7 @@ REG_YEAR_END = YEAR_NAT_END
 
 # %% Perform draws and save outputs. Filter out unwanted countries
 ISO_list = String.(CSV.read(RAW_DATASET_DIR*ISO_LIST_FILENAME, DataFrame)[:,1])
-exclusion_ISOs = ["CPV","ZAF"]
+exclusion_ISOs = EXCLUSION_ISOS
 filt_ISOs = setdiff(ISO_list, exclusion_ISOs)
 
 
