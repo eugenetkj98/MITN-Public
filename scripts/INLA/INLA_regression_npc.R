@@ -134,7 +134,7 @@ m1 <- inla(res_npc_gap ~ -1 + Intercept +
 
 print("Saving NPC gap model outputs...")
 
-save(africa_mesh, africa_spde, temporal_mesh_annual, m1, epsilon, file = "outputs/INLA/model1_npc_complete_logmodel.RData")
+save(africa_mesh, africa_spde, temporal_mesh_annual, m1, epsilon, file = "outputs/INLA/model1_npc_complete_logmodel_2.RData")
 
 print("Saved NPC gap model")
 

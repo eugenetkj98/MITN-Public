@@ -933,29 +933,29 @@ function extract_data_netaccess(ISO::String, YEAR_START::Int64, YEAR_END::Int64,
     # Import number of nets
     n_net_types = length(NET_NAMES)
 
-    # Extract posterior draws
-    ϕ_est = mean(chain[:, :ϕ])
-    α_init_est = mean(chain[:,:α_init])
-    α_LLIN_est = mean(chain[:,:α_LLIN])
-    b_net_est = mean(Matrix(DataFrame(chain)[:,5:2:5+2*(n_net_types-1)]), dims = 1)[:]
-    k_net_est = mean(Matrix(DataFrame(chain)[:,6:2:6+2*(n_net_types-1)]), dims = 1)[:]
+    # # Extract posterior draws
+    # ϕ_est = mean(chain[:, :ϕ])
+    # α_init_est = mean(chain[:,:α_init])
+    # α_LLIN_est = mean(chain[:,:α_LLIN])
+    # b_net_est = mean(Matrix(DataFrame(chain)[:,5:2:5+2*(n_net_types-1)]), dims = 1)[:]
+    # k_net_est = mean(Matrix(DataFrame(chain)[:,6:2:6+2*(n_net_types-1)]), dims = 1)[:]
 
-    n_missing_nets_vals = sum(ismissing.(DISTRIBUTION_ANNUAL[:,1]))
-    if n_missing_nets_vals > 0
-        missing_nets_vals = Matrix(DataFrame(chain)[:,((4+2*(n_net_types))+1):end])
-        missing_nets_est = mean(missing_nets_vals, dims = 1)[:]
-    else
-        missing_nets_est = zeros(size(chain)[1],0)
-    end
+    # n_missing_nets_vals = sum(ismissing.(DISTRIBUTION_ANNUAL[:,1]))
+    # if n_missing_nets_vals > 0
+    #     missing_nets_vals = Matrix(DataFrame(chain)[:,((4+2*(n_net_types))+1):end])
+    #     missing_nets_est = mean(missing_nets_vals, dims = 1)[:]
+    # else
+    #     missing_nets_est = zeros(size(chain)[1],0)
+    # end
 
-    Γ_epochs_BYNET = model_evolve_forward(YEARS_ANNUAL, MONTHS_MONTHLY,
-                                        DELIVERIES_ANNUAL, DISTRIBUTION_ANNUAL,
-                                        ϕ_est, b_net_est, k_net_est,
-                                        α_init_est, α_LLIN_est,
-                                        missing_nets_est; 
-                                        monthly_p = monthly_p)
+    # Γ_epochs_BYNET = model_evolve_forward(YEARS_ANNUAL, MONTHS_MONTHLY,
+    #                                     DELIVERIES_ANNUAL, DISTRIBUTION_ANNUAL,
+    #                                     ϕ_est, b_net_est, k_net_est,
+    #                                     α_init_est, α_LLIN_est,
+    #                                     missing_nets_est; 
+    #                                     monthly_p = monthly_p)
 
-    Γ_MONTHLY = sum(Γ_epochs_BYNET, dims = 2)[:]
+    # Γ_MONTHLY = sum(Γ_epochs_BYNET, dims = 2)[:]
 
     
 
@@ -1034,19 +1034,21 @@ function extract_data_netaccess(ISO::String, YEAR_START::Int64, YEAR_END::Int64,
         p_h = sum(HH_matrix, dims = 2)[:]./sum(HH_matrix)
 
         # Calculate H matrix for survey
-        H = zeros(h_max,n_max)
 
-        for h in 1:size(HH_matrix)[1]
-            if (!ismissing(ρ_h[h])) && (!ismissing(μ_h[h]))
-                for n in 0:size(HH_matrix)[2]-1
-                    if n == 0
-                        H[h,n+1] = p_h[h]*ρ_h[h]
-                    else
-                        H[h,n+1] = p_h[h]*(1-ρ_h[h])*((μ_h[h]^n)/(factorial(big(n))*(exp(μ_h[h])-1)))
-                    end
-                end
-            end
-        end
+        H = HH_matrix./sum(HH_matrix)
+        # H = zeros(h_max,n_max)
+
+        # for h in 1:size(HH_matrix)[1]
+        #     if (!ismissing(ρ_h[h])) && (!ismissing(μ_h[h]))
+        #         for n in 0:size(HH_matrix)[2]-1
+        #             if n == 0
+        #                 H[h,n+1] = p_h[h]*ρ_h[h]
+        #             else
+        #                 H[h,n+1] = p_h[h]*(1-ρ_h[h])*((μ_h[h]^n)/(factorial(big(n))*(exp(μ_h[h])-1)))
+        #             end
+        #         end
+        #     end
+        # end
 
         # Calculate net crop per capita from model posterior draws for net crop
         monthidx_vals = []#zeros(Int,size(hh_data_RAW)[1])
@@ -1067,7 +1069,8 @@ function extract_data_netaccess(ISO::String, YEAR_START::Int64, YEAR_END::Int64,
             end
         end
 
-        γ = mean(Γ_MONTHLY[monthidx_vals]./POPULATION_MONTHLY[monthidx_vals])
+        γ_vals = input_dict["HOUSEHOLD_NPC_MONTHLY"][monthidx_vals]
+        γ = mean(γ_vals[findall(.!ismissing.(γ_vals))])
 
         # Store results in aggregate variable
         ρ_h_aggregated[i,:] = copy(ρ_h)

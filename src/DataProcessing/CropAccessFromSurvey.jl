@@ -22,10 +22,10 @@ using Missings
 function calc_survey_estimates(input_dict, net_access_input_dict)
     # Crop Regression input data
     MONTHS_MONTHLY = input_dict["MONTHS_MONTHLY"]
-    POPULATION_MONTHLY = input_dict["POPULATION_MONTHLY"]
+    # POPULATION_MONTHLY = input_dict["POPULATION_MONTHLY"]
     NET_CROP_SURVEY_MONTHLY = input_dict["NET_CROP_MONTHLY"]
 
-    NPC_SURVEY_MONTHLY = NET_CROP_SURVEY_MONTHLY./POPULATION_MONTHLY
+    # NPC_SURVEY_MONTHLY = NET_CROP_SURVEY_MONTHLY./POPULATION_MONTHLY
 
     # Calculate reference values for National Access from Surveys for scatter plot
     national_H_aggregated = net_access_input_dict["H_aggregated"]
@@ -36,10 +36,15 @@ function calc_survey_estimates(input_dict, net_access_input_dict)
 
     access_survey_monthidx = net_access_input_dict["survey_monthidx_aggregated"]
     access_survey_monthidx = access_survey_monthidx[findall(.!ismissing.(access_survey_monthidx))]
+    
     NET_ACCESS_SURVEY_MONTHLY = missings(Float64, length(MONTHS_MONTHLY))
     NET_ACCESS_SURVEY_MONTHLY[access_survey_monthidx] .= national_access_aggregated
+
+    MEAN_NPC_ACCESS_AGGREGATE_SURVEY_MONTHLY = missings(Float64, length(MONTHS_MONTHLY))
+    MEAN_NPC_ACCESS_AGGREGATE_SURVEY_MONTHLY[access_survey_monthidx] .= net_access_input_dict["γ_aggregated"]
     
-    return NET_CROP_SURVEY_MONTHLY, NPC_SURVEY_MONTHLY, NET_ACCESS_SURVEY_MONTHLY
+    
+    return NET_CROP_SURVEY_MONTHLY, MEAN_NPC_ACCESS_AGGREGATE_SURVEY_MONTHLY, NET_ACCESS_SURVEY_MONTHLY#NET_CROP_SURVEY_MONTHLY, NPC_SURVEY_MONTHLY, 
 end
 
 end

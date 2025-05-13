@@ -31,9 +31,9 @@ dataset_dir = "datasets/subnational/"
 subnat_reg_dir = "outputs/regressions/subnational/"
 nat_netcrop_post_dir = "outputs/draws/national/crop_access/"
 nat_netage_post_dir = "outputs/draws/national/demography/"
-nat_access_ext_dir = "outputs/extractions/access/"
+nat_access_ext_dir = "outputs/extractions/access/pred_data/"
 nat_access_reg_dir = "outputs/regressions/access/"
-save_dir = "output_plots/subnational/"
+save_dir = "output_plots/snf/subnational/"
 
 # %% Year bounds
 REG_YEAR_START_NAT = 2000 # Start year for national model
@@ -44,7 +44,7 @@ REG_YEAR_END = 2023
 # %% BATCH RUN CODE BLOCK!
 ##############################################
 # %% Get ISO List
-ISO_list = String.(CSV.read(raw"C:\Users\ETan\Documents\Prototype Analyses\itn-updated\datasets\ISO_list.csv", DataFrame)[:,1])
+ISO_list = String.(CSV.read("datasets/ISO_list.csv", DataFrame)[:,1])
 exclusion_ISOs = ["CPV","ZAF"]
 filt_ISOs = setdiff(ISO_list, exclusion_ISOs)
 
@@ -68,12 +68,12 @@ for ISO_i in ProgressBar(1:length(filt_ISOs))
     # National draws filename
     nat_netcrop_post_filename = "$(ISO)_2000_2023_post_crop_access.jld2"
     # Net Distribution data
-    distributions_filename = "net_distributions_admin1_dummy_combined_amp.csv"
+    distributions_filename = "net_distributions_cITN_adjusted.csv"
     # Net age demography posterior
     net_age_filename = "$(ISO)_net_age_demography_samples.csv"
 
     # %% National MCMC chain (for getting monthly disaggregation ratios)
-    nat_cropchain_dir = "outputs/regressions/crop/Compact Regressions/$(REG_YEAR_START_NAT)_$(REG_YEAR_END)/"
+    nat_cropchain_dir = "outputs/regressions/crop/$(REG_YEAR_START_NAT)_$(REG_YEAR_END)/"
     nat_cropchain_filename = "$(ISO)_$(REG_YEAR_START_NAT)_$(REG_YEAR_END)_cropchains.jld2"
 
     # %% Access Model MCMC Chain
@@ -88,15 +88,15 @@ for ISO_i in ProgressBar(1:length(filt_ISOs))
     nat_netcrop_post_data = JLD2.load(nat_netcrop_post_dir*nat_netcrop_post_filename)
     subnat_reg_data = JLD2.load(subnat_reg_dir*subnat_reg_filename)
     # Load distribution data
-    master_distributions = CSV.read(dataset_dir*distributions_filename, DataFrame)
+    master_distributions = CSV.read("datasets/"*distributions_filename, DataFrame)
     # Load posterior net demography data
     master_net_age = CSV.read(nat_netage_post_dir*net_age_filename, DataFrame)
     # Access Model data
     net_access_input_dict = JLD2.load(nat_access_ext_dir*net_access_input_dict_filename)
     net_access_chain = JLD2.load(nat_access_reg_dir*net_access_chain_filename)
     # Household Survey Data
-    nat_npc_monthly = CSV.read("datasets/npc_monthly_data.csv", DataFrame)
-    subnat_npc_monthly = CSV.read("datasets/subnational/subnat_npc_monthly_data.csv", DataFrame)
+    nat_npc_monthly = CSV.read("outputs/data_prep/npc_monthly_data.csv", DataFrame)
+    subnat_npc_monthly = CSV.read("outputs/data_prep/subnat_npc_monthly_data.csv", DataFrame)
     # National MCMC Chain (for getting monthly disaggregation ratios)
     nat_cropchain = load(nat_cropchain_dir*nat_cropchain_filename)
 
@@ -236,7 +236,7 @@ for ISO_i in ProgressBar(1:length(filt_ISOs))
     plot!(fig, SUBNAT_REG_NAT_Γ_MONTHLY./1e6, label = "Subnational Regression", linewidth = 1.5)
     scatter!(fig, NAT_NET_CROP_MONTHLY./1e6, label = "National Survey", markercolor = 5, markersize = 4)
 
-    save_subdir = save_dir*"netcrop_fits/"
+    save_subdir = save_dir*"netcrop_nat_vs_subnat_fits/"
     mkpath(save_subdir)
     savefig(fig, save_subdir*"$(ISO)_NAT_SUBNAT_TOTALS.pdf")
 

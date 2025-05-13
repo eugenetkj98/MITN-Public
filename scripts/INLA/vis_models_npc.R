@@ -10,7 +10,7 @@ library(matrixStats)
 source("scripts/INLA/transforms.R")
 
 # Import Models
-load("outputs/INLA/model1_npc_complete_logmodel.RData")
+load("outputs/INLA/model1_npc_complete_logmodel_2.RData")
 
 # Check summary
 summary(m1)
@@ -22,7 +22,7 @@ summary(m1)
 
 # Define number of posterior samples
 n_samples <- 100
-n_samples_saved <- 20
+n_samples_saved <- 100
 
 # Get raster image for coordinates to predict on (i.e. only restrict predictions to Africa)
 reference_image <- raster('datasets/INLA/MAP_Regions_Unclipped_5k.tif')

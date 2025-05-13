@@ -1,0 +1,8 @@
+[gen.inputs]
+iso_list_path = "/mnt/testpath/country_list.csv"
+lst_raster_path = "/mnt/s3/mastergrids/MODIS_Global/MOD11A2_v061_LST/LST_Day_v061/5km/Annual/LST_Day_v061.2024.Annual.mean.5km.mean.tif"
+
+
+[step2.inputs]
+start_year = 2020
+end_year = 2024

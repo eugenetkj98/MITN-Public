@@ -81,7 +81,8 @@ function sample_net_access(ρ_chain_df, μ_chain_df, p_h,
             for h in 1:h_max
                 β_0, β_1, β_2, β_3, β_4, β_5 = β_μ_samples[i,:]
                 τ_μ = τ_μ_samples[i]
-                μ_mean = β_0 + β_1*(h) + β_2*sqrt(h) + β_3*γ + β_4*(γ^2)+ β_5*(h*γ)
+                # μ_mean = β_0 + β_1*(h) + β_2*sqrt(h) + β_3*γ + β_4*(γ^2)+ β_5*(h*γ)
+                μ_mean = β_0 + β_1*(h) + β_2*sqrt(h) + β_3*γ + β_4*(h^2)+ β_5*(h*γ)
                 μ_h_samples[i,month_idx,h] = rand(Normal(μ_mean, τ_μ))
             end
         end

@@ -1,0 +1,5 @@
+Gichuki (2021)
+- no SD available for KD60 and KD24, just use the overall pass criteria SD
+
+Raharinjatovo (2024)
+- Raharinjatovo Permanet 3.0, initial, KD24 no CI. Just used 0.05

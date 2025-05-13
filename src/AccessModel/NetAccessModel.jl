@@ -39,10 +39,9 @@ function H_to_access(H)
     # Calculate H matrix normalised by inidividuals in population
     H_hat = zeros(size(H))
     for h in 1:h_max
-        for n in 1:n_max
-            H_hat[h,n] = Float64(h*H[h,n]/(h*sum(H)))
-        end
+        H_hat[h,:] = h.*H[h,:]
     end
+    H_hat = H_hat./sum(H_hat)
 
     # Calculate net access
     λ_access = zeros(size(H))
@@ -51,7 +50,7 @@ function H_to_access(H)
             λ_access[h,n] = min(2*(n-1)/h,1)*H_hat[h,n]
         end
     end
-
+    
     return λ_access
 end
 
@@ -139,11 +138,18 @@ Turing PPL model for modelling the ``\\mu_h``, the mean number of net in househo
     h_max = size(μ_h_aggregated)[2]
     
     # Priors
+    # β_0 ~ Uniform(-50,50)
+    # β_1 ~ Uniform(-3,3)
+    # β_2 ~ Uniform(-10,10)
+    # β_3 ~ Uniform(-50,50)
+    # β_4 ~ Uniform(-50,50)
+    # β_5 ~ Uniform(-50,50)
+
     β_0 ~ Uniform(-50,50)
     β_1 ~ Uniform(-3,3)
     β_2 ~ Uniform(-10,10)
     β_3 ~ Uniform(-50,50)
-    β_4 ~ Uniform(-50,50)
+    β_4 ~ Uniform(-200,200)
     β_5 ~ Uniform(-50,50)
      
     τ_μ ~ Gamma(0.1,0.1)
@@ -152,8 +158,9 @@ Turing PPL model for modelling the ``\\mu_h``, the mean number of net in househo
     for h in 1:h_max
         for i in 1:n_surveys
             γ = γ_aggregated[i]
-            # μ_mean = γ*(β_0 + β_1*(h) + β_2*(h^2) + β_3*sqrt(h))
-            μ_mean = β_0 + β_1*(h) + β_2*sqrt(h) + β_3*γ + β_4*(γ^2)+ β_5*(h*γ)
+            # μ_mean = γ*(β_0 + β_1*(h) + β_2*(h^2) + β_3*sqrt(h) + β_4*(γ^2) + β_5*(h*γ))
+            # μ_mean = β_0 + β_1*(h) + β_2*sqrt(h) + β_3*γ + β_4*(γ^2)+ β_5*(h*γ)
+            μ_mean = β_0 + β_1*(h) + β_2*sqrt(h) + β_3*γ + β_4*(h^2)+ β_5*(h*γ)
             μ_h_aggregated[i,h] ~ Normal(μ_mean, τ_μ)
         end
     end

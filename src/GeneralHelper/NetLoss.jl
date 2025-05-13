@@ -36,7 +36,7 @@ Default value of scale parameter is ``\\kappa = 20``, default rounding precision
 - t: the time elapsed in years
 - τ: characteristic time scale of the sigmoidal function
 """
-function net_loss_compact(t::Float64, τ::Float64, κ::Float64; precis_threshold = 1e-6)
+function net_loss_compact(t::Union{Int64,Float64}, τ::Union{Int64,Float64}, κ::Union{Int64,Float64}; precis_threshold = 1e-6)
   output = exp(κ.-(κ./(1 .-(t./τ).^2)))
   if (output < precis_threshold) || (t > τ) # Reals overflow/finite preci error check
     output = 0

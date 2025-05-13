@@ -31,7 +31,7 @@ using Plots
 ########################################################
 
 ISO = "NGA" # Reference country to get parameter data from
-input_timeseries_file = "datasets/forward_prediction_inputs/$(ISO)_prediction_input.csv"
+input_timeseries_file = "datasets/forward_prediction_inputs/future_simulations/input_timeseries.csv"
 mitn_posterior_chain = "outputs/regressions/crop/2000_2023/$(ISO)_2000_2023_cropchains.jld2"
 n_samples = 5 # Number of posterior draws of time series
 output_dir = "outputs/predictions/"
@@ -138,7 +138,7 @@ for i in ProgressBar(1:n_samples, leave = false)
                                                         α_LLIN_est;
                                                         monthly_p = monthly_p)
                     
-    Γ_MONTHLY_BYNET_dist_sample, A_BYNET_dist_sample = mitn_national_dist_predict(YEARS_ANNUAL,
+    Γ_MONTHLY_BYNET_dist_sample, A_BYNET_dist_sample = mitn_national_noredist_predict(YEARS_ANNUAL,
                                                                         DISTRIBUTION_ANNUAL,
                                                                         τ_net_est, κ_net_est;
                                                                         monthly_p = monthly_p)
@@ -235,3 +235,4 @@ end
             
 vline!(fig, [(reg_YEAR_END - YEAR_START)*12], label = nothing, 
             color = :red, linestyle = :dash)
+

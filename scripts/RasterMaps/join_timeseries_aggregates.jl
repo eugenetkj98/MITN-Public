@@ -35,4 +35,10 @@ println("Compiling data extraction parts into a single CSV.")
 master_df = vcat(df_collection...)
 sort!(master_df, [order(:year), order(:month), order(:ISO), order(:category),order(:admin_name)])
 CSV.write(OUTPUT_DIR*"coverage_timeseries/master_extraction.csv", master_df)
-println("Saved time series extraction at: $(OUTPUT_DIR*"coverage_timeseries/master_extraction.csv")")
+println("Saved time series extraction at: $(OUTPUT_DIR*"coverage_timeseries/master_extraction_admin0.csv")")
+
+# # %%
+# data_0 = CSV.read(OUTPUT_DIR*"coverage_timeseries/master_extraction_admin0.csv", DataFrame)
+# data_1 = CSV.read(OUTPUT_DIR*"coverage_timeseries/master_extraction.csv", DataFrame)
+
+# CSV.write(OUTPUT_DIR*"coverage_timeseries/master_extraction_updated.csv", vcat(data_0,data_1[data_1.category .== "Admin1",:]))

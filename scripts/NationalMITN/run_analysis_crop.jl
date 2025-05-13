@@ -55,25 +55,19 @@ flush(stdout)
 end
 
 # %%
-for i in (length(filt_ISOs)+1):length(ISO_list)
+for i in 1:length(filt_ISOs)
     # Select ISO
-    ISO = ISO_list[i]
+    ISO = filt_ISOs[i]
 
-    println("Extracting Data for Country $(i) of $(length(ISO_list)) → $(ISO).")
+    println("Extracting Data for Country $(i) of $(length(filt_ISOs)) → $(ISO).")
     flush(stdout)
     
-    if ISO ∈ exclusion_ISOs
-        println("$(ISO) is on exclusion list. Moving to next country.")
-        flush(stdout)
-        continue
-    else
-        # Net crop data extraction
-        extract_data_netcrop(ISO, YEAR_START, YEAR_END)
+    # Net crop data extraction
+    extract_data_netcrop(ISO, YEAR_START, YEAR_END)
 
-        # %%
-        println("Net Crop Data Extraction complete for $(ISO). Data saved")
-        flush(stdout)
-    end
+    # %%
+    println("Net Crop Data Extraction complete for $(ISO). Data saved")
+    flush(stdout)
 end
 
 @sync @distributed for i in (length(filt_ISOs)+1):length(ISO_list)

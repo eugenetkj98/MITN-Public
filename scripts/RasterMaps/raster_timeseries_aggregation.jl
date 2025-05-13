@@ -49,7 +49,6 @@ admin1_shapes_geoIO = GeoIO.load(ADMIN1_SHAPEFILE)
 # INLA Spatial Disaggregation survey data
 survey_data_dir = OUTPUT_DATAPREP_DIR
 survey_data_filename = INLA_REDUCED_DATAPREP_FILENAME
-
 # Num of samples to import from INLA outputs for use
 n_samples = INLA_N_SAMPLES # Number of samples that were saved in the INLA raster process
 
@@ -59,8 +58,8 @@ exclusion_ISOs = EXCLUSION_ISOS
 filt_ISOs = setdiff(ISO_list, exclusion_ISOs)
 
 # %% Time bounds
-YEAR_START = YEAR_NAT_START
-YEAR_END = YEAR_NAT_END
+YEAR_START = 2023#YEAR_NAT_START
+YEAR_END = 2023#YEAR_NAT_END
 
 # %% Location to save data to
 output_dir = OUTPUT_DIR*"coverage_timeseries/master_extractions_parts/"
@@ -72,7 +71,7 @@ for year in YEAR_START:YEAR_END
     pop_year = min(max(year, 2000), 2020)
     population_raster = replace_missing(Raster(pop_dir*"WorldPop_UNAdj_v3_DRC_fix.$(pop_year).Annual.Data.5km.sum.tif"), missingval = NaN)
 
-    for month in 1:12
+    for month in 4:12
         println("Extracting time series for $(year)-$(month)...")
         df0_full_collection = []
         df1_full_collection = []
@@ -144,48 +143,48 @@ for year in YEAR_START:YEAR_END
                 pop_masked = Rasters.trim(mask(population_raster, with = admin1_geometry); pad=0)
                 pop_total = sum(pop_masked[findall(.!isnan.(pop_masked))])
 
-                ########################
-                # GEOSPATIAL INLA ESTIMATES
-                ########################
-                # Construct masked mean rasters
-                npc_mean_masked = resample(Rasters.trim(mask(npc_mean_raster, with = admin1_geometry); pad = 0), to = pop_masked)
-                access_mean_masked = resample(Rasters.trim(mask(access_mean_raster, with = admin1_geometry); pad = 0), to = pop_masked)
-                use_mean_masked = resample(Rasters.trim(mask(use_mean_raster, with = admin1_geometry); pad = 0), to = pop_masked)
+                # ########################
+                # # GEOSPATIAL INLA ESTIMATES
+                # ########################
+                # # Construct masked mean rasters
+                # npc_mean_masked = resample(Rasters.trim(mask(npc_mean_raster, with = admin1_geometry); pad = 0), to = pop_masked)
+                # access_mean_masked = resample(Rasters.trim(mask(access_mean_raster, with = admin1_geometry); pad = 0), to = pop_masked)
+                # use_mean_masked = resample(Rasters.trim(mask(use_mean_raster, with = admin1_geometry); pad = 0), to = pop_masked)
 
-                # Calculate population weighted means
-                raster_npc_mean = aggregate_raster_weighted_mean(npc_mean_masked, pop_masked)
-                raster_access_mean = aggregate_raster_weighted_mean(access_mean_masked, pop_masked)
-                raster_use_mean = aggregate_raster_weighted_mean(use_mean_masked, pop_masked)
+                # # Calculate population weighted means
+                # raster_npc_mean = aggregate_raster_weighted_mean(npc_mean_masked, pop_masked)
+                # raster_access_mean = aggregate_raster_weighted_mean(access_mean_masked, pop_masked)
+                # raster_use_mean = aggregate_raster_weighted_mean(use_mean_masked, pop_masked)
 
-                # Calculate ITN sample summaries for each sample raster
-                n_npc_samples = length(npc_sample_rasters)
-                npc_raster_vals = zeros(n_npc_samples)
-                println("Calculating NPC sample rasters...")
-                for sample_i in ProgressBar(1:n_npc_samples, leave = false)
-                    npc_sample_raster_masked = resample(Rasters.trim(mask(npc_sample_rasters[sample_i], with = admin1_geometry); pad = 0), to = pop_masked)
-                    npc_raster_vals[sample_i] = aggregate_raster_weighted_mean(npc_sample_raster_masked, pop_masked)
-                end
+                # # Calculate ITN sample summaries for each sample raster
+                # n_npc_samples = length(npc_sample_rasters)
+                # npc_raster_vals = zeros(n_npc_samples)
+                # println("Calculating NPC sample rasters...")
+                # for sample_i in ProgressBar(1:n_npc_samples, leave = false)
+                #     npc_sample_raster_masked = resample(Rasters.trim(mask(npc_sample_rasters[sample_i], with = admin1_geometry); pad = 0), to = pop_masked)
+                #     npc_raster_vals[sample_i] = aggregate_raster_weighted_mean(npc_sample_raster_masked, pop_masked)
+                # end
 
-                n_access_samples = length(access_sample_rasters)
-                access_raster_vals = zeros(n_access_samples)
-                println("Calculating Access sample rasters...")
-                for sample_i in ProgressBar(1:n_access_samples, leave = false)
-                    access_sample_raster_masked = resample(Rasters.trim(mask(access_sample_rasters[sample_i], with = admin1_geometry); pad = 0), to = pop_masked)
-                    access_raster_vals[sample_i] = aggregate_raster_weighted_mean(access_sample_raster_masked, pop_masked)
-                end
+                # n_access_samples = length(access_sample_rasters)
+                # access_raster_vals = zeros(n_access_samples)
+                # println("Calculating Access sample rasters...")
+                # for sample_i in ProgressBar(1:n_access_samples, leave = false)
+                #     access_sample_raster_masked = resample(Rasters.trim(mask(access_sample_rasters[sample_i], with = admin1_geometry); pad = 0), to = pop_masked)
+                #     access_raster_vals[sample_i] = aggregate_raster_weighted_mean(access_sample_raster_masked, pop_masked)
+                # end
 
-                n_use_samples = length(use_sample_rasters)
-                use_raster_vals = zeros(n_use_samples)
-                println("Calculating Use sample rasters...")
-                for sample_i in ProgressBar(1:n_use_samples, leave = false)
-                    use_sample_raster_masked = resample(Rasters.trim(mask(use_sample_rasters[sample_i], with = admin1_geometry); pad = 0), to = pop_masked)
-                    use_raster_vals[sample_i] = aggregate_raster_weighted_mean(use_sample_raster_masked, pop_masked)
-                end
+                # n_use_samples = length(use_sample_rasters)
+                # use_raster_vals = zeros(n_use_samples)
+                # println("Calculating Use sample rasters...")
+                # for sample_i in ProgressBar(1:n_use_samples, leave = false)
+                #     use_sample_raster_masked = resample(Rasters.trim(mask(use_sample_rasters[sample_i], with = admin1_geometry); pad = 0), to = pop_masked)
+                #     use_raster_vals[sample_i] = aggregate_raster_weighted_mean(use_sample_raster_masked, pop_masked)
+                # end
 
-                # Calculate ITN quantiles
-                npc_quantiles = quantile(npc_raster_vals, [0.025, 0.975])
-                access_quantiles = quantile(access_raster_vals, [0.025, 0.975])
-                use_quantiles = quantile(use_raster_vals, [0.025, 0.975])
+                # # Calculate ITN quantiles
+                # npc_quantiles = quantile(npc_raster_vals, [0.025, 0.975])
+                # access_quantiles = quantile(access_raster_vals, [0.025, 0.975])
+                # use_quantiles = quantile(use_raster_vals, [0.025, 0.975])
 
                 # Compile into Dataframe entry
                 df1_i = DataFrame(ISO = ISO, category = "Admin1", admin_name = admin1_name, area_id = admin1_id,
@@ -194,18 +193,19 @@ for year in YEAR_START:YEAR_END
                             snf_npc_95lower = snf_npc_lower,
                             snf_npc_mean = snf_npc_mean,
                             snf_npc_95upper = snf_npc_upper,
-                            raster_npc_95lower = npc_quantiles[1],
-                            raster_npc_mean = raster_npc_mean,
-                            raster_npc_95upper = npc_quantiles[2],
+                            # raster_npc_95lower = npc_quantiles[1],
+                            # raster_npc_mean = raster_npc_mean,
+                            # raster_npc_95upper = npc_quantiles[2],
                             snf_access_95lower = snf_access_lower,
                             snf_access_mean = snf_access_mean,
                             snf_access_95upper = snf_access_upper,
-                            raster_access_95lower = access_quantiles[1],
-                            raster_access_mean = raster_access_mean,
-                            raster_access_95upper = access_quantiles[2],
-                            raster_use_95lower = use_quantiles[1],
-                            raster_use_mean = raster_use_mean,
-                            raster_use_95upper = use_quantiles[2])
+                            # raster_access_95lower = access_quantiles[1],
+                            # raster_access_mean = raster_access_mean,
+                            # raster_access_95upper = access_quantiles[2],
+                            # raster_use_95lower = use_quantiles[1],
+                            # raster_use_mean = raster_use_mean,
+                            # raster_use_95upper = use_quantiles[2]
+                            )
 
                 push!(df_admin1_collection, df1_i)
             end
@@ -226,25 +226,62 @@ for year in YEAR_START:YEAR_END
             # Tally estimates
             pop_total = sum(df1_i_entries.population)
 
+            ########################
+            # ADMIN0 SNF ESTIMATES
+            ########################
             snf_npc_mean = sum(df1_i_entries.snf_npc_mean .* df1_i_entries.population)/sum(df1_i_entries.population)
             snf_npc_upper = sum(df1_i_entries.snf_npc_95upper .* df1_i_entries.population)/sum(df1_i_entries.population)
             snf_npc_lower = sum(df1_i_entries.snf_npc_95lower .* df1_i_entries.population)/sum(df1_i_entries.population)
 
-            raster_npc_mean = sum(df1_i_entries.raster_npc_mean .* df1_i_entries.population)/sum(df1_i_entries.population)
-            raster_npc_upper = sum(df1_i_entries.raster_npc_95upper .* df1_i_entries.population)/sum(df1_i_entries.population)
-            raster_npc_lower = sum(df1_i_entries.raster_npc_95lower .* df1_i_entries.population)/sum(df1_i_entries.population)
-
             snf_access_mean = sum(df1_i_entries.snf_access_mean .* df1_i_entries.population)/sum(df1_i_entries.population)
             snf_access_upper = sum(df1_i_entries.snf_access_95upper .* df1_i_entries.population)/sum(df1_i_entries.population)
             snf_access_lower = sum(df1_i_entries.snf_access_95lower .* df1_i_entries.population)/sum(df1_i_entries.population)
+            
+            ########################
+            # GEOSPATIAL INLA ESTIMATES
+            ########################
+            # Get admin1 population raster
+            pop_masked = Rasters.trim(mask(population_raster, with = admin0_geometry); pad=0)
+            pop_total = sum(pop_masked[findall(.!isnan.(pop_masked))])
 
-            raster_access_mean = sum(df1_i_entries.raster_access_mean .* df1_i_entries.population)/sum(df1_i_entries.population)
-            raster_access_upper = sum(df1_i_entries.raster_access_95upper .* df1_i_entries.population)/sum(df1_i_entries.population)
-            raster_access_lower = sum(df1_i_entries.raster_access_95lower .* df1_i_entries.population)/sum(df1_i_entries.population)
+            # Construct masked mean rasters
+            npc_mean_masked = resample(Rasters.trim(mask(npc_mean_raster, with = admin0_geometry); pad = 0), to = pop_masked)
+            access_mean_masked = resample(Rasters.trim(mask(access_mean_raster, with = admin0_geometry); pad = 0), to = pop_masked)
+            use_mean_masked = resample(Rasters.trim(mask(use_mean_raster, with = admin0_geometry); pad = 0), to = pop_masked)
 
-            raster_use_mean = sum(df1_i_entries.raster_use_mean .* df1_i_entries.population)/sum(df1_i_entries.population)
-            raster_use_upper = sum(df1_i_entries.raster_use_95upper .* df1_i_entries.population)/sum(df1_i_entries.population)
-            raster_use_lower = sum(df1_i_entries.raster_use_95lower .* df1_i_entries.population)/sum(df1_i_entries.population)
+            # Calculate population weighted means
+            raster_npc_mean = aggregate_raster_weighted_mean(npc_mean_masked, pop_masked)
+            raster_access_mean = aggregate_raster_weighted_mean(access_mean_masked, pop_masked)
+            raster_use_mean = aggregate_raster_weighted_mean(use_mean_masked, pop_masked)
+
+            # Calculate ITN sample summaries for each sample raster
+            n_npc_samples = length(npc_sample_rasters)
+            npc_raster_vals = zeros(n_npc_samples)
+            println("Calculating NPC sample rasters...")
+            for sample_i in ProgressBar(1:n_npc_samples, leave = false)
+                npc_sample_raster_masked = resample(Rasters.trim(mask(npc_sample_rasters[sample_i], with = admin0_geometry); pad = 0), to = pop_masked)
+                npc_raster_vals[sample_i] = aggregate_raster_weighted_mean(npc_sample_raster_masked, pop_masked)
+            end
+
+            n_access_samples = length(access_sample_rasters)
+            access_raster_vals = zeros(n_access_samples)
+            println("Calculating Access sample rasters...")
+            for sample_i in ProgressBar(1:n_access_samples, leave = false)
+                access_sample_raster_masked = resample(Rasters.trim(mask(access_sample_rasters[sample_i], with = admin0_geometry); pad = 0), to = pop_masked)
+                access_raster_vals[sample_i] = aggregate_raster_weighted_mean(access_sample_raster_masked, pop_masked)
+            end
+
+            n_use_samples = length(use_sample_rasters)
+            use_raster_vals = zeros(n_use_samples)
+            println("Calculating Use sample rasters...")
+            for sample_i in ProgressBar(1:n_use_samples, leave = false)
+                use_sample_raster_masked = resample(Rasters.trim(mask(use_sample_rasters[sample_i], with = admin0_geometry); pad = 0), to = pop_masked)
+                use_raster_vals[sample_i] = aggregate_raster_weighted_mean(use_sample_raster_masked, pop_masked)
+            end
+            
+            raster_npc_lower, raster_npc_upper = quantile(npc_raster_vals, [0.025, 0.975])
+            raster_access_lower, raster_access_upper = quantile(access_raster_vals, [0.025, 0.975])
+            raster_use_lower, raster_use_upper = quantile(use_raster_vals, [0.025, 0.975])
 
             # Construct Dataframe entry
             df0_i = DataFrame(ISO = ISO, category = "Admin0", admin_name = admin0_name, area_id = admin0_id,
@@ -271,7 +308,8 @@ for year in YEAR_START:YEAR_END
         end
 
         # %% Combine collections together and save
-        compiled_dataframe = vcat(df0_full_collection...,df1_full_collection...)
+        # compiled_dataframe = vcat(df0_full_collection...,df1_full_collection...)
+        compiled_dataframe = vcat(df0_full_collection...)
         mkpath(output_dir)
         CSV.write(output_dir*"extraction_$(year)_$(month).csv", compiled_dataframe)
     end

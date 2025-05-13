@@ -8,6 +8,7 @@ Function to lookup and linearly interpolate value from a raster at a given latit
 module RasterLookup
 
 export interp_lookup
+export aggregate_raster_weighted_mean
 
 using GeoIO
 using Rasters

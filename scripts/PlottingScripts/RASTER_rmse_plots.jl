@@ -40,6 +40,15 @@ mitn_npc_rmse = sqrt(mean((filt_data.mitn_npc .- filt_data.npc).^2))
 mitn_access_rmse = sqrt(mean((filt_data.mitn_access .- filt_data.access).^2))
 mitn_use_rmse = sqrt(mean((filt_data.mitn_use .- filt_data.use).^2))
 
+# %% Calculate Residuals
+bv_npc_res = mean(filt_data.bv_npc .- filt_data.npc)
+bv_access_res = mean(filt_data.bv_access .- filt_data.access)
+bv_use_res = mean(filt_data.bv_use .- filt_data.use)
+
+mitn_npc_res = mean(filt_data.mitn_npc .- filt_data.npc)
+mitn_access_res = mean(filt_data.mitn_access .- filt_data.access)
+mitn_use_res = mean(filt_data.mitn_use .- filt_data.use)
+
 # %% Calculate monthidxs
 monthidxs = monthyear_to_monthidx.(filt_data.interview_month, filt_data.interview_year, YEAR_START = YEAR_NAT_START)
 
@@ -60,7 +69,7 @@ colorrange = (YEAR_NAT_START, YEAR_NAT_END)
             
 
 ##############################
-# %% Plots using CairoMakie.jl
+# %% RMSE Fit Plots using CairoMakie.jl
 ##############################
 set_theme!(theme_ggplot2())
 fig = Figure(size = (800,520))
@@ -172,6 +181,120 @@ fig
 
 # %% Save figure
 save(output_dir*"bv_mitn_rmse.pdf", fig)
+
+##############################
+# %% Residuals Fit Plots using CairoMakie.jl
+##############################
+set_theme!(theme_ggplot2())
+fig = Figure(size = (800,520))
+BV_suptitle = fig[1,1:4] = GridLayout()
+BV_plots = fig[2,1:4] = GridLayout()
+MITN_suptitle = fig[3,1:4] = GridLayout()
+MITN_plots = fig[4,1:4] = GridLayout()
+
+# BV Title
+Label(BV_suptitle[1,1:3],"BV Model", fontsize = 20, padding = (0,0,-20,-10))
+
+# BV Plots
+ax_bv_npc = Axis(BV_plots[1,1],
+                    title = "NPC\nMean Residual = $(round(bv_npc_res, digits = 4))", 
+                    xlabel = "Cluster Observation", ylabel = "Residual")
+xlims!(ax_bv_npc, -0.05, 1.05)
+ylims!(ax_bv_npc, -0.55, 0.55)
+scatter!(ax_bv_npc, 
+        filt_data.npc, filt_data.bv_npc .- filt_data.npc, 
+        color = (monthidxs./12).+YEAR_NAT_START,
+        colorrange = colorrange, colormap = cgrad([colorant"#2A2A2A", colors[3]]),
+        markersize = ms, alpha = ma)
+lines!(ax_bv_npc, [0,1],[0,0], color = :black)
+
+ax_bv_access = Axis(BV_plots[1,2],
+                    title = "Access\nMean Residual = $(round(bv_access_res, digits = 4))", 
+                    xlabel = "Cluster Observation", ylabel = "Residual")
+xlims!(ax_bv_access, -0.05, 1.05)
+ylims!(ax_bv_access, -0.55, 0.55)
+scatter!(ax_bv_access, 
+        filt_data.access, filt_data.bv_access .- filt_data.access, 
+        color = (monthidxs./12).+YEAR_NAT_START,
+        colorrange = colorrange, colormap = cgrad([colorant"#2A2A2A", colors[3]]),
+        markersize = ms, alpha = ma)
+lines!(ax_bv_access, [0,1], [0,0], color = :black)
+
+ax_bv_use = Axis(BV_plots[1,3],
+                    title = "Use\nMean Residual = $(round(bv_use_res, digits = 4))", 
+                    xlabel = "Cluster Observation", ylabel = "Residual")
+xlims!(ax_bv_use, -0.05, 1.05)
+ylims!(ax_bv_use, -0.55, 0.55)
+scatter!(ax_bv_use, 
+        filt_data.use, filt_data.bv_use .- filt_data.use, 
+        color = (monthidxs./12).+YEAR_NAT_START,
+        colorrange = colorrange, colormap = cgrad([colorant"#2A2A2A", colors[3]]),
+        markersize = ms, alpha = ma)
+lines!(ax_bv_use, [0,1], [0,0], color = :black)
+
+Colorbar(BV_plots[1,4], limits = colorrange, label = "Year",
+        colormap = cgrad([colorant"#2A2A2A", colors[3]]))
+
+# MITN Title
+Label(MITN_suptitle[1,1:3],"MITN Model", fontsize = 20, padding = (0,0,-20,-10))
+
+# MITN Plots
+
+ax_mitn_npc = Axis(MITN_plots[1,1],
+                    title = "NPC\nMean Residual = $(round(mitn_npc_res, digits = 4))", 
+                    xlabel = "Cluster Observation", ylabel = "Residual")
+xlims!(ax_mitn_npc, -0.05, 1.05)
+ylims!(ax_mitn_npc, -0.55, 0.55)
+scatter!(ax_mitn_npc, 
+        filt_data.npc, filt_data.mitn_npc .- filt_data.npc, 
+        color = (monthidxs./12).+YEAR_NAT_START,
+        colorrange = colorrange, colormap = cgrad([colorant"#2A2A2A", colors[2]]),
+        markersize = ms, alpha = ma)
+lines!(ax_mitn_npc, [0,1],[0,0], color = :black)
+
+ax_mitn_access = Axis(MITN_plots[1,2],
+                    title = "Access\nMean Residual = $(round(mitn_access_res, digits = 4))", 
+                    xlabel = "Cluster Observation", ylabel = "Residual")
+xlims!(ax_mitn_access, -0.05, 1.05)
+ylims!(ax_mitn_access, -0.55, 0.55)
+scatter!(ax_mitn_access, 
+        filt_data.access, filt_data.mitn_access .- filt_data.access, 
+        color = (monthidxs./12).+YEAR_NAT_START,
+        colorrange = colorrange, colormap = cgrad([colorant"#2A2A2A", colors[2]]),
+        markersize = ms, alpha = ma)
+lines!(ax_mitn_access, [0,1], [0,0], color = :black)
+
+ax_mitn_use = Axis(MITN_plots[1,3],
+                    title = "Use\nMean Residual = $(round(mitn_use_res, digits = 4))", 
+                    xlabel = "Cluster Observation", ylabel = "Residual")
+xlims!(ax_mitn_use, -0.05, 1.05)
+ylims!(ax_mitn_use, -0.55, 0.55)
+scatter!(ax_mitn_use, 
+        filt_data.use, filt_data.mitn_use .- filt_data.use, 
+        color = (monthidxs./12).+YEAR_NAT_START,
+        colorrange = colorrange, colormap = cgrad([colorant"#2A2A2A", colors[2]]),
+        markersize = ms, alpha = ma)
+lines!(ax_mitn_use, [0,1], [0,0], color = :black)
+
+Colorbar(MITN_plots[1,4], limits = colorrange, label = "Year",
+        colormap = cgrad([colorant"#2A2A2A", colors[2]]))
+
+# Adjust Gaps
+
+colgap!(BV_plots, 10)
+rowgap!(BV_plots, 10)
+
+colgap!(MITN_plots, 10)
+rowgap!(MITN_plots, 10)
+
+# Visualise Figure
+
+
+fig
+
+
+# %% Save figure
+save(output_dir*"bv_mitn_residuals.pdf", fig)
 
 # ##############################
 # # %% Plots using Plots.jl

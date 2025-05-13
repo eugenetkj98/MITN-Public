@@ -46,11 +46,11 @@ function inflation_factor(n; saturation_size = DEFAULT_INFLATION_SAT_SIZE)
     return 1 ./sqrt((min.(1, n/saturation_size)))
 end
 
+
 # %% Compute metrics for each survey id
 survey_summaries = []
 
 for i in 1:length(surveyid_list)
-
     # Extract metadata
     surveyid = String(surveyid_list[i])
     survey_data = master_survey_data[findall(master_survey_data.SurveyId .== surveyid),:]
@@ -94,22 +94,21 @@ for i in 1:length(surveyid_list)
 
         # Calculate mean HH_size
         HH_size = dot(month_weights, month_survey_data.hh_size)/sum(month_weights)
+        
         # Calculate NPC metrics
         NPC_month_entries = (month_survey_data.n_itn)./(month_survey_data.hh_size)
-        NPC_month_mean = dot(month_weights, NPC_month_entries)/sum(month_weights)
+        NPC_month_mean = sum(month_survey_data.n_itn.*month_weights)./sum(month_survey_data.hh_size.*month_weights) #dot(month_weights, NPC_month_entries)/sum(month_weights)
         NPC_month_unadjusted_SE = sqrt((dot(month_weights, (NPC_month_entries.-NPC_month_mean).^2)/sum(month_weights))/n_sample)
 
         cITNPC_month_entries = (month_survey_data.n_citn)./(month_survey_data.hh_size)
-        cITNPC_month_mean = dot(month_weights, cITNPC_month_entries)/sum(month_weights)
+        cITNPC_month_mean = sum(month_survey_data.n_citn.*month_weights)./sum(month_survey_data.hh_size.*month_weights) #dot(month_weights, cITNPC_month_entries)/sum(month_weights)
 
         LLINPC_month_entries = (month_survey_data.n_llin)./(month_survey_data.hh_size)
-        LLINPC_month_mean = dot(month_weights, LLINPC_month_entries)/sum(month_weights)
+        LLINPC_month_mean = sum(month_survey_data.n_llin.*month_weights)./sum(month_survey_data.hh_size.*month_weights) #dot(month_weights, LLINPC_month_entries)/sum(month_weights)
 
         # Calculate mean use rate
-        # use_month_entries = (month_survey_data.n_itn_used)./(month_survey_data.hh_size)
-        # use_month_mean = dot(month_weights, use_month_entries)/sum(month_weights)
-        # use_month_mean = dot(month_weights, min.(2 .* month_survey_data.n_itn_used, month_survey_data.hh_size))/dot(month_weights, month_survey_data.hh_size)
         use_month_mean = dot(month_weights, month_survey_data.n_slept_under_itn)/dot(month_weights, month_survey_data.hh_size)
+
         # Push to storage variable
         if NPC_month_unadjusted_SE > 0
             push!(months, monthidx)
@@ -173,6 +172,7 @@ end
 
 # %% Compile data and save
 summarised_data = vcat(survey_summaries...)
+
 CSV.write(dataprep_dir*HOUSEHOLD_NAT_SUMMARY_DATA_FILENAME, summarised_data)
 
 println("JULIA EXTRACTION COMPLETED :D")

@@ -80,7 +80,10 @@ Rscript "vis_models_use.R"
 echo "Complete Use deviation Rasters"
 echo "Step 5.4: Construct Use rasters"
 julia --threads $DEFAULT_NUM_THREADS "scripts/RasterMaps/generate_final_rasters.jl" | tee -a outputs.txt
-julia --threads $DEFAULT_NUM_THREADS "scripts/RasterMaps/raster_timeseries_aggregation.jl" | tee -a outputs.txt
+
+export DEFAULT_NUM_THREADS=32
+export DISTRIBUTED_NUM_THREADS=5
+julia --threads $DEFAULT_NUM_THREADS "scripts/RasterMaps/raster_timeseries_aggregation.jl"
 echo "Completed constructing all required rasters"
 
 echo "Step 6: Extract time series for ITN coverage"

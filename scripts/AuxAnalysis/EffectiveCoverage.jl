@@ -1,6 +1,10 @@
 # %% Prep environment and subdirectories
 include(pwd()*"/scripts/init_env.jl")
 
+# %% Import filenames and directories from config file
+include(pwd()*"/scripts/dir_configs.jl")
+
+
 # %% Import Public Packages
 using JLD2
 using CSV
@@ -11,19 +15,36 @@ using Plots
 using StatsBase
 using Distributions
 using NetLoss
+using JLD2
+using DateConversions
+
+# %% Directories
+output_plots_dir = OUTPUT_PLOTS_DIR
+
+# %% Time Parameters
+YEAR_START = YEAR_NAT_START
+YEAR_END = YEAR_NAT_END
+
+# %% Set Plotting Backend
 pythonplot()
 theme(:vibrant)
 
+
+
 # %% Import helper packages
-using PlottingFunctions
-using NetCropModel
-using NetAccessModel
-using LaTeXStrings
-using DynamicalSystems
+# using PlottingFunctions
+# using NetCropModel
+# using NetAccessModel
+# using LaTeXStrings
+# using DynamicalSystems
+
+############################
+# %% Construct Net Efficacy Model
+############################
 
 # %% First do Bayesian Inference (old school way) for getting decay behaviour of ITNs
 # Import Compiled data
-data = CSV.read("datasets/Net_BioEfficacy_Dataset.csv", DataFrame)
+data = CSV.read("datasets/BioefficacyData/Net_BioEfficacy_Dataset.csv", DataFrame)
 
 # Filter out all new-gen LLINs
 filt_data = data[findall(data[:, "Net Type"].!="LLIN-2"),:]
@@ -31,13 +52,14 @@ filt_data = data[findall(data[:, "Net Type"].!="LLIN-2"),:]
 t_data = filt_data[:, "Net Age"]
 mortality_data = filt_data[:,"Mean Mortality"]
 sd_data = filt_data[:,"SD Mortality"]
-# Priors
+
+# Priors for net efficacy model parameters (assuming two parameter decay Weibull function)
 α = 9/2
 β = 3/2
 
+# Do posterior Bayesian estimate
 b_vals = 0:0.05:10
 k_vals = 0:0.05:20
-
 joint_post = zeros(length(b_vals), length(k_vals))
 for i in ProgressBar(1:length(b_vals), leave = false)
     for j in 1:length(k_vals)
@@ -61,8 +83,6 @@ for i in ProgressBar(1:length(b_vals), leave = false)
 
         log_posterior = mean(log_likelihood) + log_p_b_prior + log_p_k_prior
 
-        
-
         joint_post[i,j] = exp(log_posterior)
     end
 end
@@ -70,322 +90,71 @@ end
 # Fix NaNs and Normalise to probability dist
 joint_post[findall(isnan.(joint_post))] .= 0
 joint_post = joint_post./sum(joint_post)
+# heatmap(k_vals, b_vals , joint_post) #Plo just to check
 
-# %% Plot
-heatmap(k_vals, b_vals , joint_post)
-
-# %%
+# Get MAP estimate for b and k parameters of net efficacy model
 b_idx, k_idx = argmax(joint_post)[1], argmax(joint_post)[2]
 b_est = b_vals[b_idx]
 k_est = k_vals[k_idx]
 
 # %%
 t_vals = 0:0.01:5
-fig = plot(xlabel = "Years", ylabel = "24h Mortality")
-plot!(fig, t_vals,net_loss_weibull.(t_vals, b_est, k_est), label = "MLE")
-scatter!(fig, t_data, mortality_data, label = "Raw Data")
+fig = plot(xlabel = "Years", ylabel = "24h Mortality (η)",
+            title = "Waning Net Efficacy")
+plot!(fig, t_vals,net_loss_weibull.(t_vals, b_est, k_est), label = "MAP")
+scatter!(fig, t_data, mortality_data, label = "Raw Data (Paper)")
 
-savefig(fig, "bioefficacy_fit.pdf")
+savefig(fig, output_plots_dir*"bioefficacy_fit.pdf")
 
-# %%
-output_dir = "output_plots/"
-
-# %% Get ISO List
-ISO_list = String.(CSV.read(raw"C:\Users\ETan\Documents\Prototype Analyses\itn-updated\datasets\ISO_list.csv", DataFrame)[:,1])
-reg_results_list = Array{Any, 1}(undef, length(ISO_list))
-exclusion_ISOs = ["CPV","BWA","CAF","GNQ","DJI","GAB","GNB","ERI","ETH","SOM","SDN","ZAF","SSD"]
-#["CPV","BWA","CAF","COM","GNQ","DJI","ERI","ETH","GAB","GNB","STP","SOM","SDN","SWZ","ZAF","SSD"]
-
-YEAR_START = 2000
-YEAR_END = 2023
-
-country_codes_key = CSV.read("datasets/country_codes.csv", DataFrame)
-# %%
-ISO = "KEN"
-n_samples = 500
-
-# Import Data
-input_dict = load("outputs/extractions/crop/$(YEAR_START)_$(YEAR_END)/$(ISO)_$(YEAR_START)_$(YEAR_END)_cropextract.jld2")
-regression_dict = load("outputs/regressions/crop/Compact Regressions/$(YEAR_START)_$(YEAR_END)/$(ISO)_$(YEAR_START)_$(YEAR_END)_cropchains.jld2")
-net_access_input_dict = load("outputs/extractions/access/$(YEAR_START)_$(YEAR_END)/$(ISO)_$(YEAR_START)_$(YEAR_END)_accessextract.jld2")
-net_access_chain = load("outputs/regressions/access/netaccesschains.jld2")
-BV_dict = load("datasets/BV_draws.jld2")
-country_name = country_codes_key[findfirst(country_codes_key.ISO3 .== ISO), "Country"]
-
-# Crop Regression input data
-YEARS_ANNUAL = input_dict["YEARS_ANNUAL"]
-MONTHS_MONTHLY = input_dict["MONTHS_MONTHLY"]
-DELIVERIES_ANNUAL = input_dict["DELIVERIES_ANNUAL"]
-DISTRIBUTION_ANNUAL = input_dict["DISTRIBUTION_ANNUAL"]
-NET_CROP_MONTHLY = input_dict["NET_CROP_MONTHLY"]
-POPULATION_MONTHLY = input_dict["POPULATION_MONTHLY"]
-NET_NAMES = input_dict["NET_NAMES"]
-n_net_types = length(NET_NAMES)
-
-# Get number of missing net values
-n_missing_nets_vals = sum(ismissing.(DISTRIBUTION_ANNUAL[:,1]))
-
-# Crop Regression output data
-chain = regression_dict["chain"]
-monthly_p = regression_dict["monthly_p"]
-chain_UNIF = regression_dict["chain_epochs"][1]
-monthly_p_UNIF = regression_dict["monthly_weights"][1]
-
-##### Extract Net Crop MCMC parameters
-
-### Part 1: Final Regressed Values
-# Randomly generate sample indexes to sample from chain
-chain_length = size(chain)[1]
-sample_idxs = sample(1:chain_length, n_samples, replace = false)
-
-# Extract MCMC draws for parameters
-ϕ_posterior_draws = chain[sample_idxs, :ϕ]
-α_init_posterior_draws = chain[sample_idxs,:α_init]
-α_LLIN_posterior_draws = chain[sample_idxs,:α_LLIN]
-
-b_net_posterior_draws = Matrix(DataFrame(chain)[:,5:2:5+2*(n_net_types-1)])[sample_idxs, :]
-k_net_posterior_draws = Matrix(DataFrame(chain)[:,6:2:6+2*(n_net_types-1)])[sample_idxs, :]
-if n_missing_nets_vals > 0
-    n_missing_nets_posterior_draws = Matrix(DataFrame(chain)[:,(4+2*(n_net_types)+1):end])[sample_idxs, :]
-else
-    # No missing data, so just feed in a zero matrix with no columns
-    n_missing_nets_posterior_draws = zeros(size(chain)[1], 0)
-end
-    
-
-##### Generate Net Crop Trajectories
-Γ_MONTHLY_samples_BYNET = zeros(n_samples, length(MONTHS_MONTHLY), n_net_types)
-A_samples_BYNET = zeros(n_samples, length(MONTHS_MONTHLY), length(MONTHS_MONTHLY), n_net_types)
-
-for i in 1:n_samples
-    # Select MCMC posterior draw parameters
-    ϕ = ϕ_posterior_draws[i]
-    α_init = α_init_posterior_draws[i]
-    α_LLIN = α_LLIN_posterior_draws[i]
-    b_nets = b_net_posterior_draws[i,:]
-    k_nets = k_net_posterior_draws[i,:]
-    missing_nets = n_missing_nets_posterior_draws[i,:]
-
-    Γ_MONTHLY_samples_BYNET[i,:,:,:], A_samples_BYNET[i,:,:,:] = model_evolve_forward(YEARS_ANNUAL, MONTHS_MONTHLY,
-                                                                                DELIVERIES_ANNUAL, DISTRIBUTION_ANNUAL,
-                                                                                ϕ, b_nets, k_nets,
-                                                                                α_init, α_LLIN,
-                                                                                missing_nets; 
-                                                                                monthly_p = monthly_p,
-                                                                                return_age = true)
-end
-
-# Scale by to units of millions
-Γ_MONTHLY_samples_BYNET = Γ_MONTHLY_samples_BYNET./1e6
-A_samples_BYNET = A_samples_BYNET./1e6
-
-# Get Totals
-Γ_MONTHLY_samples_TOTAL = sum(Γ_MONTHLY_samples_BYNET, dims = 3)[:,:,1]
-A_samples_TOTAL = sum(A_samples_BYNET, dims = 4)[:,:,:,1]
-
-# %%
-heatmap(A_samples_TOTAL[1,:,:], yflip = true)
-
-# %% Calculate Access
-ρ_chain_df = net_access_chain["ρ_chain_df"]
-μ_chain_df = net_access_chain["μ_chain_df"]
-p_h = mean(net_access_input_dict["p_h_aggregated"], dims = 1)[:]
-λ_access_samples = sample_net_access(ρ_chain_df, μ_chain_df, p_h,
-                                        POPULATION_MONTHLY, Γ_MONTHLY_samples_TOTAL.*1e6) # Need to temporarily unscale input by mil for calculating access
-
-
-# %%
-##### Calculate Age Matrix
-n_months = size(A_samples_TOTAL)[2]
-M_age = zeros(n_months, n_months)
-
-for i in 1:n_months # Current Time
-    for j in 1:n_months # Birth time
-        if j>i
-            M_age[i,j] = 0
-        else
-            M_age[i,j] = (i-j)/12
-        end
-    end
-end
-
-# %%
-# heatmap(M_age, yflip = true)
-
-# %% Define Net Wear model
-η_netwear = net_loss_weibull.(M_age, b_est,k_est)
-
-
-# # %%
-# heatmap(η_netwear, yflip = true)
-
-# %%
-t_vals = (1:n_months)./12
+############################
+# %% Insecticide Resistance Model
+############################
 
 # Insecticide resistance time series
-β_t = 1 .-net_loss_weibull.(t_vals, 18.0, 6.0)
+n_months = (YEAR_END-YEAR_START+1)*12
+year_vals = (1:n_months)./12
+β_t = 1 .- net_loss_weibull.(year_vals, 18.0, 6.0)
 ξ = 0.4 # Maximum Kill rate reduction
 ρ_t = 1 .- ξ.*β_t # Resistance effects
-fig = plot(t_vals.+YEAR_START, ρ_t, ylims = (-0.05, 1.05), legend = false)
-plot!(fig, title = "b = $(18), k = $(6)", xlabel = "Year", ylabel = "ρ(t)")
-
-
-# %% 
-
-impact_unadjusted = zeros(size(λ_access_samples))
-impact_IR_adjusted = zeros(size(λ_access_samples))
-impact_age_adjusted = zeros(size(λ_access_samples))
-
-impact_full_adjusted = zeros(size(λ_access_samples))
-
-for i in 1:n_samples
-    impact_unadjusted[i,:] = sum(A_samples_TOTAL[i,:,:].*λ_access_samples[i,:,:].*1e6, dims = 2)[:]./POPULATION_MONTHLY
-    impact_IR_adjusted[i,:] = sum(A_samples_TOTAL[i,:,:].*λ_access_samples[i,:,:].*1e6, dims = 2)[:].*ρ_t./POPULATION_MONTHLY 
-    impact_age_adjusted[i,:] = sum(A_samples_TOTAL[i,:,:].*λ_access_samples[i,:,:].*1e6.*η_netwear, dims = 2)[:]./POPULATION_MONTHLY 
-    impact_full_adjusted[i,:] = sum(A_samples_TOTAL[i,:,:].*λ_access_samples[i,:,:].*1e6.*η_netwear, dims = 2)[:].*ρ_t./POPULATION_MONTHLY 
-end
+fig = plot(1:n_months, zeros(length(ρ_t)), fillrange = ρ_t, 
+            ylims = (-0.05, 1.05), 
+            legend = false,
+            xlabel = "Year", ylabel = "Insecticide Resistance (ρ)",
+            xticks = (1:12:n_months, YEAR_START:1:YEAR_END),
+            xtickfontrotation = 90,
+            color = colorant"#5BA58E", lw = 2.5,
+            label = nothing,
+            fillalpha = 0.18, linealpha = 0)
+plot!(fig, 1:n_months, ρ_t,
+        linewidth = 1.2,
+        color = colorant"#5BA58E",
+        label = "IR Penalty Rate")
+plot!(fig, 1:n_months, ρ_t, fillrange = ones(length(ρ_t)),
+        fillcolor = colorant"#AC0E26", fillalpha = 1,
+        linealpha = 0, fillstyle =  :/)
+plot!(fig, 1:n_months, ρ_t, fillrange = ones(length(ρ_t)),
+        fillcolor = colorant"#AC0E26", fillalpha = 0.1,
+        linealpha = 0, )
 
 # %%
-fig = plot(title = "$ISO", xlabel = "Year", ylabel = "Effective Efficacy per capita",
-            xticks = (MONTHS_MONTHLY[1:12:end],YEARS_ANNUAL[1]:YEARS_ANNUAL[end]), 
-            xtickfontrotation = 90, legend = :left)
-plot!(mean(impact_unadjusted, dims = 1)[:], label = "Unadjusted", color = 2)
-# plot!(mean(impact_IR_adjusted, dims = 1)[:], label = "IR Adjusted", color = 2)
-plot!(mean(impact_age_adjusted, dims = 1)[:], label = "Age Adjusted", color = 5)
-plot!(mean(impact_full_adjusted, dims = 1)[:], label = "IR + Age Adjusted", color = 6)
-# plot!(mean(impact_unadjusted, dims = 1)[:] .- mean(impact_IR_adjusted, dims = 1)[:], label = "IR Deficit", color = 2,
-#         linestyle = :dash)
-plot!(mean(impact_unadjusted, dims = 1)[:] .- mean(impact_age_adjusted, dims = 1)[:], label = "Age Deficit", color = 5,
-        linestyle = :dash)
-plot!(mean(impact_unadjusted, dims = 1)[:] .- mean(impact_full_adjusted, dims = 1)[:], label = "IR + Age Deficit", color = 6,
-    linestyle = :dash)
+savefig(fig, output_plots_dir*"IR_weibull_model.pdf")
 
-plot!(twinx(), ρ_t, linewidth = 1.5, ylabel = "IR Efficacy Penalty", 
-        linecolor = 4, linestyle = :dash, linealpha = 0.8, legend = false,
-        ylims = (-0.02, 1.05))
+############################
+# %% Simulate Insecticide Resistance fo each country and save plot
+############################
+fig_collection = []
 
+ISO_list = String.(CSV.read(RAW_DATASET_DIR*ISO_LIST_FILENAME, DataFrame)[:,1])
+exclusion_ISOs = EXCLUSION_ISOS
+filt_ISOs = setdiff(ISO_list, exclusion_ISOs)
 
-savefig(fig, "$(ISO)_EffectiveCoverage.pdf")
- 
-#####################################
-# %% Batch Analysis to make plots
-#####################################
+for ISO_i in ProgressBar(1:length(filt_ISOs))
+    # Select country
+    ISO = filt_ISOs[ISO_i]
 
-YEAR_START = 2000
-YEAR_END = 2023
-n_samples = 500
-country_codes_key = CSV.read("datasets/country_codes.csv", DataFrame)
-IR_b = 18.0
-IR_k = 6.0
-ξ = 0.4 # Maximum kill rate reduction
-
-
-# %% Get ISO List
-ISO_list = String.(CSV.read(raw"C:\Users\ETan\Documents\Prototype Analyses\itn-updated\datasets\ISO_list.csv", DataFrame)[:,1])
-reg_results_list = Array{Any, 1}(undef, length(ISO_list))
-exclusion_ISOs = ["CPV","BWA","CAF","GNQ","DJI","GAB","GNB","ERI","ETH","SOM","SDN","ZAF","SSD"]
-filt_ISO_list = setdiff(ISO_list, exclusion_ISOs)
-
-# %% Calculate penalty effects for each country
-age_penalties = zeros(length(filt_ISO_list),(YEAR_END-YEAR_START+1)*12)
-full_penalties = zeros(length(filt_ISO_list),(YEAR_END-YEAR_START+1)*12)
-
-for i in ProgressBar(1:length(filt_ISO_list))
-    # Select ISO
-    ISO = filt_ISO_list[i]
-
-    # Import Data
-    input_dict = load("outputs/extractions/crop/$(YEAR_START)_$(YEAR_END)/$(ISO)_$(YEAR_START)_$(YEAR_END)_cropextract.jld2")
-    regression_dict = load("outputs/regressions/crop/Compact Regressions/$(YEAR_START)_$(YEAR_END)/$(ISO)_$(YEAR_START)_$(YEAR_END)_cropchains.jld2")
-    net_access_input_dict = load("outputs/extractions/access/$(YEAR_START)_$(YEAR_END)/$(ISO)_$(YEAR_START)_$(YEAR_END)_accessextract.jld2")
-    net_access_chain = load("outputs/regressions/access/netaccesschains.jld2")
-    BV_dict = load("datasets/BV_draws.jld2")
-    country_name = country_codes_key[findfirst(country_codes_key.ISO3 .== ISO), "Country"]
-
-    # Crop Regression input data
-    YEARS_ANNUAL = input_dict["YEARS_ANNUAL"]
-    MONTHS_MONTHLY = input_dict["MONTHS_MONTHLY"]
-    DELIVERIES_ANNUAL = input_dict["DELIVERIES_ANNUAL"]
-    DISTRIBUTION_ANNUAL = input_dict["DISTRIBUTION_ANNUAL"]
-    NET_CROP_MONTHLY = input_dict["NET_CROP_MONTHLY"]
-    POPULATION_MONTHLY = input_dict["POPULATION_MONTHLY"]
-    NET_NAMES = input_dict["NET_NAMES"]
-    n_net_types = length(NET_NAMES)
-
-    # Get number of missing net values
-    n_missing_nets_vals = sum(ismissing.(DISTRIBUTION_ANNUAL[:,1]))
-
-    # Crop Regression output data
-    chain = regression_dict["chain"]
-    monthly_p = regression_dict["monthly_p"]
-    chain_UNIF = regression_dict["chain_epochs"][1]
-    monthly_p_UNIF = regression_dict["monthly_weights"][1]
-
-    ##### Extract Net Crop MCMC parameters
-
-    ### Part 1: Final Regressed Values
-    # Randomly generate sample indexes to sample from chain
-    chain_length = size(chain)[1]
-    sample_idxs = sample(1:chain_length, n_samples, replace = false)
-
-    # Extract MCMC draws for parameters
-    ϕ_posterior_draws = chain[sample_idxs, :ϕ]
-    α_init_posterior_draws = chain[sample_idxs,:α_init]
-    α_LLIN_posterior_draws = chain[sample_idxs,:α_LLIN]
-
-    b_net_posterior_draws = Matrix(DataFrame(chain)[:,5:2:5+2*(n_net_types-1)])[sample_idxs, :]
-    k_net_posterior_draws = Matrix(DataFrame(chain)[:,6:2:6+2*(n_net_types-1)])[sample_idxs, :]
-    if n_missing_nets_vals > 0
-        n_missing_nets_posterior_draws = Matrix(DataFrame(chain)[:,(4+2*(n_net_types)+1):end])[sample_idxs, :]
-    else
-        # No missing data, so just feed in a zero matrix with no columns
-        n_missing_nets_posterior_draws = zeros(size(chain)[1], 0)
-    end
-        
-
-    ##### Generate Net Crop Trajectories
-    Γ_MONTHLY_samples_BYNET = zeros(n_samples, length(MONTHS_MONTHLY), n_net_types)
-    A_samples_BYNET = zeros(n_samples, length(MONTHS_MONTHLY), length(MONTHS_MONTHLY), n_net_types)
-
-    for i in 1:n_samples
-        # Select MCMC posterior draw parameters
-        ϕ = ϕ_posterior_draws[i]
-        α_init = α_init_posterior_draws[i]
-        α_LLIN = α_LLIN_posterior_draws[i]
-        b_nets = b_net_posterior_draws[i,:]
-        k_nets = k_net_posterior_draws[i,:]
-        missing_nets = n_missing_nets_posterior_draws[i,:]
-
-        Γ_MONTHLY_samples_BYNET[i,:,:,:], A_samples_BYNET[i,:,:,:] = model_evolve_forward(YEARS_ANNUAL, MONTHS_MONTHLY,
-                                                                                    DELIVERIES_ANNUAL, DISTRIBUTION_ANNUAL,
-                                                                                    ϕ, b_nets, k_nets,
-                                                                                    α_init, α_LLIN,
-                                                                                    missing_nets; 
-                                                                                    monthly_p = monthly_p,
-                                                                                    return_age = true)
-    end
-
-    # Scale by to units of millions
-    Γ_MONTHLY_samples_BYNET = Γ_MONTHLY_samples_BYNET./1e6
-    A_samples_BYNET = A_samples_BYNET./1e6
-
-    # Get Totals
-    Γ_MONTHLY_samples_TOTAL = sum(Γ_MONTHLY_samples_BYNET, dims = 3)[:,:,1]
-    A_samples_TOTAL = sum(A_samples_BYNET, dims = 4)[:,:,:,1]
-
-    # %% Calculate Access
-    ρ_chain_df = net_access_chain["ρ_chain_df"]
-    μ_chain_df = net_access_chain["μ_chain_df"]
-    p_h = mean(net_access_input_dict["p_h_aggregated"], dims = 1)[:]
-    λ_access_samples = sample_net_access(ρ_chain_df, μ_chain_df, p_h,
-                                            POPULATION_MONTHLY, Γ_MONTHLY_samples_TOTAL.*1e6) # Need to temporarily unscale input by mil for calculating access
-
-
-    # %%
-    ##### Calculate Age Matrix
-    n_months = size(A_samples_TOTAL)[2]
+    # %% Calculate age based penalty
+    # Construct net age matrix given month bounds
     M_age = zeros(n_months, n_months)
-
     for i in 1:n_months # Current Time
         for j in 1:n_months # Birth time
             if j>i
@@ -396,60 +165,84 @@ for i in ProgressBar(1:length(filt_ISO_list))
         end
     end
 
-    # %% Define Net Wear model
-    η_netwear = net_loss_weibull.(M_age, b_est,k_est)
+    # Use net age matrix to construct theoretical net loss matrix due to net wear
+    η_netwear = net_loss_weibull.(M_age, b_est, k_est)
 
-    # %% Calculate IR effects
-    t_vals = (1:n_months)./12
+    # Calculate penalised net demography matrix and penalty timeseries
+    snf_post_dir = OUTPUT_DRAWS_DIR
+    snf_post_draws = JLD2.load(snf_post_dir*"subnational/$(ISO)_SUBNAT_draws.jld2")
+    subnat_A_mean = snf_post_draws["merged_outputs"][1]["COMBINED_A_TOTAL_mean"]
+    age_penalty_timeseries = (sum(subnat_A_mean.*η_netwear, dims = 2)./sum(subnat_A_mean, dims = 2))[:]
 
-    # Insecticide resistance time series
-    β_t = 1 .-net_loss_weibull.(t_vals, IR_b, IR_k)
-    ρ_t = 1 .- ξ.*β_t # Resistance effects
-
-    # %% Calculate impacts
-
-    impact_unadjusted = zeros(size(λ_access_samples))
-    impact_age_adjusted = zeros(size(λ_access_samples))
-    impact_full_adjusted = zeros(size(λ_access_samples))
-
-    for i in 1:n_samples
-        impact_unadjusted[i,:] = sum(A_samples_TOTAL[i,:,:].*λ_access_samples[i,:,:].*1e6, dims = 2)[:]./POPULATION_MONTHLY
-        impact_age_adjusted[i,:] = sum(A_samples_TOTAL[i,:,:].*λ_access_samples[i,:,:].*1e6.*η_netwear, dims = 2)[:]./POPULATION_MONTHLY 
-        impact_full_adjusted[i,:] = sum(A_samples_TOTAL[i,:,:].*λ_access_samples[i,:,:].*1e6.*η_netwear, dims = 2)[:].*ρ_t./POPULATION_MONTHLY 
+    # %% Calculate penalised use time series
+    raster_mean_timeseries = CSV.read(OUTPUT_DIR*"coverage_timeseries/master_extraction_updated.csv", DataFrame)
+    n_months = (YEAR_END - YEAR_START + 1)*12
+    use_timeseries = (zeros(n_months, 3) .= NaN)
+    for i in 1:n_months
+        month, year_idx = monthidx_to_monthyear(i)
+        year = YEAR_START + (year_idx - 1)
+        data_slice = raster_mean_timeseries[ raster_mean_timeseries.ISO .== ISO .&&
+                                raster_mean_timeseries.month .== month .&&
+                                raster_mean_timeseries.year .== year,:]
+        use_mean = sum(data_slice.population .* data_slice.raster_use_mean)./sum(data_slice.population)
+        use_lower = sum(data_slice.population .* data_slice.raster_use_95lower)./sum(data_slice.population)
+        use_upper = sum(data_slice.population .* data_slice.raster_use_95upper)./sum(data_slice.population)
+        use_timeseries[i,:] .= use_lower, use_mean, use_upper
     end
 
-    penalty_age = mean((impact_unadjusted.-impact_age_adjusted)./impact_unadjusted, dims = 1)[:]
-    penalty_full = mean((impact_unadjusted.-impact_full_adjusted)./impact_unadjusted, dims = 1)[:]
+    penalised_use_timeseries_age = zeros(size(use_timeseries))
+    penalised_use_timeseries_IR = zeros(size(use_timeseries))
+    penalised_use_timeseries_age_IR = zeros(size(use_timeseries))
+    for j in 1:size(use_timeseries)[2]
+        penalised_use_timeseries_age[:,j] = use_timeseries[:,j] .* age_penalty_timeseries
+        penalised_use_timeseries_IR[:,j] = use_timeseries[:,j] .* ρ_t
+        penalised_use_timeseries_age_IR[:,j] = use_timeseries[:,j] .* age_penalty_timeseries .* ρ_t
+    end
 
-    # Save penalty values
-    age_penalties[i,:] = penalty_age
-    full_penalties[i,:] = penalty_full
+
+    ############################
+    # %% Construct plot of effective coverage
+    ############################
+    lw = 1.2
+    la = 0.8
+    fig = plot(title = "$(ISO)",
+                xticks = (1:12:n_months, YEAR_START:YEAR_END),
+                xlabel = "Year", xtickfontrotation = 90,
+                ylabel = "Effective Net Coverage", legend = :outerright,
+                ylims = (-0.05, 1.05),
+                minorgrid = false, size = (680,400))
+    plot!(fig, use_timeseries[:,2], color = :black, label = "Unpenalised",
+            linewidth = lw)
+    plot!(fig, penalised_use_timeseries_age[:,2], color = colorant"#2E72C6", label = "Age Penalty",
+                linewidth = lw, linestyle = :dash, linealpha = la)
+    plot!(fig, penalised_use_timeseries_IR[:,2], color = colorant"#AC0E26", label = "IR Penalty",
+                linewidth = lw, linestyle = :dash, linealpha = la)
+    plot!(fig, penalised_use_timeseries_age_IR[:,2], color = colorant"#A430B1", label = "Age + IR",
+                linewidth = lw)
+
+    plot!(zeros(length(ρ_t)), fillrange = ρ_t, 
+            fillalpha = 0.15, linealpha = 0,
+            color = colorant"#5BA58E", lw = 2,
+            label = nothing)
+    plot!(ρ_t, linewidth = lw, 
+            color = colorant"#5BA58E", lw = 2, 
+            label = "IR Penalty Rate (ρ)")
+
+    savefig(fig, OUTPUT_PLOTS_DIR*"raster summaries/countries/$(ISO)_EffectiveCoverage.pdf")
+    
+    # Add plots to collection
+    push!(fig_collection, fig)
 end
 
-# %% Fix NaNs
-age_penalties[findall(isnan.(age_penalties))] .= 0
-full_penalties[findall(isnan.(full_penalties))] .= 0
-# %%
-MONTHS_MONTHLY = Vector(1:((YEAR_END-YEAR_START+1)*12))
-YEARS_ANNUAL = Vector(YEAR_START:YEAR_END)
+# %% Combined all country plot
 
-# %% Make Age Adjusted Plot
-gr()
-fig = plot()
-heatmap!(fig, MONTHS_MONTHLY, 1:length(filt_ISO_list), age_penalties,
-        yticks = (1:length(filt_ISO_list),filt_ISO_list),
-        xticks = (MONTHS_MONTHLY[1:12:end],YEARS_ANNUAL[1]:YEARS_ANNUAL[end]), xrotation =90,
-        xlabel = "Year", colorbartitle = "Age Adjusted Penalty", colormap = cgrad(["#1E86C2","#CE3648"]),
-        clims = (0,1))
-savefig(fig, "age_adjusted_penalty.pdf")
-# %% Make Full Adjusted Plot
-fig = plot()
-heatmap!(fig,MONTHS_MONTHLY, 1:length(filt_ISO_list), full_penalties,
-        yticks = (1:length(filt_ISO_list),filt_ISO_list),
-        xticks = (MONTHS_MONTHLY[1:12:end],YEARS_ANNUAL[1]:YEARS_ANNUAL[end]), xrotation =90,
-        xlabel = "Year", colorbartitle = "Full Adjusted Penalty", colormap = cgrad(["#1E86C2","#CE3648"]),
-        clims = (0,1))
-savefig(fig, "full_adjusted_penalty.pdf")
+# Plot layout settings
+layout = (9,5)
+figsize = (2560,1800)
+
+# Make plots and save
+fig_comb = plot(fig_collection..., layout = layout, size = figsize)
+savefig(fig_comb, OUTPUT_PLOTS_DIR*"raster summaries/coverage_efficacy.pdf")
 
 
 
