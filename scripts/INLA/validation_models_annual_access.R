@@ -9,8 +9,8 @@ library(terra)
 source("scripts/INLA/transforms.R")
 
 # Import Models
-# load("outputs/INLA/model1_access_complete_pmodel.RData")
-load("outputs/INLA/model1_access_half_pmodel.RData")
+load("outputs/INLA/model1_access_complete_pmodel_2.RData")
+# load("outputs/INLA/model1_access_half_pmodel.RData")
 
 # Check summary
 summary(m1)
