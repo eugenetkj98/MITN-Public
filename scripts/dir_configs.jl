@@ -180,6 +180,6 @@ SUBNAT_CROP_ATR_SCALING_CONSTANT = 0.1
 SUBNAT_CROP_ATR_PROPOSAL_SAMPLING_VAR = SUBNAT_CROP_ATR_SCALING_CONSTANT .*[0.15,8,0.15] # Compact support sampling
 
 # INLA Raster Sample
-INLA_N_SAMPLES = 20
-INLA_USE_N_SAMPLES = 10 # Number of samples to draw for INLA use deviation
-INLA_UNCERTAINTY_N_SAMPLES = 20 # Number of samples to draw for calculating INLA use deviation uncertainty
+INLA_N_SAMPLES = 100
+INLA_USE_N_SAMPLES = 100 # Number of samples to draw for INLA use deviation
+INLA_UNCERTAINTY_N_SAMPLES = 100 # Number of samples to draw for calculating INLA use deviation uncertainty

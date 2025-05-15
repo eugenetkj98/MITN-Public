@@ -296,81 +296,9 @@ colgap!(MITN_plots, 10)
 rowgap!(MITN_plots, 10)
 
 # Visualise Figure
-
-
 fig
 
 
 # %% Save figure
 save(output_dir*"bv_mitn_survey_reconstruction_residuals.pdf", fig)
 
-# ##############################
-# # %% Plots using Plots.jl
-# ##############################
-
-# # %% Make plots of RMSE and Error 
-
-# fig_1 = scatter(filt_data.npc[1:100:end], filt_data.bv_npc[1:100:end], zcolor = (monthidxs[1:100:end]./12).+YEAR_NAT_START,
-#                 markersize = ms, markeralpha = ma, cmap = cgrad([colorant"#2A2A2A", colors[3]]),
-#                 label = nothing,
-#                 xlabel = "Cluster Observation",
-#                 ylabel = "Model Prediction",
-#                 colorbar_title = "Year",
-#                 colorbar_ticks = YEAR_NAT_START:2:YEAR_NAT_END,
-#                 title = "BV NPC\nRMSE = $(round(bv_npc_rmse, digits = 4))", 
-#                 xlims = (-0.05, 1.05), ylims = (-0.05, 1.05))
-# plot!(fig_1, 0:1, 0:1, linecolor = :black, label = nothing)
-
-# fig_2 = scatter(filt_data.access, filt_data.bv_access, zcolor = (monthidxs./12).+YEAR_NAT_START,
-#                 markersize = ms, markeralpha = ma,  cmap = cgrad([colorant"#2A2A2A", colors[3]]),
-#                 label = nothing,
-#                 xlabel = "Cluster Observation",
-#                 ylabel = "Model Prediction",
-#                 colorbar_title = "Year",
-#                 title = "BV Access\nRMSE = $(round(bv_access_rmse, digits = 4))", 
-#                 xlims = (-0.05, 1.05), ylims = (-0.05, 1.05))
-# plot!(fig_2, 0:1, 0:1, linecolor = :black, label = nothing)
-
-# fig_3 = scatter(filt_data.use, filt_data.bv_use, zcolor = (monthidxs./12).+YEAR_NAT_START,
-#                 markersize = ms, markeralpha = ma,  cmap = cgrad([colorant"#2A2A2A", colors[3]]),
-#                 label = nothing,
-#                 xlabel = "Cluster Observation",
-#                 ylabel = "Model Prediction",
-#                 colorbar_title = "Year",
-#                 title = "BV Use\nRMSE = $(round(bv_use_rmse, digits = 4))", 
-#                 xlims = (-0.05, 1.05), y = (-0.05, 1.05))
-# plot!(fig_3, 0:1, 0:1, linecolor = :black, label = nothing)
-
-# fig_4 = scatter(filt_data.npc, filt_data.mitn_npc, zcolor = (monthidxs./12).+YEAR_NAT_START,
-#                 markersize = ms, markeralpha = ma,  cmap = cgrad([colorant"#2A2A2A", colors[2]]),
-#                 label = nothing,
-#                 xlabel = "Cluster Observation",
-#                 ylabel = "Model Prediction",
-#                 colorbar_title = "Year",
-#                 title = "MITN NPC\nRMSE = $(round(mitn_npc_rmse, digits = 4))", 
-#                 xlims = (-0.05, 1.05), ylims = (-0.05, 1.05))
-# plot!(fig_4, 0:1, 0:1, linecolor = :black, label = nothing)
-
-# fig_5 = scatter(filt_data.access, filt_data.mitn_access, zcolor = (monthidxs./12).+YEAR_NAT_START,
-#                 markersize = ms, markeralpha = ma,  cmap = cgrad([colorant"#2A2A2A", colors[2]]),
-#                 label = nothing,
-#                 xlabel = "Cluster Observation",
-#                 ylabel = "Model Prediction",
-#                 colorbar_title = "Year",
-#                 title = "MITN Access\nRMSE = $(round(mitn_access_rmse, digits = 4))", 
-#                 xlims = (-0.05, 1.05), ylims = (-0.05, 1.05))
-# plot!(fig_5, 0:1, 0:1, linecolor = :black, label = nothing)
-
-# fig_6 = scatter(filt_data.use, filt_data.mitn_use, zcolor = (monthidxs./12).+YEAR_NAT_START,
-#                 markersize = ms, markeralpha = ma,  cmap = cgrad([colorant"#2A2A2A", colors[2]]),
-#                 label = nothing,
-#                 xlabel = "Cluster Observation",
-#                 ylabel = "Model Prediction",
-#                 title = "MITN Use\nRMSE = $(round(mitn_use_rmse, digits = 4))", 
-#                 xlims = (-0.05, 1.05), ylims = (-0.05, 1.05))
-# plot!(fig_6, 0:1, 0:1, linecolor = :black, label = nothing)
-
-# rmse_plot = plot(fig_1, fig_2, fig_3, fig_4, fig_5, fig_6,
-#         layout = (2,3), size = (800,400))
-
-# savefig(rmse_plot, output_dir*"bv_mitn_rmse.pdf")

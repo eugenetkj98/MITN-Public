@@ -10,7 +10,7 @@ library(matrixStats)
 source("scripts/INLA/transforms.R")
 
 # Import Models
-load("outputs/INLA/model1_use_complete_logis.RData")
+load("outputs/INLA/model1_use_complete_logis_2.RData")
 
 # Check summary
 summary(m1)
@@ -21,8 +21,8 @@ summary(m1)
 ##############################
 
 # Define number of posterior samples
-n_samples_large <- 50
-n_samples_saved <- 20
+n_samples_large <- 100
+n_samples_saved <- 100
 
 # Get raster image for coordinates to predict on (i.e. only restrict predictions to Africa)
 reference_image <- raster('datasets/INLA/MAP_Regions_Unclipped_5k.tif')
@@ -66,7 +66,7 @@ cov_SLP <- raster::extract(raster('/mnt/s3/mastergrids/Other_Global_Covariates/E
 start_year <- 2000
 end_year <- 2023
 
-for (year in start_year:end_year) {
+for (year in 2022:2023) {
   # Adjust year string as needed
   adj_year <- max(min(year, 2021),2002)
   
