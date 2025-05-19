@@ -95,12 +95,12 @@ NAT_SUBNAT_ADJ_MCMC_SAMPLING_VAR = 0.0004
 # Subnational MITN Regresion
 ## Adjustment Weights
 SUBNAT_CROP_ADJ_MCMC_ITERATIONS = 5000 #50000 # Number of MCMC iterations
-SUBNAT_CROP_ADJ_N_CHAINS = 4 # Number of chains
+SUBNAT_CROP_ADJ_N_CHAINS = 16 # Number of chains
 SUBNAT_CROP_ADJ_MCMC_BURNIN = 2000 #10000 # Number of iterations to discard for burn-in
 
 ## Attrition Parameters
 SUBNAT_CROP_ATR_MCMC_ITERATIONS = 15000 #50000; # Number of MCMC iterations
-SUBNAT_CROP_ATR_N_CHAINS = 4 # Number of chains
+SUBNAT_CROP_ATR_N_CHAINS = 16 # Number of chains
 SUBNAT_CROP_ATR_MCMC_BURNIN = 2000 #10000 # Number of iterations to discard for burn-in
 SUBNAT_CROP_ATR_SCALING_CONSTANT = 0.1
 SUBNAT_CROP_ATR_PROPOSAL_SAMPLING_VAR = [0.015,0.8,0.015]  # SUBNAT_CROP_ATR_SCALING_CONSTANT .*[0.15,8,0.15] # Compact support sampling

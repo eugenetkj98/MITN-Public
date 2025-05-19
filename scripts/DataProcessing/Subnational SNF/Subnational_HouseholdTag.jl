@@ -9,6 +9,9 @@ Saves output as a subnational version of itn_hh_surveydata_complete_subnat.csv
 # %% Prep environment and subdirectories
 include(pwd()*"/scripts/init_env.jl")
 
+# %% Import filenames and directories from TOML file
+include(pwd()*"/scripts/read_toml.jl")
+
 # %%
 using GeoIO
 using GeoStats

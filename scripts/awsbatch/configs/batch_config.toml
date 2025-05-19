@@ -19,3 +19,15 @@ memsize = 32768
 [step5]
 ncpus = 32
 memsize = 65536
+
+[step6]
+ncpus = 8
+memsize = 16384
+
+[step7]
+ncpus = 16
+memsize = 32768
+
+[step8]
+ncpus = 32
+memsize = 65536

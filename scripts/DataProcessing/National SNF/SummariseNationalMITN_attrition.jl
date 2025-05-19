@@ -7,8 +7,8 @@ Extract posterior net crop and attrition estimates from regressed national crop 
 # %% Prep environment and subdirectories
 include(pwd()*"/scripts/init_env.jl")
 
-# %% Import filenames and directories from config file
-include(pwd()*"/scripts/dir_configs.jl")
+# %% Import filenames and directories from TOML file
+include(pwd()*"/scripts/read_toml.jl")
 
 # %% Import Public Packages
 using JLD2
