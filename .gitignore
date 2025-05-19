@@ -6,3 +6,5 @@
 *.tif
 *.png
 *.RData
+*.zip
+datasets/

@@ -8,8 +8,8 @@ Code that defined the PPL model for the estimating parameters for Net Access
 module NetAccessRegression
 export bayes_access
 
-# %% Import filenames and directories from config file
-include(pwd()*"/scripts/dir_configs.jl")
+# %% Import filenames and directories from TOML file
+include(pwd()*"/scripts/read_toml.jl")
 
 # %% Default parameters for net access regression
 # Bayesian MCMC hyperparameters

@@ -9,8 +9,8 @@ module NetCropRegression
 export bayes_GD
 export normalised_monthly_weights
 
-# %% Import filenames and directories from config file
-include(pwd()*"/scripts/dir_configs.jl")
+# %% Import filenames and directories from TOML file
+include(pwd()*"/scripts/read_toml.jl")
 
 using ProgressBars
 using LinearAlgebra

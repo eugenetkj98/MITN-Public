@@ -4,7 +4,6 @@ Date Created: 17/3/2025
 Last Updated: 17/3/2025
 This script takes into the cleaned survey entries from the data engineering team and attaches area_ids
 """
-
 # %% Declare required paths
 push!(LOAD_PATH,"src/") # Path for source files and modules
 
@@ -12,8 +11,11 @@ push!(LOAD_PATH,"src/") # Path for source files and modules
 # Package manager (This should install the required packages. If not, run the "instantiate" command via Pkg)
 include(pwd()*"/scripts/init_env.jl")
 
-# %% Import filenames and directories from config file
-include(pwd()*"/scripts/dir_configs.jl")
+# %% Import filenames and directories from TOML file
+include(pwd()*"/scripts/read_toml.jl")
+
+# %% Check thread running
+println("I am currently running with $(Threads.nthreads()) threads. My system memory is $(Sys.free_memory()/2^20).")
 
 # %% Data Wrangling
 using CSV
@@ -83,7 +85,9 @@ end
 
 # %% Write and save cleaned and standardised survey dataset
 cleaned_full_survey_data = hcat(dataeng_survey_data[:,setdiff(names(dataeng_survey_data),["area_id"])], DataFrame(area_id = area_ids))
+mkpath(output_dir)
 CSV.write(output_dir*output_filename, cleaned_full_survey_data)
 
-println("JULIA EXTRACTION COMPLETED :D")
+println("JULIA EXTRACTION COMPLETED :D.")
+# println("Ran on $(Threads.nthreads()), Written to path: "*output_dir*output_filename)
 flush(stdout)

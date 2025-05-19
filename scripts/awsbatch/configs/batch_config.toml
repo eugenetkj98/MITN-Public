@@ -1,0 +1,17 @@
+[general]
+
+[step1]
+ncpus = 16
+memsize = 16384
+
+[step2]
+ncpus = 2
+memsize = 32768
+
+[step3]
+ncpus = 8
+memsize = 16384
+
+[step4]
+ncpus = 16
+memsize = 32768

@@ -1,0 +1,111 @@
+########################################
+# Model Algorithm Settings
+########################################
+ISO_LIST = [
+            "AGO",
+            "BEN",
+            "BWA",
+            "BFA",
+            "BDI",
+            "CMR",
+            "CPV",
+            "CAF",
+            "TCD",
+            "COM",
+            "COG",
+            "CIV",
+            "COD",
+            "DJI",
+            "GNQ",
+            "ERI",
+            "ETH",
+            "GAB",
+            "GHA",
+            "GIN",
+            "GNB",
+            "KEN",
+            "LBR",
+            "MDG",
+            "MWI",
+            "MLI",
+            "MRT",
+            "MOZ",
+            "NAM",
+            "NER",
+            "NGA",
+            "RWA",
+            "STP",
+            "SEN",
+            "SLE",
+            "SOM",
+            "ZAF",
+            "SSD",
+            "SDN",
+            "SWZ",
+            "TZA",
+            "GMB",
+            "TGO",
+            "UGA",
+            "ZMB",
+            "ZWE"
+            ]
+EXCLUSION_ISOS = ["CPV", "ZAF"]
+EXCLUSION_CITN_ISOS = ["MRT"] # Countries to lump cITN and LLINs together when doing calculation
+ 
+# Regression Time Period
+YEAR_REF_START = 1950 # Earliest possible year for referencing survey extracts (PLEASE DO NOT TOUCH!)
+YEAR_NAT_START = 2000 # Start of National SNF Regression
+YEAR_NAT_END = 2023 # End of National SNF Regression (inclusive)
+YEAR_SUBNAT_TRANS = 2010 # Year to transition into subnat regression form national regression
+
+# Survey Standard Error Inflation
+STD_ERR_TAU = 1.5 # Standard error decay time scale adjustment (years)
+DEFAULT_INFLATION_SAT_SIZE = 4000 # Default number of survey points needed to assume accurate std err estimate
+
+# Data Extraction Settings
+SMOOTHING_WINDOW_WIDTH = 2 # Window size overwhich to smooth survey data
+
+# Missing data handling
+MISSING_NETS_SCALE = 1e6
+
+# National MITN Regression
+NAT_CROP_MCMC_ITERATIONS = 20000 #50000; # Number of MCMC iterations
+NAT_CROP_N_CHAINS = 4 # Number of chains
+NAT_CROP_MCMC_BURNIN = 2000 # Number of iterations to discard for burn-in
+NAT_CROP_PROPOSAL_SAMPLING_VAR = [0.12,0.06,0.08,0.08,0.001,0.04]  #0.004 .*[30,15,20,20,0.25,10] # Compact support sampling
+NAT_CROP_SGD_EPOCHS = 5 #Maximum number of SGD alternating iterations
+NAT_CROP_SGD_STEPS = 30 #Number of SGD steps in each iteration
+NAT_CROP_SGD_ALPHA = 0.03 #0.05 SGD learning rate
+NAT_CROP_SGD_EPSILON = 0.03 #0.2 step size over which to calculate numerical gradient
+NAT_CROP_SGD_DIC_SAMPLESIZE = 15 # Number of random points overwhich to calculate average DIC in SGD phase
+
+NAT_ACCESS_MCMC_ITERATIONS = 10000 # Number of MCMC iterations
+NAT_ACCESS_N_CHAINS = 16 # Maximum number of chains to sample simultaneously
+NAT_ACCESS_MCMC_BURNIN = 2000 #10000 # Number of iterations to discard for burn-in
+NAT_ACCESS_PROPOSAL_SAMPLING_VAR = [0.12,0.06,0.08,0.08,0.001,0.04] #0.004 .*[30,15,20,20,0.25,10] # Compact support sampling
+
+# National MITN Posterior Draws
+NAT_CROP_ACCESS_N_DRAWS = 100
+NAT_CROPAGE_N_DRAWS = 200
+SUBNAT_CROP_ACCESS_N_DRAWS = 100
+NAT_SUBNAT_ADJ_MCMC_ITERATIONS = 20000
+NAT_SUBNAT_ADJ_MCMC_BURNIN = 5000
+NAT_SUBNAT_ADJ_MCMC_SAMPLING_VAR = 0.0004
+
+# Subnational MITN Regresion
+## Adjustment Weights
+SUBNAT_CROP_ADJ_MCMC_ITERATIONS = 5000 #50000 # Number of MCMC iterations
+SUBNAT_CROP_ADJ_N_CHAINS = 4 # Number of chains
+SUBNAT_CROP_ADJ_MCMC_BURNIN = 2000 #10000 # Number of iterations to discard for burn-in
+
+## Attrition Parameters
+SUBNAT_CROP_ATR_MCMC_ITERATIONS = 15000 #50000; # Number of MCMC iterations
+SUBNAT_CROP_ATR_N_CHAINS = 4 # Number of chains
+SUBNAT_CROP_ATR_MCMC_BURNIN = 2000 #10000 # Number of iterations to discard for burn-in
+SUBNAT_CROP_ATR_SCALING_CONSTANT = 0.1
+SUBNAT_CROP_ATR_PROPOSAL_SAMPLING_VAR = [0.015,0.8,0.015]  # SUBNAT_CROP_ATR_SCALING_CONSTANT .*[0.15,8,0.15] # Compact support sampling
+
+# INLA Raster Sample
+INLA_N_SAMPLES = 100
+INLA_USE_N_SAMPLES = 100 # Number of samples to draw for INLA use deviation
+INLA_UNCERTAINTY_N_SAMPLES = 100 # Number of samples to draw for calculating INLA use deviation uncertainty

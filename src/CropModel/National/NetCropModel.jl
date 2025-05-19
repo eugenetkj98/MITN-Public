@@ -9,8 +9,8 @@ module NetCropModel
 export monthly_reduced_itn
 export model_evolve_forward
 
-# %% Import filenames and directories from config file
-include(pwd()*"/scripts/dir_configs.jl")
+# %% Import filenames and directories from TOML file
+include(pwd()*"/scripts/read_toml.jl")
 
 using Distributions
 using StatsBase

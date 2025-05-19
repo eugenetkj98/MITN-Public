@@ -70,28 +70,29 @@ for i in 1:length(filt_ISOs)
     flush(stdout)
 end
 
-@sync @distributed for i in (length(filt_ISOs)+1):length(ISO_list)
+@sync @distributed for i in 1:length(filt_ISOs)
     # Select ISO
-    ISO = ISO_list[i]
+    ISO = filt_ISOs[i]
 
     println("Fitting model for Country $(i) of $(length(ISO_list)) → $(ISO), on worker $(Distributed.myid()) with $(Threads.nthreads())")
     flush(stdout)
     
-    if ISO ∈ exclusion_ISOs
-        println("$(ISO) is on exclusion list. Moving to next country.")
-        flush(stdout)
-        continue
-    else
-        # Load extracted data
-        input_dict = load(OUTPUT_EXTRACTIONS_DIR*"crop/$(YEAR_START)_$(YEAR_END)/$(ISO)_$(YEAR_START)_$(YEAR_END)_cropextract.jld2")
+    # if ISO ∈ exclusion_ISOs
+    #     println("$(ISO) is on exclusion list. Moving to next country.")
+    #     flush(stdout)
+    #     continue
+    # else
 
-        # Net crop regression
-        bayes_GD(input_dict, save_output = true, N_EPOCHS = 5, n_chains = Threads.nthreads())
+    # Load extracted data
+    input_dict = load(OUTPUT_EXTRACTIONS_DIR*"crop/$(YEAR_START)_$(YEAR_END)/$(ISO)_$(YEAR_START)_$(YEAR_END)_cropextract.jld2")
 
-        # %%
-        println("Net Crop Regression complete for $(ISO). Data saved")
-        flush(stdout)
-    end
+    # Net crop regression
+    bayes_GD(input_dict, save_output = true, N_EPOCHS = 5, n_chains = Threads.nthreads())
+
+    # %%
+    println("Net Crop Regression complete for $(ISO). Data saved")
+    flush(stdout)
+    # end
 end
 
 

@@ -15,7 +15,8 @@ POPULATION_RASTER_DIR = "/mnt/s3/mastergrids/Other_Global_Covariates/Population/
 ACCESSIBILITY_RASTER_DIR = "/mnt/s3/mastergrids/Other_Global_Covariates/Accessibility/Weiss/2015/"
 
 # Output Data Directories
-OUTPUT_DIR = "outputs/" #/mnt/efs/userdata/etan/
+BASE_DIR = "/mnt/efs/userdata/etan/map-itn/"
+OUTPUT_DIR = BASE_DIR*"outputs/" #/mnt/efs/userdata/etan/
 OUTPUT_DATAPREP_DIR = OUTPUT_DIR*"data_prep/"
 OUTPUT_SUBNAT_DATAPREP_DIR = OUTPUT_DATAPREP_DIR*"subnational/"
 OUTPUT_EXTRACTIONS_DIR = OUTPUT_DIR*"extractions/"

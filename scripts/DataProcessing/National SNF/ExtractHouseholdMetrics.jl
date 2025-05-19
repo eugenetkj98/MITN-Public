@@ -9,8 +9,8 @@ applies adjustment to the standard errors. Outputs are saved in a csv file.
 # %% Prep environment and subdirectories
 include(pwd()*"/scripts/init_env.jl")
 
-# %% Import filenames and directories from config file
-include(pwd()*"/scripts/dir_configs.jl")
+# %% Import filenames and directories from TOML file
+include(pwd()*"/scripts/read_toml.jl")
 
 # %% Data Wrangling
 using CSV

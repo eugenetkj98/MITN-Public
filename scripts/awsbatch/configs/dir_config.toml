@@ -1,0 +1,96 @@
+########################################
+# Directory and File Settings
+########################################
+
+[base]
+BASE_DIR = "/mnt/efs/userdata/etan/map-itn/"
+
+[input_raw_dirs]
+HOUSEHOLD_SURVEY_DIR = "/mnt/s3/malaria_survey_extraction/mse_v10/data/custom/20250326/"
+BV_OUTPUT_DIR = "/mnt/efs/userdata/mvandenberg/data/itn_cube/20241015/"
+
+[input_pop_raw_dir]
+POPULATION_RASTER_DIR = "/mnt/s3/mastergrids/Other_Global_Covariates/Population/WorldPop/v3/PopulationCounts_DRC_fixed/5km/"
+
+[input_admin_shapefiles]
+ADMIN0_SHAPEFILE = "/mnt/s3/master_geometries/Admin_Units/Global/MAP/2023/MG_5K/admin2023_0_MG_5K.shp"
+ADMIN1_SHAPEFILE = "/mnt/s3/master_geometries/Admin_Units/Global/MAP/2023/MG_5K/admin2023_1_MG_5K.shp"
+
+[input_static_cov_raw_dirs]
+ACCESSIBILITY_RASTER_DIR = "/mnt/s3/mastergrids/Other_Global_Covariates/Accessibility/Weiss/2015/"
+ACCESSIBILITY_COV_FILENAME = "accessibility_to_cities_2015_v1.0.tif"
+COV_PET_DIR = "/mnt/s3/mastergrids/Other_Global_Covariates/PET/5km/Synoptic/"
+COV_PET_FILENAME = "PET_v3.Synoptic.Overall.Data.5km.mean.tif"
+COV_ARID_DIR = "/mnt/s3/mastergrids/Other_Global_Covariates/Aridity/5km/Synoptic/"
+COV_ARID_FILENAME = "Aridity_Index_v3.Synoptic.Overall.Data.5km.mean.tif"
+COV_NTL_DIR = "/mnt/s3/mastergrids/Other_Global_Covariates/NightTimeLights/VIIRS_DNB_Composites/5km/Monthly/"
+COV_NTL_FILENAME = "VIIRS-SLC.2014.01.Data.5km.mean.tif"
+COV_ELEV_DIR = "/mnt/s3/mastergrids/Other_Global_Covariates/Elevation/SRTM-Elevation/5km/Synoptic/"
+COV_ELEV_FILENAME = "SRTM_elevation.Synoptic.Overall.Data.5km.mean.tif"
+COV_SLP_DIR = "/mnt/s3/mastergrids/Other_Global_Covariates/Elevation/SRTM-Slope/5km/Synoptic/"
+COV_SLP_FILENAME = "SRTM_SlopePCT_Corrected.Synoptic.Overall.Data.5km.mean.tif"
+
+[input_monthly_cov_raw_dirs]
+COV_EVI_DIR = "/mnt/s3/mastergrids/MODIS_Global/MCD43D6_v061_BRDF_Reflectance/EVI_v061/5km/Monthly/"
+COV_LSTD_DIR = "/mnt/s3/mastergrids/MODIS_Global/MOD11A2_v061_LST/LST_Day_v061/5km/Monthly/"
+COV_LSTN_DIR = "/mnt/s3/mastergrids/MODIS_Global/MOD11A2_v061_LST/LST_Night_v061/5km/Monthly/"
+COV_LSTDELTA_DIR = "/mnt/s3/mastergrids/MODIS_Global/MOD11A2_v061_LST/LST_DiurnalDifference_v061/5km/Monthly/"
+COV_TCW_DIR = "/mnt/s3/mastergrids/MODIS_Global/MCD43D6_v061_BRDF_Reflectance/TCW_v061/5km/Monthly/"
+COV_TSI_DIR = "/mnt/s3/mastergrids/Other_Global_Covariates/TemperatureSuitability/TSI_Pf_Dynamic/5km/Monthly/"
+COV_TCB_DIR = "/mnt/s3/mastergrids/MODIS_Global/MCD43D6_v061_BRDF_Reflectance/TCB_v061/5km/Monthly/"
+
+[input_annual_cov_raw_dirs]
+COV_LAND00_DIR = "/mnt/s3/mastergrids/MODIS_Global/MCD12Q1_v061_Annual_Landcover/IGBP_Landcover_Class00/5km/Annual/"
+COV_LAND01_DIR = "/mnt/s3/mastergrids/MODIS_Global/MCD12Q1_v061_Annual_Landcover/IGBP_Landcover_Class01/5km/Annual/"
+COV_LAND02_DIR = "/mnt/s3/mastergrids/MODIS_Global/MCD12Q1_v061_Annual_Landcover/IGBP_Landcover_Class02/5km/Annual/"
+COV_LAND03_DIR = "/mnt/s3/mastergrids/MODIS_Global/MCD12Q1_v061_Annual_Landcover/IGBP_Landcover_Class03/5km/Annual/"
+COV_LAND04_DIR = "/mnt/s3/mastergrids/MODIS_Global/MCD12Q1_v061_Annual_Landcover/IGBP_Landcover_Class04/5km/Annual/"
+COV_LAND05_DIR = "/mnt/s3/mastergrids/MODIS_Global/MCD12Q1_v061_Annual_Landcover/IGBP_Landcover_Class05/5km/Annual/"
+COV_LAND06_DIR = "/mnt/s3/mastergrids/MODIS_Global/MCD12Q1_v061_Annual_Landcover/IGBP_Landcover_Class06/5km/Annual/"
+COV_LAND07_DIR = "/mnt/s3/mastergrids/MODIS_Global/MCD12Q1_v061_Annual_Landcover/IGBP_Landcover_Class07/5km/Annual/"
+COV_LAND08_DIR = "/mnt/s3/mastergrids/MODIS_Global/MCD12Q1_v061_Annual_Landcover/IGBP_Landcover_Class08/5km/Annual/"
+COV_LAND09_DIR = "/mnt/s3/mastergrids/MODIS_Global/MCD12Q1_v061_Annual_Landcover/IGBP_Landcover_Class09/5km/Annual/"
+COV_LAND10_DIR = "/mnt/s3/mastergrids/MODIS_Global/MCD12Q1_v061_Annual_Landcover/IGBP_Landcover_Class10/5km/Annual/"
+COV_LAND11_DIR = "/mnt/s3/mastergrids/MODIS_Global/MCD12Q1_v061_Annual_Landcover/IGBP_Landcover_Class11/5km/Annual/"
+COV_LAND12_DIR = "/mnt/s3/mastergrids/MODIS_Global/MCD12Q1_v061_Annual_Landcover/IGBP_Landcover_Class12/5km/Annual/"
+COV_LAND13_DIR = "/mnt/s3/mastergrids/MODIS_Global/MCD12Q1_v061_Annual_Landcover/IGBP_Landcover_Class13/5km/Annual/"
+COV_LAND14_DIR = "/mnt/s3/mastergrids/MODIS_Global/MCD12Q1_v061_Annual_Landcover/IGBP_Landcover_Class14/5km/Annual/"
+COV_LAND15_DIR = "/mnt/s3/mastergrids/MODIS_Global/MCD12Q1_v061_Annual_Landcover/IGBP_Landcover_Class15/5km/Annual/"
+COV_LAND16_DIR = "/mnt/s3/mastergrids/MODIS_Global/MCD12Q1_v061_Annual_Landcover/IGBP_Landcover_Class16/5km/Annual/"
+COV_LAND17_DIR = "/mnt/s3/mastergrids/MODIS_Global/MCD12Q1_v061_Annual_Landcover/IGBP_Landcover_Class17/5km/Annual/"
+
+[input_rel_dirs]
+BASEDIR_REL_RAW_DATASET_DIR = "datasets/"
+BASEDIR_REL_RAW_SUBNAT_DATASET_DIR = "subnational/"
+
+[output_rel_dirs]
+BASEDIR_REL_OUTPUT_DIR = "outputs/"
+OUTPUTDIR_REL_DATAPREP_DIR = "data_prep/"
+OUTPUTDIR_REL_SUBNAT_DATAPREP_DIR = "subnational/"
+OUTPUTDIR_REL_EXTRACTIONS_DIR = "extractions/"
+OUTPUTDIR_REL_REGRESSIONS_DIR = "regressions/"
+OUTPUTDIR_REL_DRAWS_DIR = "draws/"
+OUTPUTDIR_REL_RASTERS_DIR = "INLA/rasters/"
+OUTPUTDIR_REL_FORWARD_PRED_DIR = "forward_prediction_inputs/"
+BASEDIR_REL_OUTPUT_PLOTS_DIR = "output_plots/"
+
+[filenames]
+BV_OUTPUTS_FILENAME = "bv_retention_times.csv" ## BC Comparison Data
+HOUSEHOLD_SURVEY_FILENAME = "Svy_ALL_ITN_HH_Res.csv"## National
+COUNTRY_CODES_FILENAME = "country_codes.csv"
+ISO_LIST_FILENAME = "ISO_list.csv"
+DELIVERIES_DATA_FILENAME = "base_manufacturer_deliveries.csv"
+DISTRIBUTION_DATA_FILENAME = "net_distributions_cITN_adjusted.csv"
+MULTITYPE_DISTRIBUTION_DATA_FILENAME = "net_distributions_cITN_adjusted_multitype.csv"
+POPULATION_DATA_FILENAME = "ihme_populations.csv"
+ADMIN1_AREAID_LEGEND_FILENAME = "admin2023_1_MG_5K_config.csv" ## Subnational
+SUBNAT_POPULATION_FILENAME = "map_admin1_zonal_stats_pops.csv"
+SUBNAT_DISTRIBUTION_DATA_FILENAME = "net_distributions_admin1_dummy_combined_amp.csv"
+HOUSEHOLD_SURVEY_DATA_FILENAME = "itn_hh_surveydata_complete_dataeng.csv" #Data Prep Outputs
+HOUSEHOLD_SUBNAT_SURVEY_DATA_FILENAME = "itn_hh_surveydata_complete_subnat.csv"
+HOUSEHOLD_NAT_SUMMARY_DATA_FILENAME = "npc_monthly_data.csv"
+HOUSEHOLD_SUBNAT_SUMMARY_DATA_FILENAME = "subnat_npc_monthly_data.csv"
+INLA_DATAPREP_FILENAME = "inla_dataset.csv"
+INLA_REDUCED_DATAPREP_FILENAME = "inla_dataset_reduced.csv"
+INLA_USE_REDUCED_DATAPREP_FILENAME = "inla_dataset_reduced_use.csv"
+COV_LEGEND_FILENAME = "inla_raw_covariates_legend.csv"

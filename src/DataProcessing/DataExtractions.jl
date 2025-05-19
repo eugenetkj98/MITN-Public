@@ -10,8 +10,8 @@ export extract_data_netcrop
 export SA_extract_data_netcrop
 export extract_data_netaccess
 
-# %% Import settings, filenames and directories from config file
-include(pwd()*"/scripts/dir_configs.jl")
+# %% Import filenames and directories from TOML file
+include(pwd()*"/scripts/read_toml.jl")
 
 # %% Import required packages
 # Data Wrangling
