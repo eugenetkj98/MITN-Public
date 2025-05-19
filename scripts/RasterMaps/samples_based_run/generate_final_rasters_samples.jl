@@ -64,10 +64,11 @@ output_dir = OUTPUT_RASTERS_DIR
 # Make paths tosave location if doesn't already exist
 mkpath(output_dir*"final_netage/snf_netage/")
 mkpath(output_dir*"final_npc/snf_npc/")
-mkpath(output_dir*"final_npc/logmodel_npc/")
+mkpath(output_dir*"final_npc/posterior_samples/")
 mkpath(output_dir*"final_access/snf_access/")
-mkpath(output_dir*"final_access/pmodel_access/")
-mkpath(output_dir*"final_use/logis_use/")
+mkpath(output_dir*"final_access/posterior_samples/")
+mkpath(output_dir*"final_use/posterior_samples/")
+mkpath(output_dir*"final_utilisation/posterior_samples/monthly/")
 
 # %% Perform draws and save outputs. Filter out unwanted countries
 ISO_list = String.(CSV.read(RAW_DATASET_DIR*ISO_LIST_FILENAME, DataFrame)[:,1])
@@ -318,10 +319,10 @@ for year in YEAR_START:YEAR_END
             rm(output_dir*"final_use/logis_use/use_$(year)_$(month_str)_sample_$(sample_i).tif"; force=true)
             rm(output_dir*"final_utilisation/monthly/utilisation_$(year)_$(month_str)_sample_$(sample_i).tif"; force=true)
             
-            write(output_dir*"final_npc/logmodel_npc/npc_$(year)_$(month_str)_sample_$(sample_i).tif", npc_map_sample_raster, force = true)
-            write(output_dir*"final_access/pmodel_access/access_$(year)_$(month_str)_sample_$(sample_i).tif", access_map_sample_raster, force = true)
-            write(output_dir*"final_use/logis_use/use_$(year)_$(month_str)_sample_$(sample_i).tif", use_map_sample_raster, force = true)
-            write(output_dir*"final_utilisation/monthly/utilisation_$(year)_$(month_str)_sample_$(sample_i).tif", util_map_sample_raster, force = true)
+            write(output_dir*"final_npc/posterior_samples/npc_$(year)_$(month_str)_sample_$(sample_i).tif", npc_map_sample_raster, force = true)
+            write(output_dir*"final_access/posterior_samples/access_$(year)_$(month_str)_sample_$(sample_i).tif", access_map_sample_raster, force = true)
+            write(output_dir*"final_use/posterior_samples/use_$(year)_$(month_str)_sample_$(sample_i).tif", use_map_sample_raster, force = true)
+            write(output_dir*"final_utilisation/posterior_samples/monthly/utilisation_$(year)_$(month_str)_sample_$(sample_i).tif", util_map_sample_raster, force = true)
 
             println("Raster construction complete.")
         end

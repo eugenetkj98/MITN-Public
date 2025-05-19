@@ -317,13 +317,16 @@ for ISO in filt_ISOs
                                     n_max = 20)
 
         # %% Add to collection of outputs
-        # Only keep mean for net sampled demography due to file size constraints
+        # Only keep mean for net sampled demography due to file size constraints (IGNORED on Tas' request for CI of mean net age)
         COMBINED_A_BYNET_mean = mean(COMBINED_A_BYNET_samples, dims = 1)[1,:,:,:]
         COMBINED_A_TOTAL_mean = mean(COMBINED_A_TOTAL_samples,dims = 1)[1,:,:]
+
         admin1_output = Dict(   "area_id" => area_id,
+                                "COMBINED_A_BYNET_samples" => Float32.(COMBINED_A_BYNET_samples),
                                 "COMBINED_A_BYNET_mean" => COMBINED_A_BYNET_mean,
                                 "Γ_MONTHLY_BYNET_samples" => Γ_MONTHLY_BYNET_samples,
                                 "NPC_MONTHLY_BYNET_samples" => NPC_MONTHLY_BYNET_samples,
+                                "COMBINED_A_TOTAL_samples" => Float32.(COMBINED_A_TOTAL_samples),
                                 "COMBINED_A_TOTAL_mean" => COMBINED_A_TOTAL_mean,
                                 "Γ_MONTHLY_TOTAL_samples" => Γ_MONTHLY_TOTAL_samples,
                                 "NPC_MONTHLY_TOTAL_samples" => NPC_MONTHLY_TOTAL_samples,
@@ -379,7 +382,6 @@ for ISO in filt_ISOs
             NAT_NPC_STD_MONTHLY[monthidx] = filt_nat_npc_monthly[row_i,"NPC_adj_se"]
         end
     end
-
 
     ##############################
     # %% SUBNATIONAL DATA PREP
@@ -454,8 +456,13 @@ for ISO in filt_ISOs
 
         # Calculate Adjusted Estimates
         ADJ_COMBINED_A_BYNET_mean = admin1_output["COMBINED_A_BYNET_mean"].*α[admin1_name_i]
+        ADJ_COMBINED_A_BYNET_samples = admin1_output["COMBINED_A_BYNET_samples"].*α[admin1_name_i]
         ADJ_Γ_MONTHLY_BYNET_samples = admin1_output["Γ_MONTHLY_BYNET_samples"].*α[admin1_name_i]
         ADJ_COMBINED_A_TOTAL_mean = sum(ADJ_COMBINED_A_BYNET_mean, dims = 3)[:,:,1]
+        ADJ_COMBINED_A_TOTAL_samples = zeros(n_samples, size(ADJ_COMBINED_A_TOTAL_mean)...)
+        for sample_i in 1:n_samples
+            ADJ_COMBINED_A_TOTAL_samples[sample_i,:,:] = sum(ADJ_COMBINED_A_BYNET_samples[sample_i,:,:,:], dims = 3)[:,:,1]
+        end
         ADJ_Γ_MONTHLY_TOTAL_samples = sum(ADJ_Γ_MONTHLY_BYNET_samples, dims = 3)[:,:,1]
         ADJ_NPC_MONTHLY_BYNET_samples = copy(ADJ_Γ_MONTHLY_BYNET_samples)
         for i in 1:n_samples
@@ -465,7 +472,6 @@ for ISO in filt_ISOs
         end
         ADJ_NPC_MONTHLY_TOTAL_samples = ADJ_Γ_MONTHLY_TOTAL_samples./repeat(SUBNAT_POPULATION_MONTHLY[admin1_name_i,:]', n_samples,1)
 
-
         # Re-sample Access
 
         FULL_POPULATION_MONTHLY = subnat_reg_data["admin1_outputs"][admin1_name_i]["FULL_POPULATION_MONTHLY"]
@@ -474,9 +480,11 @@ for ISO in filt_ISOs
                                                 n_max = 20)
 
         adj_admin1_output = Dict(   "area_id" => area_id,
+                                    "ADJ_COMBINED_A_BYNET_samples" => Float32.(ADJ_COMBINED_A_BYNET_samples),
                                     "ADJ_COMBINED_A_BYNET_mean" => ADJ_COMBINED_A_BYNET_mean,
                                     "ADJ_Γ_MONTHLY_BYNET_samples" => ADJ_Γ_MONTHLY_BYNET_samples,
                                     "ADJ_NPC_MONTHLY_BYNET_samples" => ADJ_NPC_MONTHLY_BYNET_samples,
+                                    "ADJ_COMBINED_A_TOTAL_samples" => Float32.(ADJ_COMBINED_A_TOTAL_samples),
                                     "ADJ_COMBINED_A_TOTAL_mean" => ADJ_COMBINED_A_TOTAL_mean,
                                     "ADJ_Γ_MONTHLY_TOTAL_samples" => ADJ_Γ_MONTHLY_TOTAL_samples,
                                     "ADJ_NPC_MONTHLY_TOTAL_samples" => ADJ_NPC_MONTHLY_TOTAL_samples,
