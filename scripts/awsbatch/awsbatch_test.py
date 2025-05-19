@@ -30,24 +30,37 @@ def create_workflow(wf: Workflow):
     # print("Completed Step 2 Succesfully!")
 
     # print("Commencing Step 3: Net Crop Model Regression\n")
-    step3 = wf.add_task(
-        name = "National_NPC_SNF_Regression",
-        memory_mb = config["step3"]["memsize"],
-        vcpus = config["step3"]["ncpus"],
-        command = f"julia --threads={config["step3"]["ncpus"]} scripts/NationalMITN/AWS_run_analysis_crop.jl "+"${ISO}",
-        # after = [step2]
+    # step3 = wf.add_task(
+    #     name = "National_NPC_SNF_Regression",
+    #     memory_mb = config["step3"]["memsize"],
+    #     vcpus = config["step3"]["ncpus"],
+    #     command = f"julia --threads={config["step3"]["ncpus"]} scripts/NationalMITN/AWS_run_analysis_crop.jl "+"${ISO}",
+    #     # after = [step2]
+    #     array_parameters = {
+    #         "ISO": model_config["ISO_LIST"]
+    #     }
+    # )
+    # print("Completed Step 3 Succesfully!")
+
+    # print("Commencing Step 4: Net Access Model Regression\n")
+    # step4 = wf.add_task(
+    #     name = "National_Access_SNF_Regression",
+    #     memory_mb = config["step4"]["memsize"],
+    #     vcpus = config["step4"]["ncpus"],
+    #     command = f"julia --threads={config["step4"]["ncpus"]} scripts/NationalMITN/AWS_run_analysis_access.jl",
+    #     # after = [step3]
+    # )
+    # print("Completed Step 4 Succesfully!")
+
+    # print("Commencing Step 5: Net Crop SNF Posterior Draws\n")
+    step5 = wf.add_task(
+        name = "National_NPC_SNF_Draws",
+        memory_mb = config["step5"]["memsize"],
+        vcpus = config["step5"]["ncpus"],
+        command = f"julia --threads={config["step5"]["ncpus"]} scripts/NationalMITN/AWS_generate_crop_access_draws.jl "+"${ISO}",
+        # after = [step4]
         array_parameters = {
             "ISO": model_config["ISO_LIST"]
         }
     )
-    # print("Completed Step 3 Succesfully!")
-
-    # print("Commencing Step 3: Net Crop Model Regression\n")
-    step4 = wf.add_task(
-        name = "National_Access_SNF_Regression",
-        memory_mb = config["step4"]["memsize"],
-        vcpus = config["step4"]["ncpus"],
-        command = f"julia --threads={config["step4"]["ncpus"]} scripts/NationalMITN/AWS_run_analysis_access.jl",
-        # after = [step3]
-    )
-    # print("Completed Step 3 Succesfully!")
+    # print("Completed Step 5 Succesfully!")

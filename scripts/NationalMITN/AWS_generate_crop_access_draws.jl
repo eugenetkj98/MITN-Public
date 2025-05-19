@@ -4,8 +4,6 @@ Date Created: 23/7/2024
 Last Updated: 26/8/2024
 Code to generate the mean net crop posterior estimate. Saves as a CSV file
 """
-
-
 # %% Prep environment and subdirectories
 include(pwd()*"/scripts/init_env.jl")
 
@@ -45,10 +43,13 @@ exclusion_ISOs = EXCLUSION_ISOS
 YEAR_START = YEAR_NAT_START
 YEAR_END = YEAR_NAT_END
 
-# %% Perform draws and save outputs
-filt_ISOs = setdiff(ISO_list, exclusion_ISOs)
+# %% Get ISO to analyse from argument input
+ISO = ARGS[1]
 
-for ISO in filt_ISOs
+if ISO ∈ exclusion_ISOs
+    println("$(ISO) is on exclusion list. Skipping draws.")
+    flush(stdout)
+else
     println("Generating draws of national crop and access for $(ISO)...")
     # Import Data
     input_dict = load(OUTPUT_EXTRACTIONS_DIR*"crop/$(YEAR_START)_$(YEAR_END)/$(ISO)_$(YEAR_START)_$(YEAR_END)_cropextract.jld2")
