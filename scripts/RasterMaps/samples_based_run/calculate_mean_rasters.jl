@@ -30,7 +30,7 @@ mkpath(raster_dir*"final_utilisation/mean/monthly")
 
 
 # %% Year Bounds
-YEAR_START = YEAR_NAT_START
+YEAR_START = 2004 #YEAR_NAT_START
 YEAR_END = YEAR_NAT_END
 
 for year in YEAR_START:YEAR_END
