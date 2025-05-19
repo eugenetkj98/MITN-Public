@@ -64,3 +64,16 @@ def create_workflow(wf: Workflow):
         }
     )
     # print("Completed Step 5 Succesfully!")
+
+    # print("Commencing Step 5: Net Crop SNF Posterior Draws\n")
+    step5 = wf.add_task(
+        name = "National_NPC_SNF_Draws",
+        memory_mb = config["step5"]["memsize"],
+        vcpus = config["step5"]["ncpus"],
+        command = f"julia --threads={config["step5"]["ncpus"]} scripts/NationalMITN/AWS_generate_crop_access_draws.jl "+"${ISO}",
+        # after = [step4]
+        array_parameters = {
+            "ISO": model_config["ISO_LIST"]
+        }
+    )
+    # print("Completed Step 5 Succesfully!")
