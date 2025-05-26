@@ -7,5 +7,6 @@
 *.png
 *.RData
 *.zip
+*.tar
 datasets/
 outputs/
