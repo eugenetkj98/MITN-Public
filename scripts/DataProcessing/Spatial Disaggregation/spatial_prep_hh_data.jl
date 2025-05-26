@@ -1,28 +1,28 @@
 """
 Author: Eugene Tan
 Date Created: 2/12/2024
-Last Updated: 5/12/2024
+Last Updated: 20/5/2024
 Script to go through list of all household survey entries and extract relevant covariate values at each survey
 """
 
 # %% Prep environment and subdirectories
 include(pwd()*"/scripts/init_env.jl")
 
-# %% Import filenames and directories from config file
-include(pwd()*"/scripts/dir_configs.jl")
+# %% Import filenames and directories from TOML file
+include(pwd()*"/scripts/read_toml.jl")
 
 # %% Import relevant packages
 using ProgressBars
 using DataFrames
 using CSV
 using Rasters
+
 # using Shapefile
 using LinearAlgebra
 using GeoInterface
 using GeoIO
 using JLD2
 using StatsBase
-using Plots
 
 # Custom packages
 using DateConversions
@@ -60,7 +60,7 @@ full_hh_data = CSV.read(hh_dir*hh_filename, DataFrame)
 hh_data = full_hh_data[.!ismissing.(full_hh_data.latitude),:]
 
 # Get list of unique ISOs
-ISO_list = String.(CSV.read(RAW_DATASET_DIR*ISO_LIST_FILENAME, DataFrame)[:,1])
+ISO_list = ISO_LIST
 exclusion_ISOs = ["CPV","ZAF"]
 filt_ISOs = setdiff(ISO_list, exclusion_ISOs)
 
@@ -68,8 +68,11 @@ filt_ISOs = setdiff(ISO_list, exclusion_ISOs)
 df_collection = []
 
 # Go through each ISO and calculate/extract required data
-for ISO_i in ProgressBar(1:length(filt_ISOs))
+for ISO_i in 1:length(filt_ISOs)
+    
     ISO = filt_ISOs[ISO_i]
+
+    println("Extracting houshold survey data for country $(ISO_i) of $(length(filt_ISOs)) → $(ISO)")
 
     #####################################
     # Load MITN Posteriors data
@@ -77,9 +80,7 @@ for ISO_i in ProgressBar(1:length(filt_ISOs))
     snf_post_filename = "$(ISO)_SUBNAT_draws.jld2"
     snf_post_draws = JLD2.load(snf_post_dir*snf_post_filename)
 
-    # Extract relevant household survey data based on current ISO
-    snf_post_draws["YEAR_START_NAT"]
-    
+    # Extract relevant household survey data based on current ISO    
     country_hh_data = hh_data[(hh_data.ISO .== ISO) .&
                             (.!ismissing.(hh_data.area_id)) .&
                             (hh_data.interview_year .>= snf_post_draws["YEAR_START_NAT"]),:]
@@ -180,6 +181,8 @@ for ISO_i in ProgressBar(1:length(filt_ISOs))
     push!(df_collection, df)
 end
 
+GC.gc()
+
 # %% Concatenate all dataframe fragments
 hh_data_summary = vcat(df_collection...)
 
@@ -195,6 +198,8 @@ YEAR_VALS = sort(unique(hh_data_summary.interview_year))
 #######
 # %% Accessibility to Cities
 #######
+
+println("Extracting static covariate: Accessibility")
 global cov_raster_filepath = ACCESSIBILITY_RASTER_DIR
 global cov_raster_filename = ACCESSIBILITY_COV_FILENAME
 
@@ -217,7 +222,7 @@ global cov_raster_m = replace_missing(cov_raster_m, missingval = -9999)
 ACCESS_cov = zeros(size(hh_data_summary)[1])
 
 # %% for each row in hh_data_summary
-for row_i in 1:size(hh_data_summary)[1]
+Threads.@threads for row_i in 1:size(hh_data_summary)[1]
     # Get lat, lon valuyes
     lat, lon = hh_data_summary[row_i,["latitude", "longitude"]]
 
@@ -231,11 +236,13 @@ for row_i in 1:size(hh_data_summary)[1]
     # Extract required value
     ACCESS_cov[row_i] = Float64(cov_raster_m[lon_idx, lat_idx])
 end
-
+GC.gc()
 
 #######
 # %% PET
 #######
+println("Extracting static covariate: PET")
+
 global cov_raster_filepath = COV_PET_DIR
 global cov_raster_filename = COV_PET_FILENAME
 
@@ -246,7 +253,7 @@ global cov_raster = replace_missing(Raster(cov_raster_filepath*cov_raster_filena
 PET_cov = zeros(size(hh_data_summary)[1])
 
 # %% for each row in hh_data_summary
-for row_i in 1:size(hh_data_summary)[1]
+Threads.@threads for row_i in 1:size(hh_data_summary)[1]
     # Get lat, lon valuyes
     lat, lon = hh_data_summary[row_i,["latitude", "longitude"]]
 
@@ -262,10 +269,13 @@ for row_i in 1:size(hh_data_summary)[1]
 end
 
 PET_cov = max.(0, PET_cov)
+GC.gc()
 
 #######
 # %% Aridity Covariate
 #######
+println("Extracting static covariate: ARID")
+
 global cov_raster_filepath = COV_ARID_DIR
 global cov_raster_filename = COV_ARID_FILENAME
 
@@ -276,7 +286,7 @@ global cov_raster = replace_missing(Raster(cov_raster_filepath*cov_raster_filena
 ARID_cov = zeros(size(hh_data_summary)[1])
 
 # %% for each row in hh_data_summary
-for row_i in 1:size(hh_data_summary)[1]
+Threads.@threads for row_i in 1:size(hh_data_summary)[1]
     # Get lat, lon valuyes
     lat, lon = hh_data_summary[row_i,["latitude", "longitude"]]
 
@@ -292,10 +302,13 @@ for row_i in 1:size(hh_data_summary)[1]
 end
 
 ARID_cov = max.(0, ARID_cov)
+GC.gc()
 
 #######
 # %% Night Time Lights Covariate
 #######
+println("Extracting static covariate: NTL")
+
 global cov_raster_filepath = COV_NTL_DIR
 global cov_raster_filename = COV_NTL_FILENAME
 
@@ -306,7 +319,7 @@ global cov_raster = replace_missing(Raster(cov_raster_filepath*cov_raster_filena
 NTL_cov = zeros(size(hh_data_summary)[1])
 
 # %% for each row in hh_data_summary
-for row_i in 1:size(hh_data_summary)[1]
+Threads.@threads for row_i in 1:size(hh_data_summary)[1]
     # Get lat, lon valuyes
     lat, lon = hh_data_summary[row_i,["latitude", "longitude"]]
 
@@ -322,10 +335,13 @@ for row_i in 1:size(hh_data_summary)[1]
 end
 
 NTL_cov = max.(0, NTL_cov)
+GC.gc()
 
 #######
 # %% Elevation
 #######
+println("Extracting static covariate: Elevation")
+
 global cov_raster_filepath = COV_ELEV_DIR
 global cov_raster_filename = COV_ELEV_FILENAME
 
@@ -336,7 +352,7 @@ global cov_raster = replace_missing(Raster(cov_raster_filepath*cov_raster_filena
 ELEV_cov = zeros(size(hh_data_summary)[1])
 
 # %% for each row in hh_data_summary
-for row_i in 1:size(hh_data_summary)[1]
+Threads.@threads for row_i in 1:size(hh_data_summary)[1]
     # Get lat, lon valuyes
     lat, lon = hh_data_summary[row_i,["latitude", "longitude"]]
 
@@ -352,10 +368,13 @@ for row_i in 1:size(hh_data_summary)[1]
 end
 
 ELEV_cov = max.(0, ELEV_cov)
+GC.gc()
 
 #######
 # %% Slope
 #######
+println("Extracting static covariate: Slope")
+
 global cov_raster_filepath = COV_SLP_DIR
 global cov_raster_filename = COV_SLP_FILENAME
 
@@ -366,7 +385,7 @@ global cov_raster = replace_missing(Raster(cov_raster_filepath*cov_raster_filena
 SLP_cov = zeros(size(hh_data_summary)[1])
 
 # %% for each row in hh_data_summary
-for row_i in 1:size(hh_data_summary)[1]
+Threads.@threads for row_i in 1:size(hh_data_summary)[1]
     # Get lat, lon valuyes
     lat, lon = hh_data_summary[row_i,["latitude", "longitude"]]
 
@@ -382,6 +401,7 @@ for row_i in 1:size(hh_data_summary)[1]
 end
 
 SLP_cov = max.(0, SLP_cov)
+GC.gc()
 
 ################################################
 # Monthly varying covariates
@@ -398,8 +418,11 @@ EVI_cov = zeros(size(hh_data_summary)[1])
 global cov_raster_filepath = COV_EVI_DIR
 
 # Select ayear
-for year_idx in ProgressBar(1:length(YEAR_VALS))
+for year_idx in 1:length(YEAR_VALS)
+    
     year = YEAR_VALS[year_idx]
+
+    println("Extracting monthly covariate: EVI, Year $(year)")
 
     # # Temporary truncation of data (covariate data not avaialable after 2016)
     # if year > 2022
@@ -410,7 +433,7 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
     months = unique(hh_data_summary[hh_data_summary.interview_year .== year,"interview_month"])
 
     # Select a month
-    for month_idx in ProgressBar(1:length(months), leave = false)
+    for month_idx in 1:length(months)
         month = months[month_idx]
 
         # If required time period is not available, just take closest one
@@ -435,7 +458,7 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
 
         temp_cov_vals = Vector{Float64}(undef, length(entry_idxs))
 
-        for i in 1:length(entry_idxs)
+        Threads.@threads for i in 1:length(entry_idxs)
             idx = entry_idxs[i]
 
             # Get lat, lon valuyes
@@ -457,6 +480,7 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
     end
 end
 EVI_cov = max.(0, EVI_cov)
+GC.gc()
 
 #######
 # %% LST Day
@@ -469,8 +493,10 @@ LSTD_cov = zeros(size(hh_data_summary)[1])
 global cov_raster_filepath = COV_LSTD_DIR
 
 # Select ayear
-for year_idx in ProgressBar(1:length(YEAR_VALS))
+for year_idx in 1:length(YEAR_VALS)
     year = YEAR_VALS[year_idx]
+
+    println("Extracting monthly covariate: LSTD, Year $(year)")
 
     # # Temporary truncation of data (covariate data not avaialable after 2016)
     # if year > 2021
@@ -481,7 +507,7 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
     months = unique(hh_data_summary[hh_data_summary.interview_year .== year,"interview_month"])
 
     # Select a month
-    for month_idx in ProgressBar(1:length(months), leave = false)
+    for month_idx in 1:length(months)
         month = months[month_idx]
 
         # If required time period is not available, just take closest one
@@ -506,7 +532,7 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
 
         temp_cov_vals = Vector{Float64}(undef, length(entry_idxs))
 
-        for i in 1:length(entry_idxs)
+        Threads.@threads for i in 1:length(entry_idxs)
             idx = entry_idxs[i]
 
             # Get lat, lon valuyes
@@ -528,6 +554,7 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
     end
 end
 LSTD_cov = max.(0, LSTD_cov)
+GC.gc()
 
 #######
 # %% LST Night
@@ -540,8 +567,10 @@ LSTN_cov = zeros(size(hh_data_summary)[1])
 global cov_raster_filepath = COV_LSTN_DIR
 
 # Select ayear
-for year_idx in ProgressBar(1:length(YEAR_VALS))
+for year_idx in 1:length(YEAR_VALS)
     year = YEAR_VALS[year_idx]
+
+    println("Extracting monthly covariate: LSTN, Year $(year)")
 
     # # Temporary truncation of data (covariate data not avaialable after 2016)
     # if year > 2021
@@ -552,7 +581,7 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
     months = unique(hh_data_summary[hh_data_summary.interview_year .== year,"interview_month"])
 
     # Select a month
-    for month_idx in ProgressBar(1:length(months), leave = false)
+    for month_idx in 1:length(months)
         month = months[month_idx]
 
         # If required time period is not available, just take closest one
@@ -577,7 +606,7 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
 
         temp_cov_vals = Vector{Float64}(undef, length(entry_idxs))
 
-        for i in 1:length(entry_idxs)
+        Threads.@threads for i in 1:length(entry_idxs)
             idx = entry_idxs[i]
 
             # Get lat, lon valuyes
@@ -599,6 +628,7 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
     end
 end
 LSTN_cov = max.(0, LSTN_cov)
+GC.gc()
 
 #######
 # %% LST DELTA
@@ -611,14 +641,16 @@ LSTDELTA_cov = zeros(size(hh_data_summary)[1])
 global cov_raster_filepath = COV_LSTDELTA_DIR
 
 # Select ayear
-for year_idx in ProgressBar(1:length(YEAR_VALS))
+for year_idx in 1:length(YEAR_VALS)
     year = YEAR_VALS[year_idx]
+
+    println("Extracting monthly covariate: LSTDELTA, Year $(year)")
 
     # Get list of required months
     months = unique(hh_data_summary[hh_data_summary.interview_year .== year,"interview_month"])
 
     # Select a month
-    for month_idx in ProgressBar(1:length(months), leave = false)
+    for month_idx in 1:length(months)
         month = months[month_idx]
 
         # If required time period is not available, just take closest one
@@ -643,7 +675,7 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
 
         temp_cov_vals = Vector{Float64}(undef, length(entry_idxs))
 
-        for i in 1:length(entry_idxs)
+        Threads.@threads for i in 1:length(entry_idxs)
             idx = entry_idxs[i]
 
             # Get lat, lon valuyes
@@ -665,6 +697,7 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
     end
 end
 LSTDELTA_cov = max.(0, LSTDELTA_cov)
+GC.gc()
 
 #######
 # %% TCW
@@ -677,14 +710,16 @@ TCW_cov = zeros(size(hh_data_summary)[1])
 global cov_raster_filepath = COV_TCW_DIR
 
 # Select ayear
-for year_idx in ProgressBar(1:length(YEAR_VALS))
+for year_idx in 1:length(YEAR_VALS)
     year = YEAR_VALS[year_idx]
+
+    println("Extracting monthly covariate: TCW, Year $(year)")
 
     # Get list of required months
     months = unique(hh_data_summary[hh_data_summary.interview_year .== year,"interview_month"])
 
     # Select a month
-    for month_idx in ProgressBar(1:length(months), leave = false)
+    for month_idx in 1:length(months)
         month = months[month_idx]
 
         # If required time period is not available, just take closest one
@@ -709,7 +744,7 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
 
         temp_cov_vals = Vector{Float64}(undef, length(entry_idxs))
 
-        for i in 1:length(entry_idxs)
+        Threads.@threads for i in 1:length(entry_idxs)
             idx = entry_idxs[i]
 
             # Get lat, lon valuyes
@@ -731,6 +766,7 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
     end
 end
 TCW_cov = max.(0, TCW_cov)
+GC.gc()
 
 #######
 # %% TSI
@@ -743,8 +779,10 @@ TSI_cov = zeros(size(hh_data_summary)[1])
 global cov_raster_filepath = COV_TSI_DIR
 
 # Select a year
-for year_idx in ProgressBar(1:length(YEAR_VALS))
+for year_idx in 1:length(YEAR_VALS)
     year = YEAR_VALS[year_idx]
+
+    println("Extracting monthly covariate: TSI, Year $(year)")
 
     # # Temporary truncation of data (covariate data not avaialable after 2016)
     # if year > 2022
@@ -755,7 +793,7 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
     months = unique(hh_data_summary[hh_data_summary.interview_year .== year,"interview_month"])
 
     # Select a month
-    for month_idx in ProgressBar(1:length(months), leave = false)
+    for month_idx in 1:length(months)
         month = months[month_idx]
 
         # If required time period is not available, just take closest one
@@ -780,7 +818,7 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
 
         temp_cov_vals = Vector{Float64}(undef, length(entry_idxs))
 
-        for i in 1:length(entry_idxs)
+        Threads.@threads for i in 1:length(entry_idxs)
             idx = entry_idxs[i]
 
             # Get lat, lon valuyes
@@ -802,6 +840,7 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
     end
 end
 TSI_cov = max.(0, TSI_cov)
+GC.gc()
 
 #######
 # %% TCB
@@ -814,8 +853,10 @@ TCB_cov = zeros(size(hh_data_summary)[1])
 global cov_raster_filepath = COV_TCB_DIR
 
 # Select ayear
-for year_idx in ProgressBar(1:length(YEAR_VALS))
+for year_idx in 1:length(YEAR_VALS)
     year = YEAR_VALS[year_idx]
+
+    println("Extracting monthly covariate: TCB, Year $(year)")
 
     # # Temporary truncation of data (covariate data not avaialable after 2016)
     # if year > 2022
@@ -826,7 +867,7 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
     months = unique(hh_data_summary[hh_data_summary.interview_year .== year,"interview_month"])
 
     # Select a month
-    for month_idx in ProgressBar(1:length(months), leave = false)
+    for month_idx in 1:length(months)
         month = months[month_idx]
 
         # If required time period is not available, just take closest one
@@ -851,7 +892,7 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
 
         temp_cov_vals = Vector{Float64}(undef, length(entry_idxs))
 
-        for i in 1:length(entry_idxs)
+        Threads.@threads for i in 1:length(entry_idxs)
             idx = entry_idxs[i]
 
             # Get lat, lon valuyes
@@ -873,6 +914,7 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
     end
 end
 TCB_cov = max.(0, TCB_cov)
+GC.gc()
 
 ################################################
 # Annual varying covariates
@@ -889,8 +931,10 @@ LAND00_cov = zeros(size(hh_data_summary)[1])
 global cov_raster_filepath = COV_LAND00_DIR
 
 # Select ayear
-for year_idx in ProgressBar(1:length(YEAR_VALS))
+for year_idx in 1:length(YEAR_VALS)
     year = YEAR_VALS[year_idx]
+
+    println("Extracting annual covariate: LAND00, Year $(year)")
 
     # Temporary truncation of data (covariate data not avaialable after 2016)
     if year < 2001
@@ -909,7 +953,7 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
 
     temp_cov_vals = Vector{Float64}(undef, length(entry_idxs))
 
-    for i in 1:length(entry_idxs)
+    Threads.@threads for i in 1:length(entry_idxs)
         idx = entry_idxs[i]
 
         # Get lat, lon valuyes
@@ -931,6 +975,7 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
 
 end
 LAND00_cov = max.(0, LAND00_cov)
+GC.gc()
 
 #######
 # %% Landcover 01
@@ -943,8 +988,10 @@ LAND01_cov = zeros(size(hh_data_summary)[1])
 global cov_raster_filepath = COV_LAND01_DIR
 
 # Select ayear
-for year_idx in ProgressBar(1:length(YEAR_VALS))
+for year_idx in 1:length(YEAR_VALS)
     year = YEAR_VALS[year_idx]
+
+    println("Extracting annual covariate: LAND01, Year $(year)")
 
     # Temporary truncation of data (covariate data not avaialable after 2016)
     if year < 2001
@@ -963,7 +1010,7 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
 
     temp_cov_vals = Vector{Float64}(undef, length(entry_idxs))
 
-    for i in 1:length(entry_idxs)
+    Threads.@threads for i in 1:length(entry_idxs)
         idx = entry_idxs[i]
 
         # Get lat, lon valuyes
@@ -985,6 +1032,7 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
 
 end
 LAND01_cov = max.(0, LAND01_cov)
+GC.gc()
 
 #######
 # %% Landcover 02
@@ -997,8 +1045,10 @@ LAND02_cov = zeros(size(hh_data_summary)[1])
 global cov_raster_filepath = COV_LAND02_DIR
 
 # Select ayear
-for year_idx in ProgressBar(1:length(YEAR_VALS))
+for year_idx in 1:length(YEAR_VALS)
     year = YEAR_VALS[year_idx]
+
+    println("Extracting annual covariate: LAND02, Year $(year)")
 
     # Temporary truncation of data (covariate data not avaialable after 2016)
     if year < 2001
@@ -1017,7 +1067,7 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
 
     temp_cov_vals = Vector{Float64}(undef, length(entry_idxs))
 
-    for i in 1:length(entry_idxs)
+    Threads.@threads for i in 1:length(entry_idxs)
         idx = entry_idxs[i]
 
         # Get lat, lon valuyes
@@ -1039,6 +1089,7 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
 
 end
 LAND02_cov = max.(0, LAND02_cov)
+GC.gc()
 
 #######
 # %% Landcover 03
@@ -1051,8 +1102,10 @@ LAND03_cov = zeros(size(hh_data_summary)[1])
 global cov_raster_filepath = COV_LAND03_DIR
 
 # Select ayear
-for year_idx in ProgressBar(1:length(YEAR_VALS))
+for year_idx in 1:length(YEAR_VALS)
     year = YEAR_VALS[year_idx]
+
+    println("Extracting annual covariate: LAND03, Year $(year)")
 
     # Temporary truncation of data (covariate data not avaialable after 2016)
     if year < 2001
@@ -1071,7 +1124,7 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
 
     temp_cov_vals = Vector{Float64}(undef, length(entry_idxs))
 
-    for i in 1:length(entry_idxs)
+    Threads.@threads for i in 1:length(entry_idxs)
         idx = entry_idxs[i]
 
         # Get lat, lon valuyes
@@ -1093,6 +1146,7 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
 
 end
 LAND03_cov = max.(0, LAND03_cov)
+GC.gc()
 
 #######
 # %% Landcover 04
@@ -1105,8 +1159,10 @@ LAND04_cov = zeros(size(hh_data_summary)[1])
 global cov_raster_filepath = COV_LAND04_DIR
 
 # Select ayear
-for year_idx in ProgressBar(1:length(YEAR_VALS))
+for year_idx in 1:length(YEAR_VALS)
     year = YEAR_VALS[year_idx]
+
+    println("Extracting annual covariate: LAND04, Year $(year)")
 
     # Temporary truncation of data (covariate data not avaialable after 2016)
     if year < 2001
@@ -1125,7 +1181,7 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
 
     temp_cov_vals = Vector{Float64}(undef, length(entry_idxs))
 
-    for i in 1:length(entry_idxs)
+    Threads.@threads for i in 1:length(entry_idxs)
         idx = entry_idxs[i]
 
         # Get lat, lon valuyes
@@ -1147,6 +1203,7 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
 
 end
 LAND04_cov = max.(0, LAND04_cov)
+GC.gc()
 
 
 #######
@@ -1160,8 +1217,10 @@ LAND05_cov = zeros(size(hh_data_summary)[1])
 global cov_raster_filepath = COV_LAND05_DIR
 
 # Select ayear
-for year_idx in ProgressBar(1:length(YEAR_VALS))
+for year_idx in 1:length(YEAR_VALS)
     year = YEAR_VALS[year_idx]
+
+    println("Extracting annual covariate: LAND05, Year $(year)")
 
     # Temporary truncation of data (covariate data not avaialable after 2016)
     if year < 2001
@@ -1180,7 +1239,7 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
 
     temp_cov_vals = Vector{Float64}(undef, length(entry_idxs))
 
-    for i in 1:length(entry_idxs)
+    Threads.@threads for i in 1:length(entry_idxs)
         idx = entry_idxs[i]
 
         # Get lat, lon valuyes
@@ -1202,6 +1261,7 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
 
 end
 LAND05_cov = max.(0, LAND05_cov)
+GC.gc()
 
 #######
 # %% Landcover 06
@@ -1214,8 +1274,10 @@ LAND06_cov = zeros(size(hh_data_summary)[1])
 global cov_raster_filepath = COV_LAND06_DIR
 
 # Select ayear
-for year_idx in ProgressBar(1:length(YEAR_VALS))
+for year_idx in 1:length(YEAR_VALS)
     year = YEAR_VALS[year_idx]
+
+    println("Extracting annual covariate: LAND06, Year $(year)")
 
     # Temporary truncation of data (covariate data not avaialable after 2016)
     if year < 2001
@@ -1234,7 +1296,7 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
 
     temp_cov_vals = Vector{Float64}(undef, length(entry_idxs))
 
-    for i in 1:length(entry_idxs)
+    Threads.@threads for i in 1:length(entry_idxs)
         idx = entry_idxs[i]
 
         # Get lat, lon valuyes
@@ -1256,6 +1318,7 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
 
 end
 LAND06_cov = max.(0, LAND06_cov)
+GC.gc()
 
 #######
 # %% Landcover 07
@@ -1268,8 +1331,10 @@ LAND07_cov = zeros(size(hh_data_summary)[1])
 global cov_raster_filepath = COV_LAND07_DIR
 
 # Select ayear
-for year_idx in ProgressBar(1:length(YEAR_VALS))
+for year_idx in 1:length(YEAR_VALS)
     year = YEAR_VALS[year_idx]
+
+    println("Extracting annual covariate: LAND07, Year $(year)")
 
     # Temporary truncation of data (covariate data not avaialable after 2016)
     if year < 2001
@@ -1288,7 +1353,7 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
 
     temp_cov_vals = Vector{Float64}(undef, length(entry_idxs))
 
-    for i in 1:length(entry_idxs)
+    Threads.@threads for i in 1:length(entry_idxs)
         idx = entry_idxs[i]
 
         # Get lat, lon valuyes
@@ -1310,6 +1375,7 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
 
 end
 LAND07_cov = max.(0, LAND07_cov)
+GC.gc()
 
 #######
 # %% Landcover 08
@@ -1322,8 +1388,10 @@ LAND08_cov = zeros(size(hh_data_summary)[1])
 global cov_raster_filepath = COV_LAND08_DIR
 
 # Select ayear
-for year_idx in ProgressBar(1:length(YEAR_VALS))
+for year_idx in 1:length(YEAR_VALS)
     year = YEAR_VALS[year_idx]
+
+    println("Extracting annual covariate: LAND08, Year $(year)")
 
     # Temporary truncation of data (covariate data not avaialable after 2016)
     if year < 2001
@@ -1342,7 +1410,7 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
 
     temp_cov_vals = Vector{Float64}(undef, length(entry_idxs))
 
-    for i in 1:length(entry_idxs)
+    Threads.@threads for i in 1:length(entry_idxs)
         idx = entry_idxs[i]
 
         # Get lat, lon valuyes
@@ -1364,6 +1432,7 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
 
 end
 LAND08_cov = max.(0, LAND08_cov)
+GC.gc()
 
 #######
 # %% Landcover 09
@@ -1376,8 +1445,10 @@ LAND09_cov = zeros(size(hh_data_summary)[1])
 global cov_raster_filepath = COV_LAND09_DIR
 
 # Select ayear
-for year_idx in ProgressBar(1:length(YEAR_VALS))
+for year_idx in 1:length(YEAR_VALS)
     year = YEAR_VALS[year_idx]
+
+    println("Extracting annual covariate: LAND09, Year $(year)")
 
     # Temporary truncation of data (covariate data not avaialable after 2016)
     if year < 2001
@@ -1396,7 +1467,7 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
 
     temp_cov_vals = Vector{Float64}(undef, length(entry_idxs))
 
-    for i in 1:length(entry_idxs)
+    Threads.@threads for i in 1:length(entry_idxs)
         idx = entry_idxs[i]
 
         # Get lat, lon valuyes
@@ -1418,6 +1489,7 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
 
 end
 LAND09_cov = max.(0, LAND09_cov)
+GC.gc()
 
 #######
 # %% Landcover 10
@@ -1430,8 +1502,10 @@ LAND10_cov = zeros(size(hh_data_summary)[1])
 global cov_raster_filepath = COV_LAND10_DIR
 
 # Select ayear
-for year_idx in ProgressBar(1:length(YEAR_VALS))
+for year_idx in 1:length(YEAR_VALS)
     year = YEAR_VALS[year_idx]
+
+    println("Extracting annual covariate: LAND10, Year $(year)")
 
     # Temporary truncation of data (covariate data not avaialable after 2016)
     if year < 2001
@@ -1450,7 +1524,7 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
 
     temp_cov_vals = Vector{Float64}(undef, length(entry_idxs))
 
-    for i in 1:length(entry_idxs)
+    Threads.@threads for i in 1:length(entry_idxs)
         idx = entry_idxs[i]
 
         # Get lat, lon valuyes
@@ -1472,6 +1546,7 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
 
 end
 LAND10_cov = max.(0, LAND10_cov)
+GC.gc()
 
 #######
 # %% Landcover 11
@@ -1484,8 +1559,10 @@ LAND11_cov = zeros(size(hh_data_summary)[1])
 global cov_raster_filepath = COV_LAND11_DIR
 
 # Select ayear
-for year_idx in ProgressBar(1:length(YEAR_VALS))
+for year_idx in 1:length(YEAR_VALS)
     year = YEAR_VALS[year_idx]
+
+    println("Extracting annual covariate: LAND11, Year $(year)")
 
     # Temporary truncation of data (covariate data not avaialable after 2016)
     if year < 2001
@@ -1504,7 +1581,7 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
 
     temp_cov_vals = Vector{Float64}(undef, length(entry_idxs))
 
-    for i in 1:length(entry_idxs)
+    Threads.@threads for i in 1:length(entry_idxs)
         idx = entry_idxs[i]
 
         # Get lat, lon valuyes
@@ -1526,6 +1603,7 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
 
 end
 LAND11_cov = max.(0, LAND11_cov)
+GC.gc()
 
 #######
 # %% Landcover 12
@@ -1538,8 +1616,10 @@ LAND12_cov = zeros(size(hh_data_summary)[1])
 global cov_raster_filepath = COV_LAND12_DIR
 
 # Select ayear
-for year_idx in ProgressBar(1:length(YEAR_VALS))
+for year_idx in 1:length(YEAR_VALS)
     year = YEAR_VALS[year_idx]
+
+    println("Extracting annual covariate: LAND12, Year $(year)")
 
     # Temporary truncation of data (covariate data not avaialable after 2016)
     if year < 2001
@@ -1558,7 +1638,7 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
 
     temp_cov_vals = Vector{Float64}(undef, length(entry_idxs))
 
-    for i in 1:length(entry_idxs)
+    Threads.@threads for i in 1:length(entry_idxs)
         idx = entry_idxs[i]
 
         # Get lat, lon valuyes
@@ -1580,6 +1660,7 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
 
 end
 LAND12_cov = max.(0, LAND12_cov)
+GC.gc()
 
 #######
 # %% Landcover 13
@@ -1592,8 +1673,10 @@ LAND13_cov = zeros(size(hh_data_summary)[1])
 global cov_raster_filepath = COV_LAND13_DIR
 
 # Select ayear
-for year_idx in ProgressBar(1:length(YEAR_VALS))
+for year_idx in 1:length(YEAR_VALS)
     year = YEAR_VALS[year_idx]
+
+    println("Extracting annual covariate: LAND13, Year $(year)")
 
     # Temporary truncation of data (covariate data not avaialable after 2016)
     if year < 2001
@@ -1612,7 +1695,7 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
 
     temp_cov_vals = Vector{Float64}(undef, length(entry_idxs))
 
-    for i in 1:length(entry_idxs)
+    Threads.@threads for i in 1:length(entry_idxs)
         idx = entry_idxs[i]
 
         # Get lat, lon valuyes
@@ -1634,6 +1717,7 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
 
 end
 LAND13_cov = max.(0, LAND13_cov)
+GC.gc()
 
 #######
 # %% Landcover 14
@@ -1646,8 +1730,10 @@ LAND14_cov = zeros(size(hh_data_summary)[1])
 global cov_raster_filepath = COV_LAND14_DIR
 
 # Select ayear
-for year_idx in ProgressBar(1:length(YEAR_VALS))
+for year_idx in 1:length(YEAR_VALS)
     year = YEAR_VALS[year_idx]
+
+    println("Extracting annual covariate: LAND14, Year $(year)")
 
     # Temporary truncation of data (covariate data not avaialable after 2016)
     if year < 2001
@@ -1666,7 +1752,7 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
 
     temp_cov_vals = Vector{Float64}(undef, length(entry_idxs))
 
-    for i in 1:length(entry_idxs)
+    Threads.@threads for i in 1:length(entry_idxs)
         idx = entry_idxs[i]
 
         # Get lat, lon valuyes
@@ -1688,6 +1774,7 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
 
 end
 LAND14_cov = max.(0, LAND14_cov)
+GC.gc()
 
 #######
 # %% Landcover 15
@@ -1700,8 +1787,10 @@ LAND15_cov = zeros(size(hh_data_summary)[1])
 global cov_raster_filepath = COV_LAND15_DIR
 
 # Select ayear
-for year_idx in ProgressBar(1:length(YEAR_VALS))
+for year_idx in 1:length(YEAR_VALS)
     year = YEAR_VALS[year_idx]
+
+    println("Extracting annual covariate: LAND15, Year $(year)")
 
     # Temporary truncation of data (covariate data not avaialable after 2016)
     if year < 2001
@@ -1720,7 +1809,7 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
 
     temp_cov_vals = Vector{Float64}(undef, length(entry_idxs))
 
-    for i in 1:length(entry_idxs)
+    Threads.@threads for i in 1:length(entry_idxs)
         idx = entry_idxs[i]
 
         # Get lat, lon valuyes
@@ -1742,6 +1831,7 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
 
 end
 LAND15_cov = max.(0, LAND15_cov)
+GC.gc()
 
 #######
 # %% Landcover 16
@@ -1754,8 +1844,10 @@ LAND16_cov = zeros(size(hh_data_summary)[1])
 global cov_raster_filepath = COV_LAND16_DIR
 
 # Select ayear
-for year_idx in ProgressBar(1:length(YEAR_VALS))
+for year_idx in 1:length(YEAR_VALS)
     year = YEAR_VALS[year_idx]
+
+    println("Extracting annual covariate: LAND16, Year $(year)")
 
     # Temporary truncation of data (covariate data not avaialable after 2016)
     if year < 2001
@@ -1774,7 +1866,7 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
 
     temp_cov_vals = Vector{Float64}(undef, length(entry_idxs))
 
-    for i in 1:length(entry_idxs)
+    Threads.@threads for i in 1:length(entry_idxs)
         idx = entry_idxs[i]
 
         # Get lat, lon valuyes
@@ -1796,6 +1888,7 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
 
 end
 LAND16_cov = max.(0, LAND16_cov)
+GC.gc()
 
 #######
 # %% Landcover 17
@@ -1808,8 +1901,10 @@ LAND17_cov = zeros(size(hh_data_summary)[1])
 global cov_raster_filepath = COV_LAND17_DIR
 
 # Select ayear
-for year_idx in ProgressBar(1:length(YEAR_VALS))
+for year_idx in 1:length(YEAR_VALS)
     year = YEAR_VALS[year_idx]
+
+    println("Extracting annual covariate: LAND17, Year $(year)")
 
     # Temporary truncation of data (covariate data not avaialable after 2016)
     if year < 2001
@@ -1828,7 +1923,7 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
 
     temp_cov_vals = Vector{Float64}(undef, length(entry_idxs))
 
-    for i in 1:length(entry_idxs)
+    Threads.@threads for i in 1:length(entry_idxs)
         idx = entry_idxs[i]
 
         # Get lat, lon valuyes
@@ -1850,6 +1945,7 @@ for year_idx in ProgressBar(1:length(YEAR_VALS))
 
 end
 LAND17_cov = max.(0, LAND17_cov)
+GC.gc()
 
 #######
 # %% Temperature suitability covariate
@@ -1898,6 +1994,7 @@ INLA_dataset = hcat(hh_data_summary, DataFrame(monthidx = monthidxs,
 #######
 # %% Save dataset
 #######
+mkpath(output_dir)
 CSV.write(output_dir*"unfiltered_inla_dataset.csv", INLA_dataset)
 
 #######
@@ -1913,5 +2010,4 @@ filt_INLA_dataset = INLA_dataset[valid_entries_idx,:]
 # %% Save dataset
 #######
 CSV.write(output_dir*output_filename, filt_INLA_dataset)
-
 

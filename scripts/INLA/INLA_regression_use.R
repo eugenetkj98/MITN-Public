@@ -1,3 +1,15 @@
+# Set working directory
+setwd("/mnt/efs/userdata/etan/map-itn")
+
+# Install required packages in case not in DockerImage by default
+install.packages("tidyverse")
+install.packages("raster")
+install.packages("sf")
+install.packages("lattice")
+install.packages("grideExtra")
+install.packages("tomledit")
+install.packages("INLA", repos=c(getOption("repos"), INLA="https://inla.r-inla-download.org/R/stable"), dep=TRUE)
+
 # Load all packages
 library(INLA)
 library(raster)
@@ -5,16 +17,20 @@ library(tidyverse)
 library(sf)
 library(lattice)     
 library(gridExtra)
+library(tomledit)
 
 # Load custom transformation functions
 source("scripts/INLA/transforms.R")
+
+# Load TOML Config file
+model_config = from_toml(read_toml("/mnt/efs/userdata/etan/map-itn/scripts/awsbatch/configs/model_config.toml"))
 
 # Random fix
 sf_use_s2(FALSE)
 
 # load INLA regression data
-inla_data <- read.csv('outputs/data_prep/INLA/inla_dataset_reduced.csv')
-inla_data <- inla_data[seq(1,dim(inla_data)[1],2),]
+inla_data <- read.csv('/mnt/efs/userdata/etan/map-itn/outputs/data_prep/INLA/inla_dataset_reduced.csv')
+# inla_data <- inla_data[seq(1,dim(inla_data)[1],2),]
 inla_data <- inla_data[which(inla_data$access > 0),]
 inla_data$yearidx <- (inla_data$monthidx %/% 12)+1#*12
 inla_data$yearidx
@@ -23,8 +39,8 @@ inla_data$yearidx
 global_shp <- read_sf("/mnt/s3/master_geometries/Admin_Units/Global/MAP/2023/MG_5K/admin2023_0_MG_5K.shp")
 
 # Filter for required countries
-ISO_list <- read.csv("datasets/ISO_list.csv")$ISO
-exclusion_ISOs <- c("CPV","ZAF")
+ISO_list <- model_config$ISO_LIST
+exclusion_ISOs <- model_config$EXCLUSION_ISOS
 filt_ISOs <- setdiff(ISO_list, exclusion_ISOs)
 
 test <- global_shp[global_shp$ISO %in% filt_ISOs,]
@@ -43,14 +59,14 @@ plot(africa_mesh)
 
 
 # Construct temporal parts of model
-start_year = 2000
-end_year = 2023
+start_year = model_config$YEAR_NAT_START
+end_year = model_config$YEAR_NAT_END
 n_years = (end_year-start_year + 1)
 n_months = n_years*12
 
 
 # generate temporal mesh
-temporal_mesh_monthly <- inla.mesh.1d(seq(1,n_months,by=6),interval=c(1, n_months),degree=2)
+temporal_mesh_monthly <- inla.mesh.1d(seq(1,n_months,by=12),interval=c(1, n_months),degree=2)
 
 # Make projection matrices
 A_proj_monthly <- inla.spde.make.A(mesh = africa_spde, loc = coords,
@@ -69,9 +85,11 @@ for (i in 1:length(inla_data$use)){
   inla_data$p_use[i] <- p_transform(inla_data$use[i], inla_data$access[i], n = 2)
 }
 
-gap_emplogit(inla_data$p_use)
+# Ignore zeros when trying to find required IHS transformation parameter
+filt_p_use <- inla_data$p_use[which(inla_data$p_use != 0)]
+rand_signs <- sample(c(-1,1), length(filt_p_use), replace = TRUE)
 
-use_theta <- optimise(ihs_loglik, lower = 0.001, upper = 1000, x = gap_emplogit(inla_data$p_use), maximum = TRUE)$maximum
+use_theta <- optimise(ihs_loglik, lower = 0.001, upper = 100, x = rand_signs*filt_p_use, maximum = TRUE)$maximum
 res_use_gap <- ihs(gap_emplogit(inla_data$p_use), use_theta)
 
 response_data <- list(res_use_gap = res_use_gap)
@@ -105,13 +123,13 @@ effects_data_monthly <- list(c(S_index_monthly, list(Intercept = 1)),cov_data)
 africa_stack_monthly <- inla.stack(data = response_data,
                                    A = list(A_proj_monthly,1),
                                    effects = effects_data_monthly,
-                                   tag = "npc.data")
+                                   tag = "use.data")
 
 #############################
 # Fit USE GAP model
 #############################
 print("Fitting Use gap spatio-temporal model...")
-m1 <- inla(res_use_gap ~ -1 + Intercept + 
+m1 <- inla(res_use_gap ~ -1 +# Intercept + 
              static_1 +
              static_2 +
              static_3 +
@@ -143,7 +161,11 @@ m1 <- inla(res_use_gap ~ -1 + Intercept +
 
 print("Saving Use gap model outputs...")
 
-save(africa_mesh, africa_spde, temporal_mesh_monthly, m1, use_theta, file = "outputs/INLA/model1_use_complete_logis_2.RData")
+save(africa_mesh, africa_spde, temporal_mesh_monthly, m1, use_theta, file = "/mnt/efs/userdata/etan/map-itn/outputs/INLA/model1_use_complete_logis.RData")
 
 print("Saved Use model Part")
+
+summary(m1)
+
+print("HURRAH! I FINISHED THE R SCRIPT THANK GOD")
 

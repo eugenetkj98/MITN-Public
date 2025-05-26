@@ -1,3 +1,15 @@
+# Set working directory
+setwd("/mnt/efs/userdata/etan/map-itn")
+
+# Install required packages in case not in DockerImage by default
+install.packages("tidyverse")
+install.packages("raster")
+install.packages("sf")
+install.packages("lattice")
+install.packages("grideExtra")
+install.packages("tomledit")
+install.packages("INLA", repos=c(getOption("repos"), INLA="https://inla.r-inla-download.org/R/stable"), dep=TRUE)
+
 # Load all packages
 library(INLA)
 library(raster)
@@ -5,16 +17,20 @@ library(tidyverse)
 library(sf)
 library(lattice)     
 library(gridExtra)
+library(tomledit)
+
+# Load TOML Config file
+model_config = from_toml(read_toml("/mnt/efs/userdata/etan/map-itn/scripts/awsbatch/configs/model_config.toml"))
 
 # Load custom transformation functions
-source("scripts/INLA/transforms.R")
+source("/mnt/efs/userdata/etan/map-itn/scripts/INLA/transforms.R")
 
 # Random fix
 sf_use_s2(FALSE)
 
 # load INLA regression data
-inla_data <- read.csv('outputs/data_prep/INLA/inla_dataset_reduced.csv')
-inla_data <- inla_data[seq(1,dim(inla_data)[1],2),]
+inla_data <- read.csv('/mnt/efs/userdata/etan/map-itn/outputs/data_prep/INLA/inla_dataset_reduced.csv')
+# inla_data <- inla_data[seq(1,dim(inla_data)[1],2),]
 inla_data <- inla_data[which(inla_data$access > 0),]
 inla_data$yearidx <- (inla_data$monthidx %/% 12)+1#*12
 inla_data$yearidx
@@ -23,8 +39,8 @@ inla_data$yearidx
 global_shp <- read_sf("/mnt/s3/master_geometries/Admin_Units/Global/MAP/2023/MG_5K/admin2023_0_MG_5K.shp")
 
 # Filter for required countries
-ISO_list <- read.csv("datasets/ISO_list.csv")$ISO
-exclusion_ISOs <- c("CPV","ZAF")
+ISO_list <- model_config$ISO_LIST
+exclusion_ISOs <- model_config$EXCLUSION_ISOS
 filt_ISOs <- setdiff(ISO_list, exclusion_ISOs)
 
 test <- global_shp[global_shp$ISO %in% filt_ISOs,]
@@ -42,8 +58,8 @@ africa_spde <- inla.spde2.matern(mesh = africa_mesh)
 plot(africa_mesh)
 
 # Construct temporal parts of model
-start_year = 2000
-end_year = 2023
+start_year = model_config$YEAR_NAT_START
+end_year = model_config$YEAR_NAT_END
 n_years = (end_year-start_year + 1)
 
 # generate temporal mesh
@@ -99,13 +115,13 @@ effects_data_annual <- list(c(S_index_annual, list(Intercept = 1)),cov_data)
 africa_stack_annual <- inla.stack(data = response_data,
                                   A = list(A_proj_annual,1),
                                   effects = effects_data_annual,
-                                  tag = "npc.data")
+                                  tag = "access.data")
 
 #############################
 # Fit ACCESS GAP model
 #############################
 print("Fitting Access gap spatio-temporal model...")
-m1 <- inla(res_access_gap ~ -1 + Intercept + 
+m1 <- inla(res_access_gap ~  -1 + #Intercept + 
              static_1 +
              static_2 +
              static_3 +
@@ -135,8 +151,12 @@ m1 <- inla(res_access_gap ~ -1 + Intercept +
 
 print("Saving Access gap model outputs...")
 
-save(africa_mesh, africa_spde, temporal_mesh_annual, m1, access_theta, file = "outputs/INLA/model1_access_complete_pmodel_2.RData")
+save(africa_mesh, africa_spde, temporal_mesh_annual, m1, access_theta, file = "/mnt/efs/userdata/etan/map-itn/outputs/INLA/model1_access_complete_pmodel.RData")
 
 print("Saved Access model")
+
+summary(m1)
+
+print("HURRAH! I FINISHED THE R SCRIPT THANK GOD")
 
 

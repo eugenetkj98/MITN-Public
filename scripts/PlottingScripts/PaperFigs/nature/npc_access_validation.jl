@@ -105,11 +105,21 @@ ACCESS_SNF_aggregated = raster_timeseries_country.snf_access_mean
 NPC_RASTER_aggregated = raster_timeseries_country.raster_npc_mean
 ACCESS_RASTER_aggregated = raster_timeseries_country.raster_access_mean
 
-# %% Import Survey Raster Level observations
-inla_dataset = CSV.read(OUTPUT_DATAPREP_DIR*"INLA/unfiltered_inla_dataset.csv", DataFrame)
-NPC_SURVEY_CLUSTER = inla_dataset.npc
-ACCESS_SURVEY_CLUSTER = inla_dataset.access
+# # %% Import Survey Raster Level observations
+# inla_dataset = CSV.read(OUTPUT_DATAPREP_DIR*"INLA/unfiltered_inla_dataset.csv", DataFrame)
+# NPC_SURVEY_CLUSTER = inla_dataset.npc
+# ACCESS_SURVEY_CLUSTER = inla_dataset.access
 
+# %% Cluster lookup data
+lookup_data = CSV.read(OUTPUT_DIR*"coverage_timeseries/bv_mitn_validation_values.csv", DataFrame)
+lookup_data = lookup_data[lookup_data.interview_year .>=2010,:]
+
+NPC_SURVEY_CLUSTER = lookup_data.npc
+ACCESS_SURVEY_CLUSTER = lookup_data.access
+USE_SURVEY_CLUSTER = lookup_data.use
+NPC_RASTER_CLUSTER = lookup_data.mitn_npc
+ACCESS_RASTER_CLUSTER = lookup_data.mitn_access
+USE_RASTER_CLUSTER = lookup_data.mitn_use
 
 # %% ANALYTICAL MODEL CALCULATIONS - Import model
 # Analysis domain/ranges
@@ -188,9 +198,9 @@ end
 
 
 ###################################################
-# %% FIGURE 1: NPC-Access Relationships plot
+# %% FIGURE 1: Measures and Metrics Relationships plot
 ###################################################
-fig = Figure(size = (800,700))
+fig = Figure(size = (1200,700))
 ax1 = Axis(fig[1,1],
             xlabel = "NPC (γ)",
             ylabel = "Access (λ)",
@@ -219,6 +229,21 @@ ax4 = Axis(fig[2,2],
             ylabelsize = 16,
             xticks = 0:0.1:1,
             yticks = 0:0.1:1)
+ax5 = Axis(fig[1,3],
+                xlabel = "NPC (γ)",
+                ylabel = "Utilisation",
+                xlabelsize = 16,
+                ylabelsize = 16,
+                xticks = 0:0.2:2,
+                yticks = 0:0.2:2)
+ax6 = Axis(fig[2,3],
+                xlabel = "Access (λ)",
+                ylabel = "Efficiency",
+                xlabelsize = 16,
+                ylabelsize = 16,
+                xticks = 0:0.2:1,
+                yticks = 0:0.2:1)
+                
 Label(fig[0,:], "NPC-Access Relationships", font = :bold,
         halign = :center, tellwidth = false, fontsize = 30)
 
@@ -226,10 +251,15 @@ xlims!(ax1, -0.05,1.05)
 xlims!(ax2, -0.05,1.05)
 xlims!(ax3, -0.05,1.05)
 xlims!(ax4, -0.05,1.05)
+xlims!(ax5, -0.05,2.05)
+xlims!(ax6, -0.05,1.05)
+
 ylims!(ax1, -0.05,1.05)
 ylims!(ax2, -0.05,1.05)
 ylims!(ax3, -0.05,1.05)
 ylims!(ax4, -0.05,1.05)
+ylims!(ax5, -0.05,2.05)
+ylims!(ax6, -0.05,1.05)
 
 hidexdecorations!(ax1, ticks = false, grid = false)
 hidexdecorations!(ax2, ticks = false, grid = false)
@@ -252,14 +282,15 @@ Legend(fig[1,1], [npc_snf, npc_survey],
 # %%
 # scatter!(ax2, NPC_RASTER_aggregated, ACCESS_RASTER_aggregated,
 #         markersize = 3, color = (colors[1],0.2))
-npc_cluster_raster = scatter!(ax2, NPC_RASTER_aggregated[1], ACCESS_RASTER_aggregated[1],
-        markersize = 5, color = (colors[1],1))
-scatter!(ax2, NPC_RASTER_aggregated, ACCESS_RASTER_aggregated,
-        markersize = 5, color = (colors[1],0.2))
 npc_cluster_survey = scatter!(ax2, NPC_SURVEY_CLUSTER[1], ACCESS_SURVEY_CLUSTER[1],
         markersize = 3, color = (colors[2],1))
 scatter!(ax2, NPC_SURVEY_CLUSTER, ACCESS_SURVEY_CLUSTER,
-        markersize = 3, color = (colors[2],0.2))
+        markersize = 3, color = (colors[2],0.05))
+npc_cluster_raster = scatter!(ax2, NPC_RASTER_CLUSTER[1], ACCESS_RASTER_CLUSTER[1],
+        markersize = 5, color = (colors[1],1))
+scatter!(ax2, NPC_RASTER_CLUSTER, ACCESS_RASTER_CLUSTER,
+        markersize = 5, color = (colors[1],0.05))
+
 Legend(fig[1,2], [npc_cluster_raster, npc_cluster_survey],
         ["Raster", "Survey"], 
         tellwidth = false, tellheight = false,
@@ -290,6 +321,44 @@ Legend(fig[2,2], [global_line],
         tellwidth = false, tellheight = false,
         halign = :left, valign = :top,
         padding = (10,10,10,10))
+
+# %%
+
+util_cluster_survey = scatter!(ax5, NPC_SURVEY_CLUSTER[1], (USE_SURVEY_CLUSTER[1]/2)/NPC_SURVEY_CLUSTER[1],
+        markersize = 3, color = (colors[2],1))
+scatter!(ax5, NPC_SURVEY_CLUSTER, (USE_SURVEY_CLUSTER./2)./NPC_SURVEY_CLUSTER,
+        markersize = 3, color = (colors[2],0.1))
+util_cluster_raster = scatter!(ax5, NPC_RASTER_CLUSTER[1], (USE_RASTER_CLUSTER[1]/2)/NPC_RASTER_CLUSTER[1],
+        markersize = 5, color = (colors[1],1))
+scatter!(ax5, NPC_RASTER_CLUSTER, (USE_RASTER_CLUSTER./2)./NPC_RASTER_CLUSTER,
+        markersize = 5, color = (colors[1],0.05))
+
+Legend(fig[1,3], [util_cluster_raster, util_cluster_survey],
+        ["Raster", "Survey"], 
+        tellwidth = false, tellheight = false,
+        halign = :right, valign = :top,
+        padding = (10,10,10,10))
+
+# %%
+
+
+eff_cluster_survey = scatter!(ax6, ACCESS_SURVEY_CLUSTER[1], USE_SURVEY_CLUSTER[1]/ACCESS_SURVEY_CLUSTER[1],
+        markersize = 3, color = (colors[2],1))
+scatter!(ax6, ACCESS_SURVEY_CLUSTER, USE_SURVEY_CLUSTER./ACCESS_SURVEY_CLUSTER,
+        markersize = 3, color = (colors[2],0.1))
+eff_cluster_raster = scatter!(ax6, ACCESS_RASTER_CLUSTER[1], USE_RASTER_CLUSTER[1]/USE_RASTER_CLUSTER[1],
+        markersize = 5, color = (colors[1],1))
+scatter!(ax6, ACCESS_RASTER_CLUSTER, USE_RASTER_CLUSTER./ACCESS_RASTER_CLUSTER,
+        markersize = 5, color = (colors[1],0.05))
+
+Legend(fig[2,3], [eff_cluster_raster, eff_cluster_survey],
+        ["Raster", "Survey"], 
+        tellwidth = false, tellheight = false,
+        halign = :right, valign = :bottom,
+        padding = (10,10,10,10))
  
 fig
 
+# %%
+mkpath(OUTPUT_PLOTS_DIR*"PaperFigures/")
+save(OUTPUT_PLOTS_DIR*"PaperFigures/NPC_Access_Relationship.pdf", fig)

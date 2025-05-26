@@ -92,10 +92,12 @@ country_population = zeros(length(filt_ISOs), n_months)
 country_crop = zeros(length(filt_ISOs), n_months, 3)
 country_access_pop = zeros(length(filt_ISOs), n_months, 3)
 country_use_pop = zeros(length(filt_ISOs), n_months, 3)
+# country_utilisation_pop = zeros(length(filt_ISOs), n_months, 3)
 country_npc = zeros(length(filt_ISOs), n_months, 3)
 country_access = zeros(length(filt_ISOs), n_months, 3)
 country_use = zeros(length(filt_ISOs), n_months, 3)
 country_utilisation = zeros(length(filt_ISOs), n_months, 3)
+country_efficiency = zeros(length(filt_ISOs), n_months, 3)
 
 
 # %% Select ISO
@@ -126,6 +128,14 @@ for ISO_i in 1:length(filt_ISOs)
         country_use_pop[ISO_i,monthidx,1] = sum(data_slice.raster_use_95lower.*data_slice.population)
         country_use_pop[ISO_i,monthidx,2] = sum(data_slice.raster_use_mean.*data_slice.population)
         country_use_pop[ISO_i,monthidx,3] = sum(data_slice.raster_use_95upper.*data_slice.population)
+
+        country_utilisation[ISO_i,monthidx,1] = data_slice.raster_util_95lower[1]
+        country_utilisation[ISO_i,monthidx,2] = data_slice.raster_util_mean[1]
+        country_utilisation[ISO_i,monthidx,3] = data_slice.raster_util_95upper[1]
+
+        country_efficiency[ISO_i,monthidx,1] = data_slice.raster_eff_95lower[1]
+        country_efficiency[ISO_i,monthidx,2] = data_slice.raster_eff_mean[1]
+        country_efficiency[ISO_i,monthidx,3] = data_slice.raster_eff_95upper[1]
     end
 
     country_npc[ISO_i,:,:] = country_crop[ISO_i,:,:]./repeat(country_population[ISO_i,:],1,3)
@@ -133,15 +143,15 @@ for ISO_i in 1:length(filt_ISOs)
     country_use[ISO_i,:,:] = country_use_pop[ISO_i,:,:]./repeat(country_population[ISO_i,:],1,3)
     
     # Calculate utilisation rates. CI are worst case
-    country_utilisation[ISO_i,:,1] = country_use_pop[ISO_i,:,1]./country_access_pop[ISO_i,:,3]
-    country_utilisation[ISO_i,:,2] = country_use_pop[ISO_i,:,2]./country_access_pop[ISO_i,:,2]
-    country_utilisation[ISO_i,:,3] = country_use_pop[ISO_i,:,3]./country_access_pop[ISO_i,:,1]
+    # country_utilisation[ISO_i,:,1] = country_use_pop[ISO_i,:,1]./country_access_pop[ISO_i,:,3]
+    # country_utilisation[ISO_i,:,2] = country_use_pop[ISO_i,:,2]./country_access_pop[ISO_i,:,2]
+    # country_utilisation[ISO_i,:,3] = country_use_pop[ISO_i,:,3]./country_access_pop[ISO_i,:,1]
 end
 
 ####################################################################
 # %% FIGURE 1: ITN Coverage plots for each individual country
 ####################################################################
-
+mkpath(OUTPUT_PLOTS_DIR*"PaperFigures/Country_ITN_Metrics/")
 for ISO_i in ProgressBar(1:length(filt_ISOs))
     # Select ISO
     ISO = filt_ISOs[ISO_i]
@@ -209,7 +219,6 @@ for ISO_i in ProgressBar(1:length(filt_ISOs))
 
     save(OUTPUT_PLOTS_DIR*"PaperFigures/Country_ITN_Metrics/$(ISO)_ITN_Metrics.pdf", fig, pdf_version = "1.4")
 end
-fig
 
 ####################################################################
 # %% FIGURE 2: Make summary figure tiled by geographical location in africa
@@ -351,37 +360,105 @@ fig
 for ISO_i in ProgressBar(1:length(filt_ISOs))
     # Select ISO
     ISO = filt_ISOs[ISO_i]
+
     # Base axes
-    fig = Figure(size = (800,500))
-    ax = Axis(fig[1,1],
-            title = "$(ISO) ITN Utilisation",
+    fig = Figure(size = (800,900))
+    ax1 = Axis(fig[1,1],
+            title = "$(ISO) ITN Metrics",
+            xlabel = "Years", 
+            xticks = (1:12:n_months, string.(YEAR_START:YEAR_END)),
+            xticklabelrotation = pi/2,
+            xlabelsize = 20,
+            titlesize = 25,
+            ylabel = "Coverage Metric",
+            yticks = (0:0.2:1),
+            ylabelsize = 20
+            )
+    xlims!(ax1, -0.5,n_months+0.5)
+    ylims!(ax1, -0.02, 1.02)
+
+    # Add lines
+
+    ### NPC
+    band!(ax1, 1:n_months, country_npc[ISO_i,:,1], country_npc[ISO_i,:,3],
+            color = (colors[1], fillalpha)
+            )
+    npc_line = lines!(ax1, 1:n_months, country_npc[ISO_i,:,2],
+            color = colors[1], linewidth = lw)
+    lines!(ax1, 1:n_months, country_npc[ISO_i,:,1],
+            color = (colors[1], la), 
+            linewidth = lw, linestyle = :dash)
+    lines!(ax1, 1:n_months, country_npc[ISO_i,:,3],
+            color = (colors[1], la), linewidth = lw, 
+            linestyle = :dash)
+
+    ### Access
+    band!(ax1, 1:n_months, country_access[ISO_i,:,1], country_access[ISO_i,:,3],
+    color = (colors[2], fillalpha)
+    )
+    access_line = lines!(ax1, 1:n_months, country_access[ISO_i,:,2],
+            color = colors[2], linewidth = lw)
+    lines!(ax1, 1:n_months, country_access[ISO_i,:,1],
+            color = (colors[2], la), 
+            linewidth = lw, linestyle = :dash)
+    lines!(ax1, 1:n_months, country_access[ISO_i,:,3],
+            color = (colors[2], la), linewidth = lw, 
+            linestyle = :dash)
+
+    ### Use
+    band!(ax1, 1:n_months, country_use[ISO_i,:,1], country_use[ISO_i,:,3],
+    color = (colors[2], fillalpha)
+    )
+    use_line = lines!(ax1, 1:n_months, country_use[ISO_i,:,2],
+            color = colors[3], linewidth = lw)
+    lines!(ax1, 1:n_months, country_use[ISO_i,:,1],
+            color = (colors[3], la), 
+            linewidth = lw, linestyle = :dash)
+    lines!(ax1, 1:n_months, country_use[ISO_i,:,3],
+            color = (colors[3], la), linewidth = lw, 
+            linestyle = :dash)
+
+    # Legend
+    Legend(fig[1, 2],
+        [npc_line, access_line, use_line],
+        ["NPC", "Access", "Use"])
+
+
+    # Base axes
+    ax2 = Axis(fig[2,1],
+            title = "$(ISO) ITN Rates",
             xlabel = "Years", 
             xticks = (1:12:n_months, string.(YEAR_START:YEAR_END)),
             xticklabelrotation = pi/2,
             xlabelsize = 20,
             titlesize = 25,
             ylabel = "Net Utilisation (η)",
-            yticks = (0:0.2:1),
+            yticks = (0:0.2:1.5),
             ylabelsize = 20
             )
-    xlims!(-0.5,n_months+0.5)
-    ylims!(-0.02, 1.02)
+    xlims!(ax2, -0.5,n_months+0.5)
+    ylims!(ax2, -0.02, 1.52)
 
     # Add lines
 
     ### NPC
-    # band!(ax, 1:n_months, country_utilisation[ISO_i,:,1], country_utilisation[ISO_i,:,3],
-    #         color = (colors[1], fillalpha)
-    #         )
-    lines!(ax, 1:n_months, country_utilisation[ISO_i,:,2],
+    band!(ax2, 1:n_months, country_utilisation[ISO_i,:,1], country_utilisation[ISO_i,:,3],
+            color = (colors[1], fillalpha)
+            )
+    util_line = lines!(ax2, 1:n_months, country_utilisation[ISO_i,:,2],
             color = colors[1], linewidth = lw)
-    # lines!(ax, 1:n_months, country_utilisation[ISO_i,:,1],
-    #         color = (colors[1], la), 
-    #         linewidth = lw, linestyle = :dash)
-    # lines!(ax, 1:n_months, country_utilisation[ISO_i,:,3],
-    #         color = (colors[1], la), linewidth = lw, 
-    #         linestyle = :dash)
-    
+
+    band!(ax2, 1:n_months, country_efficiency[ISO_i,:,1], country_efficiency[ISO_i,:,3],
+            color = (colors[2], fillalpha)
+            )
+    eff_line = lines!(ax2, 1:n_months, country_efficiency[ISO_i,:,2],
+            color = colors[2], linewidth = lw)
+
+    # Legend
+    Legend(fig[2, 2],
+        [util_line, eff_line],
+        ["Utilisation", "Efficiency"])
+    fig
     save(OUTPUT_PLOTS_DIR*"PaperFigures/Country_ITN_Metrics/$(ISO)_ITN_Utilisation.pdf", fig, pdf_version = "1.4")
 end
 fig
@@ -403,10 +480,10 @@ for ISO_i in 1:length(filt_ISOs)
                 xticks = ((1:12:n_months)[1:5:end], year_strings[1:5:end]),
                 xticklabelrotation = pi/2,
                 # ylabel = "Metric",
-                yticks = (0:0.2:1),
+                yticks = (0:0.2:1.5),
                 ylabelsize = 20)
     xlims!(ax,-0.5,n_months+0.5)
-    ylims!(ax,-0.02, 1.02)
+    ylims!(ax,-0.02, 1.52)
 
     lb = Label(fig[2*(x_idx-1)+1,y_idx], "$(country_name)")
     
@@ -423,7 +500,7 @@ for ISO_i in 1:length(filt_ISOs)
 end
 
 # Super Labels
-Label(fig[:,0],"Utilisation Rate (η)", rotation = pi/2, fontsize = 40)
+Label(fig[:,0],"Metric Rates", rotation = pi/2, fontsize = 40)
 Label(fig[15,:],"Years", fontsize = 40)
 
 # Add plot lines for metric
@@ -434,17 +511,65 @@ for ISO_i in ProgressBar(1:length(filt_ISOs), leave = false)
     # Add lines
 
     ### NPC
-    npc_line = lines!(plot_axs[ISO_i], 1:n_months, country_utilisation[ISO_i,:,2],
+    band!(plot_axs[ISO_i], 1:n_months, country_utilisation[ISO_i,:,1], country_utilisation[ISO_i,:,3],
+    color = (colors[1], fillalpha)
+    )
+    util_line = lines!(plot_axs[ISO_i], 1:n_months, country_utilisation[ISO_i,:,2],
             color = colors[1], linewidth = africa_lw)
+
+
+    band!(plot_axs[ISO_i], 1:n_months, country_efficiency[ISO_i,:,1], country_efficiency[ISO_i,:,3],
+    color = (colors[2], fillalpha)
+    )
+    eff_line = lines!(plot_axs[ISO_i], 1:n_months, country_efficiency[ISO_i,:,2],
+            color = colors[2], linewidth = africa_lw)
+    
+    hlines!(plot_axs[ISO_i], [1], color = :black, linestyle = :dash, linewidth = africa_lw)
+        
+    # Add legend
+    if ISO_i == 1
+        Legend(fig[10, 1],
+            [util_line, eff_line],
+            ["Utilisation","Efficiency"])
+    end
+
 end
 
 save(OUTPUT_PLOTS_DIR*"PaperFigures/Africa_country_ITN_utilisation.pdf", fig, pdf_version = "1.4")
+fig
 
+####################################################################
+# %% FIGURE 4B: ITN Rates vs NPC
+####################################################################
+year_cutoff = 2010
+
+filt_country_npc = country_npc[:, 12*(year_cutoff-YEAR_START)+1:end,2]
+filt_country_util = country_utilisation[:, 12*(year_cutoff-YEAR_START)+1:end,2]
+
+valid_idxs = findall((.!isinf.(filt_country_util)) .&& (.!isnan.(filt_country_util)))
+ms = 3
+ls = 18
+fig = Figure(size = (600,400))
+ax1 = Axis(fig[1,1],
+        xlabel = "NPC",
+        ylabel = "Utilisation (Use/(2NPC))",
+        xlabelsize = ls, ylabelsize = ls,
+        xticks = 0:0.25:2,
+        yticks = 0:1:5)
+xlims!(ax1, -0.05,2.05)
+ylims!(ax1, -0.1,5.1)
+
+scatter!(ax1,filt_country_npc[valid_idxs], filt_country_util[valid_idxs],
+            markersize = ms, color = (colors[1], 0.3))
+hlines!(ax1, 1, color = :black, linestyle = :dash, linewidth = 2)
+
+save(OUTPUT_PLOTS_DIR*"PaperFigures/Utilisation_NPC.pdf", fig, pdf_version = "1.4")
+fig
 ####################################################################
 # %% FIGURE 5: Moving Window Gains plot
 ####################################################################
 # %%
-
+mkpath(OUTPUT_PLOTS_DIR*"PaperFigures/Country_ITN_Trends/")
 for ISO_i in ProgressBar(1:length(filt_ISOs))
     ISO = filt_ISOs[ISO_i]
 
@@ -511,13 +636,19 @@ for ISO_i in ProgressBar(1:length(filt_ISOs))
                         netage_timeseries.category .== "Admin0",:]
 
     # Extract timeseries and arrange as array
-    netage = Vector{Float64}(undef, n_months)
+    netage = Matrix{Float64}(undef, n_months, 3)
     for monthidx in 1:n_months
         month, year_idx = monthidx_to_monthyear(monthidx)
         year = year_idx + YEAR_START - 1
 
-        netage[monthidx] = data_slice[data_slice.month .== month .&&
-                                        data_slice.year .== year, "mean_age_months"][1]
+        netage[monthidx,1] = data_slice[data_slice.month .== month .&&
+                                        data_slice.year .== year, "mean_age_months_95lower"][1]
+
+        netage[monthidx,2] = data_slice[data_slice.month .== month .&&
+                                        data_slice.year .== year, "mean_age_months_mean"][1]
+
+        netage[monthidx,3] = data_slice[data_slice.month .== month .&&
+                                        data_slice.year .== year, "mean_age_months_95upper"][1]
     end
     
     # Base axes
@@ -537,18 +668,22 @@ for ISO_i in ProgressBar(1:length(filt_ISOs))
     ylims!(-0.05, 4.55)
 
     # Add lines
-    lines!(ax, 1:n_months, netage./12,
+    band!(ax, 1:n_months, netage[:,1]./12, netage[:,3]./12,
+            color = (colors[1], 0.4))
+    lines!(ax, 1:n_months, netage[:,2]./12,
             color = colors[1], linewidth = lw)
+    
     save(OUTPUT_PLOTS_DIR*"PaperFigures/Country_ITN_Metrics/$(ISO)_ITN_NetAge.pdf", fig, pdf_version = "1.4")
 end
-
 
 ####################################################################
 # %% FIGURE 7: ITN Net Age Plot arranged according to Africa country location
 ####################################################################
 # Make figure
-layout_res = (1500,1300)
+# Make figure
+layout_res = (1650,1400)
 fig = Figure(size = layout_res)
+custom_cmap = cgrad([colorant"#01513A",colorant"#3289B4",colorant"#FEA82F",colorant"#E7232D"], [0.25, 0.4, 0.6, 0.85])
 
 plot_axs = []
 title_axs = []
@@ -598,16 +733,18 @@ for ISO_i in ProgressBar(1:length(filt_ISOs), leave = false)
         year = year_idx + YEAR_START - 1
 
         netage[monthidx] = data_slice[data_slice.month .== month .&&
-                                        data_slice.year .== year, "mean_age_months"][1]
+                                        data_slice.year .== year, "mean_age_months_mean"][1]
     end
 
     # Add lines
 
     ### NPC
-    npc_line = lines!(plot_axs[ISO_i], 1:n_months, netage./12,
-            color = colors[1], linewidth = africa_lw)
+    age_line = lines!(plot_axs[ISO_i], 1:n_months, netage./12,
+            color = netage./12, linewidth = africa_lw, colorrange = (0,3),
+            colormap = custom_cmap)
 end
-
+Colorbar(fig[:,end+1], colorrange = (0,3), colormap = custom_cmap, size = 15, 
+            ticklabelsize = 20, label = "Years", labelsize = 40)
 fig
 # %%
 save(OUTPUT_PLOTS_DIR*"PaperFigures/Africa_country_ITN_netage.pdf", fig, pdf_version = "1.4")

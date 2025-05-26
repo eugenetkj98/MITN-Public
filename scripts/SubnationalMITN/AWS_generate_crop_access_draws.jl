@@ -1,9 +1,10 @@
 """
 Author: Eugene Tan
-Date Created: 19/5/2024
-Last Updated: 19/5/2024
-MITN model for subnational
+Date Created: 4/11/2024
+Last Updated: 12/11/2024
+Generate subnational crop and access draws after training subnational crop model
 """
+
 # %% Prep environment and subdirectories
 include(pwd()*"/scripts/init_env.jl")
 
@@ -14,18 +15,19 @@ include(pwd()*"/scripts/read_toml.jl")
 using JLD2
 using CSV
 using DataFrames
-using Missings
 using ProgressBars
 using LinearAlgebra
 using StatsBase
-using Distributions
 using Turing
 using AdvancedMH
 using StatsPlots
+using Distributions
 
 # %% Import custom packages
 using DateConversions
 using NetLoss
+using NetAccessModel
+using NetAccessPrediction
 using Subnat_NetCropModel
 
 ##############################################
@@ -33,30 +35,29 @@ using Subnat_NetCropModel
 ##############################################
 # %% Define paths
 dataset_dir = RAW_SUBNAT_DATASET_DIR
-dataprep_dir = OUTPUT_DATAPREP_DIR
+subnat_reg_dir = OUTPUT_REGRESSIONS_DIR*"subnational/"
 nat_netcrop_post_dir = OUTPUT_DRAWS_DIR*"national/crop_access/"
-net_age_dir = OUTPUT_DRAWS_DIR*"national/demography/"
-save_dir = OUTPUT_REGRESSIONS_DIR*"subnational/"
-posterior_dir = OUTPUT_DIR
+nat_netage_post_dir = OUTPUT_DRAWS_DIR*"national/demography/"
+nat_access_ext_dir = OUTPUT_EXTRACTIONS_DIR*"access/pred_data/"
+nat_access_reg_dir = OUTPUT_REGRESSIONS_DIR*"access/"
+save_dir = OUTPUT_DRAWS_DIR*"subnational/"
 
-# %% MCMC and Regression Settings
-n_chains = min(SUBNAT_CROP_ADJ_N_CHAINS, Threads.nthreads())
+# %% Sampling settings
+n_samples = SUBNAT_CROP_ACCESS_N_DRAWS
 
-# Settings for calculating adjustment weights
-adj_iterations = SUBNAT_CROP_ADJ_MCMC_ITERATIONS
-adj_burn_in = SUBNAT_CROP_ADJ_MCMC_BURNIN
-
-# Settings for fitting subnational attrition parameters
-scaling_constant = SUBNAT_CROP_ATR_SCALING_CONSTANT
-proposal_resampling_variances = SUBNAT_CROP_ATR_PROPOSAL_SAMPLING_VAR # Compact support sampling
-subnat_iterations = SUBNAT_CROP_ATR_MCMC_ITERATIONS
-subnat_burn_in = SUBNAT_CROP_ATR_MCMC_BURNIN
+# %% MCMC NAT-SUBNAT Adjustment ratio Sampler settings
+iterations = NAT_SUBNAT_ADJ_MCMC_ITERATIONS
+burn_in = NAT_SUBNAT_ADJ_MCMC_BURNIN
+sample_var = NAT_SUBNAT_ADJ_MCMC_SAMPLING_VAR
 
 # %% Year bounds
-YEAR_START_NAT = YEAR_NAT_START # Start year for national model
-YEAR_START = YEAR_SUBNAT_TRANS # Start year for subnational model
-YEAR_END = YEAR_NAT_END
+REG_YEAR_START_NAT = YEAR_NAT_START # Start year for national model
+REG_YEAR_START = YEAR_SUBNAT_TRANS #2011 # Start year for subnational model
+REG_YEAR_END = YEAR_NAT_END
 
+##############################################
+# %% BATCH RUN CODE BLOCK!
+##############################################
 # %% Perform draws and save outputs. Filter out unwanted countries
 exclusion_ISOs = EXCLUSION_ISOS
 ISO = ARGS[1]
@@ -64,426 +65,489 @@ ISO = ARGS[1]
 # %%
 
 if ISO ∈ exclusion_ISOs
-    println("$(ISO) is on exclusion list. Skipping regression.")
+    println("$(ISO) is on exclusion list. Skipping draws.")
     flush(stdout)
 else
     ##############################################
     # %% COUNTRY SPECIFIC SETTINGS
     ##############################################
-    println("Currently fitting subnational model for $(ISO)...")
+    println("Currently drawing subnational posteriors for $(ISO)...")
 
-    # %% Data Filenames
-    # Population Data
-    subnat_population_filename = SUBNAT_POPULATION_FILENAME
-    # Net Distribution Data
+    ##############################################
+    # %% COUNTRY SPECIFIC SETTINGS
+    ##############################################
+    # %% Data filenames
+    # Reg filename
+    subnat_reg_filename = "$(ISO)_SUBNAT_NETCROP_$(REG_YEAR_START_NAT)_$(REG_YEAR_START)_$(REG_YEAR_END)_regression.jld2"
+    # National draws filename
+    nat_netcrop_post_filename = "$(ISO)_2000_2023_post_crop_access.jld2"
+    # Net Distribution data
     distributions_filename = SUBNAT_DISTRIBUTION_DATA_FILENAME
-    # Admin 1 ID Legend
-    id_legend_filename = ADMIN1_AREAID_LEGEND_FILENAME
     # Net age demography posterior
-    net_age_filename = "$(ISO)_net_age_demography_mean.csv"
-    # Net attrition posteriors (from national model)
-    net_attrition_filename = "net_attrition_posteriors.csv"
-    # NPC monthly dataset for regression
-    subnat_npc_monthly_data_filename = HOUSEHOLD_SUBNAT_SUMMARY_DATA_FILENAME
-    # National input dict used for the national net crop regression (used to get monthly population numbers)
-    nat_netcrop_input_dict_filename = "$(ISO)_$(YEAR_START_NAT)_$(YEAR_END)_cropextract.jld2"
-    # National net crop draws
-    nat_netcrop_post_filename = "$(ISO)_$(YEAR_START_NAT)_$(YEAR_END)_post_crop_access.jld2"
+    net_age_filename = "$(ISO)_net_age_demography_samples.csv"
 
     # %% National MCMC chain (for getting monthly disaggregation ratios)
-    nat_cropchain_dir = OUTPUT_REGRESSIONS_DIR*"crop/$(YEAR_START_NAT)_$(YEAR_END)/"
-    nat_cropchain_filename = "$(ISO)_$(YEAR_START_NAT)_$(YEAR_END)_cropchains.jld2"
+    nat_cropchain_dir = OUTPUT_REGRESSIONS_DIR*"crop/$(REG_YEAR_START_NAT)_$(REG_YEAR_END)/"
+    nat_cropchain_filename = "$(ISO)_$(REG_YEAR_START_NAT)_$(REG_YEAR_END)_cropchains.jld2"
 
-    # %% File save settings
-    output_filename = "$(ISO)_SUBNAT_NETCROP_$(YEAR_START_NAT)_$(YEAR_START)_$(YEAR_END)_regression.jld2"
+    # %% Access Model MCMC Chain
+    net_access_input_dict_filename = "$(REG_YEAR_START_NAT)_$(REG_YEAR_END)/$(ISO)_$(REG_YEAR_START_NAT)_$(REG_YEAR_END)_accessextract.jld2"
+    net_access_chain_filename = "netaccesschains.jld2"
 
     ##############################################
     # %% Open relevant datasets
     ##############################################
-
-    # %% Import master datasets
-    master_populations = CSV.read(dataset_dir*subnat_population_filename, DataFrame)
+    # %% Load Data
+    # National net crop draw data
+    nat_netcrop_post_data = JLD2.load(nat_netcrop_post_dir*nat_netcrop_post_filename)
+    
+    subnat_reg_data = JLD2.load(subnat_reg_dir*subnat_reg_filename)
+    # Load distribution data
     master_distributions = CSV.read(dataset_dir*distributions_filename, DataFrame)
-    master_id_legend = CSV.read(dataset_dir*id_legend_filename, DataFrame)
-    master_net_age = CSV.read(net_age_dir*net_age_filename, DataFrame)
-    master_net_attrition = CSV.read(posterior_dir*net_attrition_filename, DataFrame)
-
-    # %% Load required country specific national level data
-    # National input dict used for the national net crop regression (used to get monthly population numbers)
-    nat_netcrop_input_dict = load(OUTPUT_EXTRACTIONS_DIR*"crop/$(YEAR_START_NAT)_$(YEAR_END)/"*nat_netcrop_input_dict_filename)
-    # Subnational filtered household survey data
-    subnat_npc_monthly_data = CSV.read(dataprep_dir*"subnational/"*subnat_npc_monthly_data_filename, DataFrame)
-    # Load national net crop draws
-    nat_netcrop_post_data = load(nat_netcrop_post_dir*nat_netcrop_post_filename)
-    # Load National regression MCMC chain (for monthly disaggregation ratios)
+    # Load posterior net demography data
+    master_net_age = CSV.read(nat_netage_post_dir*net_age_filename, DataFrame)
+    # Access Model data
+    net_access_input_dict = JLD2.load(nat_access_ext_dir*net_access_input_dict_filename)
+    net_access_chain = JLD2.load(nat_access_reg_dir*net_access_chain_filename)
+    # Household Survey Data
+    nat_npc_monthly = CSV.read(OUTPUT_DATAPREP_DIR*HOUSEHOLD_NAT_SUMMARY_DATA_FILENAME, DataFrame)
+    subnat_npc_monthly = CSV.read(OUTPUT_SUBNAT_DATAPREP_DIR*HOUSEHOLD_SUBNAT_SUMMARY_DATA_FILENAME, DataFrame)
+    # National MCMC Chain (for getting monthly disaggregation ratios)
     nat_cropchain = load(nat_cropchain_dir*nat_cropchain_filename)
-
-    ##############################################
-    # %% Extract relevant variables
-    ##############################################
-    # %% Get monthly disaggregation ratios and re-use for subnational regression
-    full_monthly_p = nat_cropchain["monthly_p"] # Also extract the full set of monthly disaggregation ratios
-
-    # %% National monthly populations
-    FULL_NAT_POPULATION_MONTHLY = nat_netcrop_input_dict["POPULATION_MONTHLY"]
 
     ##############################################
     # %% Calculate relevant loop bounds (TIME INDEX)
     ##############################################
+
+    # %% Get metadata
+    # List of admin1 names
+    admin1_names = subnat_reg_data["admin1_names"]
+    n_admin1 = length(admin1_names)
+
     # %% Calculate indexing bounds
+    YEAR_START_NAT = YEAR_NAT_START #subnat_reg_data["YEAR_START_NAT"]
+    YEAR_START = YEAR_SUBNAT_TRANS #subnat_reg_data["YEAR_START"]
+    YEAR_END = YEAR_NAT_END #subnat_reg_data["YEAR_END"]
+
     YEARS_ANNUAL = Vector(YEAR_START:1:(YEAR_END))
-    FULL_YEARS_ANNUAL = Vector(YEAR_START_NAT:1:(YEAR_END))
     MONTHS_MONTHLY = Vector(1:(YEAR_END-YEAR_START+1)*12)
     FULL_MONTHS_MONTHLY = Vector(1:(YEAR_END-YEAR_START_NAT+1)*12)
 
-    # Indexing calculations to filter full time period from national, to subnational time period
-    idx_year_ref_1 = findfirst(FULL_YEARS_ANNUAL .== YEAR_START)
-    idx_year_ref_2 = findfirst(FULL_YEARS_ANNUAL .== YEAR_END)
+    # %% Get required dimension sizes for sampling posterior and adjusted estimates
+    n_admin1 = length(admin1_names)
+    n_months = length(FULL_MONTHS_MONTHLY)
+    n_net_types = length(subnat_reg_data["admin1_outputs"][1]["NET_NAMES"])
 
-    idx_month_ref_1 = (idx_year_ref_1-1)*12+1
-    idx_month_ref_2 = (idx_year_ref_2*12)
-    subnat_monthidxs = idx_month_ref_1:idx_month_ref_2 
+    
+    ##############################################
+    # %% Extract relevant variables
+    ##############################################
+    # %% Get monthly disaggregation ratios and re-use for subnational regression
+    full_monthly_p = nat_cropchain["monthly_p"]
 
-    # %% Get admin1 metadata
-    country_legend = master_id_legend[master_id_legend.ISO.==ISO,:]
-    admin1_names = country_legend.Name_1
+    # %% Import National Access model parameters
+    ρ_chain_df = net_access_chain["ρ_chain_df"]
+    μ_chain_df = net_access_chain["μ_chain_df"]
+    p_h = mean(net_access_input_dict["p_h_aggregated"], dims = 1)[:]
+
+    # %% Extract Net Distribution Numbers
+    ALLREGIONS_DISTRIBUTION_ANNUAL_BYNET = zeros(n_admin1, length(YEARS_ANNUAL), n_net_types)
+    for i in 1:n_admin1
+        # ALLREGIONS_DISTRIBUTION_ANNUAL_BYNET[i,:,:] = subnat_reg_data["admin1_outputs"][i]["DISTRIBUTION_ANNUAL_BYNET"]
+        ALLREGIONS_DISTRIBUTION_ANNUAL_BYNET[i,:,:] = subnat_reg_data["admin1_outputs"][i]["ADJ_DISTRIBUTION_ANNUAL_BYNET"]
+    end
+    
+
+    ##############################################
+    # %% Subnational Crop and Access Draws
+    ##############################################
 
     # %% Get number of Admin 1 Subnational regions
     n_admin1 = length(admin1_names)
 
-    ##########################################
-    # Get national model dynamics parameters
-    ##########################################
-    # Net Attrition Parameters
-    net_attrition_params = master_net_attrition[master_net_attrition.ISO .== ISO,:]
-
-    # Get Initial Condition Net demography
-    initial_demography_condition = master_net_age[(master_net_age.ISO .== ISO) .&
-                                                (master_net_age.YEAR .== YEAR_START) .&
-                                                (master_net_age.MONTH .== 1),:]
-    INIT_NET_NAMES = unique(initial_demography_condition.NET_TYPE)
-    max_age_months = size(initial_demography_condition[:,6:end])[2]
-    YEAR_HISTORY_START = YEAR_START-Int(max_age_months/12)
-
-    ##############################################
-    # %% Data Prep
-    ##############################################
-    ALLREGIONS_DISTRIBUTIONS_EXTRACT = []
-    ALLREGIONS_POPULATION_ANNUAL_EXTRACT = []
-    ALLREGIONS_FULL_POPULATION_MONTHLY_EXTRACT = []
-    ALLREGIONS_NET_NAMES = []
-    ALLREGIONS_NET_CROP_MONTHLY_EXTRACT = []
-    ALLREGIONS_NET_CROP_STD_MONTHLY_EXTRACT = []
-
-    
-    # # Extract data for all regions
-    for admin1_name_i in 1:n_admin1
-        ##############################################
-        # %% Select Region
-        ##############################################
-        # Get area_id
-        admin1_name = admin1_names[admin1_name_i]
-        area_id = country_legend[country_legend.Name_1 .== admin1_name,"area_id"][1]
-
-        ##############################################
-        # %% Population Data
-        ##############################################
-        admin1_master_populations = master_populations[(master_populations.area_id .== area_id) .&
-                                                        (master_populations.year .>= YEAR_START) .&
-                                                        (master_populations.year .<= YEAR_END+1),:]
-        FULL_admin1_master_populations = master_populations[(master_populations.area_id .== area_id) .&
-                                                        (master_populations.year .>= YEAR_START_NAT) .&
-                                                        (master_populations.year .<= YEAR_END+1),:]
-
-        POPULATION_ANNUAL = admin1_master_populations[sortperm(admin1_master_populations.year),"SUM"]
-        FULL_POPULATION_ANNUAL = FULL_admin1_master_populations[sortperm(FULL_admin1_master_populations.year),"SUM"]                                    
-
-        # POPULATION_MONTHLY = zeros(length(MONTHS_MONTHLY))
-        FULL_POPULATION_MONTHLY = zeros(length(FULL_MONTHS_MONTHLY))
-
-        # for i in 1:(length(YEARS_ANNUAL))
-        #     POPULATION_MONTHLY[(12*(i-1)+1):(12*i)] = LinRange(POPULATION_ANNUAL[i], POPULATION_ANNUAL[i+1],13)[1:12]
-        # end
-
-        for i in 1:(length(FULL_YEARS_ANNUAL))
-            FULL_POPULATION_MONTHLY[(12*(i-1)+1):(12*i)] = LinRange(FULL_POPULATION_ANNUAL[i], FULL_POPULATION_ANNUAL[i+1],13)[1:12]
-        end
-        push!(ALLREGIONS_POPULATION_ANNUAL_EXTRACT, POPULATION_ANNUAL)
-        push!(ALLREGIONS_FULL_POPULATION_MONTHLY_EXTRACT, FULL_POPULATION_MONTHLY)
-
-        ##########################################
-        # Distribution Data
-        ##########################################
-        # %% Raw Distribution Data + Disaggregated from reported national reported distributions + AMP Tracker
-        # Get list of net n_net_types
-        filt_distributions = master_distributions[(master_distributions.iso .== ISO) .& 
-                                        (master_distributions.area_id .== area_id) .& 
-                                        (master_distributions.year .>= YEAR_START) .&
-                                        (master_distributions.year .<= YEAR_END),:]
-
-        FULL_filt_distributions = master_distributions[(master_distributions.iso .== ISO) .& 
-                                        (master_distributions.area_id .== area_id) .& 
-                                        (master_distributions.year .>= YEAR_START_NAT) .&
-                                        (master_distributions.year .<= YEAR_END),:]
-
-        present_net_ids = findall(sum(Array(FULL_filt_distributions[.!ismissing.(FULL_filt_distributions[:,"Total Nets"]), 10:end]), dims = 1)[:] .> 0)
-        DIST_NET_NAMES = names(filt_distributions)[10:end][present_net_ids]
-
-        # %% Get total list of net types
-        NET_NAMES = union(DIST_NET_NAMES, INIT_NET_NAMES)
-        n_net_types = length(NET_NAMES)
-
-        # %% Annual distributions learned from national model
-        NAT_model_est_DISTRIBUTION_ANNUAL_BYNET_mean = mean(nat_netcrop_post_data["DISTRIBUTION_ANNUAL_samples_BYNET"][:, idx_year_ref_1:idx_year_ref_2,:], dims = 1)[1,:,:]
-
-        # %% Construct Matrix of net distributions
-        SUBNAT_RAW_DISTRIBUTION_ANNUAL_BYNET = Matrix(filt_distributions[sortperm(filt_distributions.year),NET_NAMES])
-
-        # %% Find all missing distribution data, and replace with population based disaggregation from national model estimates
-        missing_dist_idx = findall(ismissing.(sum(SUBNAT_RAW_DISTRIBUTION_ANNUAL_BYNET, dims = 2)[:]))
-
-        # Calculate population disaggregation ratios
-        population_disagg_ratios = POPULATION_ANNUAL[1:end-1]./FULL_NAT_POPULATION_MONTHLY[subnat_monthidxs][1:12:end]
-
-        # Estimates of net distribution by type for required years based on posterior national model estimates
-        SUBNAT_model_est_DISTRIBUTION_ANNUAL_BYNET_mean = NAT_model_est_DISTRIBUTION_ANNUAL_BYNET_mean.*repeat(population_disagg_ratios,1, n_net_types)
-        
-        # Fill in missing data with posterior national estimates
-        DISTRIBUTION_ANNUAL_BYNET = copy(SUBNAT_RAW_DISTRIBUTION_ANNUAL_BYNET)
-        DISTRIBUTION_ANNUAL_BYNET[missing_dist_idx,:] = SUBNAT_model_est_DISTRIBUTION_ANNUAL_BYNET_mean[missing_dist_idx,:]
-
-        push!(ALLREGIONS_DISTRIBUTIONS_EXTRACT, DISTRIBUTION_ANNUAL_BYNET)
-        push!(ALLREGIONS_NET_NAMES, NET_NAMES)
-
-
-        ##########################################
-        # Household Survey Data Prep: Import subnat crop data for regression
-        ##########################################
-
-        # Extract observed netcrop estimates for survey aggregate (subnat_npc_monthly_data.csv)
-        FULL_SUBNAT_NET_CROP_MONTHLY = missings(Float64,length(FULL_MONTHS_MONTHLY))
-        FULL_SUBNAT_NET_CROP_STD_MONTHLY = missings(Float64,length(FULL_MONTHS_MONTHLY))
-        
-        subnat_npc_entries = subnat_npc_monthly_data[subnat_npc_monthly_data.area_id .== area_id,:]
-        for row_i in 1:size(subnat_npc_entries)[1]
-            month_val = subnat_npc_entries[row_i,"month"]
-            year_val = subnat_npc_entries[row_i,"year"]
-            monthidx = monthyear_to_monthidx(month_val, year_val, YEAR_START = YEAR_START_NAT)
-            FULL_SUBNAT_NET_CROP_MONTHLY[monthidx] = subnat_npc_entries[row_i,"NPC_mean"]*FULL_POPULATION_MONTHLY[monthidx]
-            FULL_SUBNAT_NET_CROP_STD_MONTHLY[monthidx] = subnat_npc_entries[row_i,"NPC_adj_se"]*FULL_POPULATION_MONTHLY[monthidx]
-        end
-
-        # IMPORTANT!! => For years where there are no surveys, use values from National regression
-        # This is a simple way to include some delivery information, make models match a little better
-        # without making the system too complicated
-
-        # Find years where there are no surveys and need to be filled in from national estimates
-        missing_years = setdiff(FULL_YEARS_ANNUAL,unique(subnat_npc_entries.year))
-
-        # Convert missing years to month idx (specificall choose estimate at the start of the year)
-        missing_monthidxs = monthyear_to_monthidx.(1,missing_years, YEAR_START = YEAR_START_NAT)
-
-        # Get National posterior net_crop estimates
-        nat_npc_samples = sum(nat_netcrop_post_data["Γ_MONTHLY_samples_BYNET"], dims = 3)[:,:,1]./repeat(FULL_NAT_POPULATION_MONTHLY',size(nat_netcrop_post_data["Γ_MONTHLY_samples_BYNET"])[1])
-        nat_npc_mean = mean(nat_npc_samples, dims = 1)[1,:]
-        nat_npc_std = std(nat_npc_samples, dims = 1)[1,:]
-        
-        # Fill data vector used for regression with national model estimates scaled by population for years with no survey data
-        FULL_SUBNAT_NET_CROP_MONTHLY[missing_monthidxs] .= (FULL_POPULATION_MONTHLY.*nat_npc_mean)[missing_monthidxs]
-        FULL_SUBNAT_NET_CROP_STD_MONTHLY[missing_monthidxs] .= (FULL_POPULATION_MONTHLY.*nat_npc_std)[missing_monthidxs]
-
-        # Remove all cases where the STD is 0 as these will cause problems in the regression
-        nonmissing_idxs = findall(.!ismissing.(FULL_SUBNAT_NET_CROP_STD_MONTHLY))
-        nonmissing_zero_idxs = findall(FULL_SUBNAT_NET_CROP_STD_MONTHLY[nonmissing_idxs].==0)
-        zero_std_idxs = nonmissing_idxs[nonmissing_zero_idxs]
-        FULL_SUBNAT_NET_CROP_MONTHLY[zero_std_idxs] .= missing
-        FULL_SUBNAT_NET_CROP_STD_MONTHLY[zero_std_idxs] .= missing
-
-        push!(ALLREGIONS_NET_CROP_MONTHLY_EXTRACT, FULL_SUBNAT_NET_CROP_MONTHLY)
-        push!(ALLREGIONS_NET_CROP_STD_MONTHLY_EXTRACT, FULL_SUBNAT_NET_CROP_STD_MONTHLY)
-    end 
-
-    # Compile extracted data into array
-    n_subnat_years, n_net_types = size(ALLREGIONS_DISTRIBUTIONS_EXTRACT[1])[1:2]
-    ALLREGIONS_FULL_POPULATION_MONTHLY_EXTRACT[1]
-    ALLREGIONS_DISTRIBUTIONS_ARRAY = zeros(n_admin1, n_subnat_years, n_net_types)
-    ALLREGIONS_FULL_POPULATION_ARRAY = zeros(n_admin1, size(ALLREGIONS_FULL_POPULATION_MONTHLY_EXTRACT[1])[1])
-    ALLREGIONS_FULL_NET_CROP_ARRAY = missings(Float64, n_admin1, size(ALLREGIONS_FULL_POPULATION_MONTHLY_EXTRACT[1])[1])
-    ALLREGIONS_FULL_NET_CROP_STD_ARRAY = missings(Float64, n_admin1, size(ALLREGIONS_FULL_POPULATION_MONTHLY_EXTRACT[1])[1])
-    for i in 1:n_admin1
-        ALLREGIONS_DISTRIBUTIONS_ARRAY[i,:,:] .= ALLREGIONS_DISTRIBUTIONS_EXTRACT[i]
-        ALLREGIONS_FULL_POPULATION_ARRAY[i,:] .= ALLREGIONS_FULL_POPULATION_MONTHLY_EXTRACT[i]
-        ALLREGIONS_FULL_NET_CROP_ARRAY[i,:] .= ALLREGIONS_NET_CROP_MONTHLY_EXTRACT[i]
-        ALLREGIONS_FULL_NET_CROP_STD_ARRAY[i,:] .= ALLREGIONS_NET_CROP_STD_MONTHLY_EXTRACT[i]
-    end
-    
-    ##############################################
-    # %% Subnational Regression
-    ##############################################
-
-    ##############################################
-    # %% Step 1: Get Distribution Adjustment Weights by subnational based on household survey. 
-    # Assume same attrition parameters as national model
-    ##############################################
-
-    # Trim monthly_p to desired subnational regression period
-    monthly_p = full_monthly_p[subnat_monthidxs]
-
-    # Get required household net crop data
-    ALLREGIONS_NET_CROP_MONTHLY = ALLREGIONS_FULL_NET_CROP_ARRAY[:,subnat_monthidxs]
-    ALLREGIONS_NET_CROP_STD_MONTHLY = ALLREGIONS_FULL_NET_CROP_STD_ARRAY[:,subnat_monthidxs]
-
-    # Calculate total national net crop to optimise MCMC regression algorithm
-    NAT_DISTRIBUTIONS_TOTAL = sum(ALLREGIONS_DISTRIBUTIONS_ARRAY, dims = (1,3))[:]
-    
-    # %% Do MCMC sampling to get posterior adjustment weights
-    # Define proposal sampler distribution
-    adj_weights_rwmh = externalsampler(RWMH(MvNormal(zeros(n_admin1), I.*0.0002)))
-    
-    # Sample MCMC
-    output = []
-    if n_chains > 1
-        output = sample(subnat_weighted_monthly_itn(YEARS_ANNUAL, MONTHS_MONTHLY,
-                                            ALLREGIONS_POPULATION_ANNUAL_EXTRACT,
-                                            ALLREGIONS_DISTRIBUTIONS_ARRAY,
-                                            NAT_DISTRIBUTIONS_TOTAL,
-                                            ALLREGIONS_NET_NAMES,
-                                            net_attrition_params,
-                                            initial_demography_condition,
-                                            ALLREGIONS_NET_CROP_MONTHLY,
-                                            ALLREGIONS_NET_CROP_STD_MONTHLY; 
-                                            monthly_p = monthly_p,
-                                            ϵ = 0.003), 
-                                                adj_weights_rwmh, MCMCThreads(), adj_iterations, n_chains,
-                                                progress = true, discard_initial = adj_burn_in)
-    else
-        output = sample(subnat_weighted_monthly_itn(YEARS_ANNUAL, MONTHS_MONTHLY,
-                                            ALLREGIONS_POPULATION_ANNUAL_EXTRACT,
-                                            ALLREGIONS_DISTRIBUTIONS_ARRAY,
-                                            NAT_DISTRIBUTIONS_TOTAL,
-                                            ALLREGIONS_NET_NAMES,
-                                            net_attrition_params,
-                                            initial_demography_condition,
-                                            ALLREGIONS_NET_CROP_MONTHLY,
-                                            ALLREGIONS_NET_CROP_STD_MONTHLY; 
-                                            monthly_p = monthly_p,
-                                            ϵ = 0.003), 
-                                                adj_weights_rwmh, adj_iterations, 
-                                                progress = true, discard_initial = adj_burn_in)
-    end
-    
-    ##############################################
-    # %% Step 2: Rescale distribution values by regressed weights for each subnational admin region
-    ##############################################
-
-    # Calculate Weight Adjusted Net Distributions for Subnational Regression
-    ω = mean(Matrix(DataFrame(output)[:,3:3+n_admin1-1]), dims = 1)[:]
-    
-    ADJ_ALLREGIONS_DISTRIBUTIONS_ARRAY = zeros(size(ALLREGIONS_DISTRIBUTIONS_ARRAY))
-    for i in 1:n_admin1
-        ADJ_ALLREGIONS_DISTRIBUTIONS_ARRAY[i,:,:] = ALLREGIONS_DISTRIBUTIONS_ARRAY[i,:,:].*ω[i]
-    end
- 
-
-    ##############################################
-    # %% Step 3: Perform subnational level regression of attrition parameters
-    ##############################################
-
     # %% Storage variable for results
-    admin1_outputs = Vector{Any}(undef, n_admin1)
+    admin1_outputs_full = Vector{Any}(undef, n_admin1)
+    admin1_outputs = Vector{Any}(undef, n_admin1) # Version that doesn't store all samples of demography matrix
 
-    # %% Analyse all admin regions and save in required list variables
-    Threads.@threads for admin1_name_i in 1:n_admin1
+    ##############################################
+    # UNADJUSTED POSTERIOR DRAWS FOR EACH SUBNATIONAL REGION
+    # %% Do draws for forward evolution
+    ##############################################
+    Threads.@threads for admin1_name_i in 1:length(admin1_names)
+        println("Sampling for $(ISO), region $(admin1_name_i) of $(length(admin1_names))...")
 
-        println("Analysing subnational region for $(ISO). $(admin1_name_i) of $(length(admin1_names))...")
-        
-        ##########################################
-        # Prepare required data
-        ##########################################
-
-        # Get area_id
+        # Get admin1 parameters
         admin1_name = admin1_names[admin1_name_i]
-        area_id = country_legend[country_legend.Name_1 .== admin1_name,"area_id"][1]
+        area_id = subnat_reg_data["admin1_outputs"][admin1_name_i]["area_id"]
+        NET_NAMES = subnat_reg_data["admin1_outputs"][admin1_name_i]["NET_NAMES"]
 
-        # Get required annual population data for subnational region
-        POPULATION_ANNUAL = ALLREGIONS_POPULATION_ANNUAL_EXTRACT[admin1_name_i]
-
-        # Get required list of net names
-        NET_NAMES = ALLREGIONS_NET_NAMES[admin1_name_i]
-
-        # Get household net crop values to regres against
-        SUBNAT_NET_CROP_MONTHLY = ALLREGIONS_NET_CROP_MONTHLY[admin1_name_i,:]
-        SUBNAT_NET_CROP_STD_MONTHLY = ALLREGIONS_NET_CROP_STD_MONTHLY[admin1_name_i,:]
-
-        # Get annual distribution numbers using adjusted values from pervious section
-        DISTRIBUTION_ANNUAL_BYNET = ADJ_ALLREGIONS_DISTRIBUTIONS_ARRAY[admin1_name_i,:,:]
-
-        # Get population for entrie year period
-        FULL_POPULATION_MONTHLY = ALLREGIONS_FULL_POPULATION_ARRAY[admin1_name_i,:]
-
-        ##########################################
-        # Try running MCMC Turing regression
-        ##########################################
+        # Get trimmed month index range where subnational is relevant
         
-        # Calculate number of r.v. added to impute missing data
+        idx_year_ref_1 = YEAR_START - REG_YEAR_START_NAT + 1
+        idx_year_ref_2 = YEAR_END - REG_YEAR_START_NAT + 1
+
+        idx_month_ref_1 = (idx_year_ref_1-1)*12+1
+        idx_month_ref_2 = (idx_year_ref_2*12)
+        subnat_monthidxs = idx_month_ref_1:idx_month_ref_2 
+
+        monthly_p = full_monthly_p[subnat_monthidxs]
+
+        # %% Forward simulation
+
+        FULL_POPULATION_MONTHLY = subnat_reg_data["admin1_outputs"][admin1_name_i]["FULL_POPULATION_MONTHLY"]
+        FULL_POPULATION_ANNUAL = FULL_POPULATION_MONTHLY[1:12:end]
+        YEAR_START_idx = YEAR_START-YEAR_START_NAT+1
+        POPULATION_ANNUAL = FULL_POPULATION_ANNUAL[YEAR_START_idx:end]
+
+        # Get required net distribution data ( from subnational regression)
+
+
+        # filt_distributions = master_distributions[(master_distributions.iso .== ISO) .& 
+        #                                     (master_distributions.area_id .== area_id) .& 
+        #                                     (master_distributions.year .>= YEAR_START) .&
+        #                                     (master_distributions.year .<= YEAR_END),:]
+        # DISTRIBUTION_ANNUAL_BYNET = Matrix(filt_distributions[sortperm(filt_distributions.year),NET_NAMES])
+
+        DISTRIBUTION_ANNUAL_BYNET =  ALLREGIONS_DISTRIBUTION_ANNUAL_BYNET[admin1_name_i,:,:]
+        
+        # Get required net demography
+        initial_demography_condition = master_net_age[(master_net_age.ISO .== ISO) .&
+                                                        (master_net_age.YEAR .== YEAR_START) .&
+                                                        (master_net_age.MONTH .== 1),:]
+
+        # Load national demography data for combining final net crop draws
+        # Extract original net age demography and scale by required population proportion size
+        FULL_A_NPC_BYNET = nat_netcrop_post_data["A_NPC_mean_BYNET"]
+        FULL_A_BYNET = zeros(size(FULL_A_NPC_BYNET))
+
+        for birth_j in 1:size(FULL_A_BYNET)[2]
+            for net_type_i in 1:size(FULL_A_BYNET)[3]
+                FULL_A_BYNET[:,birth_j,net_type_i] = FULL_A_NPC_BYNET[:,birth_j,net_type_i].*FULL_POPULATION_MONTHLY
+            end
+        end
+
+        # Also load raw net-crop for use in de-meaning net subnational estimates prior to YEAR_START
+        Γ_MONTHLY_samples_BYNET = nat_netcrop_post_data["Γ_MONTHLY_samples_BYNET"]
+        Γ_MONTHLY_mean_BYNET = mean(Γ_MONTHLY_samples_BYNET, dims = 1)[1,:,:]
+        
+        # Get number of net types and missing net distribution entries
+        n_net_types = length(NET_NAMES)
         n_missing = sum(ismissing.(DISTRIBUTION_ANNUAL_BYNET[:,1]))*n_net_types
 
-        # Construct final resampling variance vector and covariance matrix
-        resampling_variances = vcat(repeat(proposal_resampling_variances[1:2], n_net_types),
-                                        ones(n_missing).*(proposal_resampling_variances[3]/scaling_constant))
-        subnat_rwmh = externalsampler(RWMH(MvNormal(zeros(length(resampling_variances)), Diagonal(resampling_variances))))
+        # Import MCMC sampled chains
+        τ_chain = subnat_reg_data["admin1_outputs"][admin1_name_i]["τ_chain"]
+        κ_chain = subnat_reg_data["admin1_outputs"][admin1_name_i]["κ_chain"]
+        missing_nets_chain = subnat_reg_data["admin1_outputs"][admin1_name_i]["missing_nets_chain"]
+        subnat_reg_data["admin1_outputs"][admin1_name_i]
 
-        # Define Random Walk Metropolis Hastings external sampler. Taken from AdvancedMH package.
-        output = sample(SUBNAT_monthly_itn(YEARS_ANNUAL, MONTHS_MONTHLY,
-                                    POPULATION_ANNUAL,
-                                    DISTRIBUTION_ANNUAL_BYNET,
-                                    SUBNAT_NET_CROP_MONTHLY,
-                                    SUBNAT_NET_CROP_STD_MONTHLY,
-                                    NET_NAMES,
-                                    initial_demography_condition,
-                                    net_attrition_params,
-                                    monthly_p = monthly_p), 
-                                    subnat_rwmh, subnat_iterations,
-                                    progress = true, discard_initial = subnat_burn_in)
+        # Sample from MCMC joint posterior
+        sampled_idxs = rand(1:size(τ_chain)[1], n_samples)
 
-        # %% Get mean posterior estimates
-        τ_chain = DataFrame(output)[:,3:2:(2+n_net_types*2)]
-        κ_chain = DataFrame(output)[:,4:2:(2+n_net_types*2)]
-        missing_nets_chain = DataFrame(output)[:,(2+n_net_types*2+1):(2+n_net_types*2+n_missing)]
+        # Define storage variables for sample draws
+        COMBINED_A_BYNET_samples = zeros(n_samples, size(FULL_A_BYNET)...)
+        Γ_MONTHLY_BYNET_samples = zeros(n_samples, size(FULL_A_BYNET)[1], n_net_types)
+        NPC_MONTHLY_BYNET_samples = zeros(n_samples, size(FULL_A_BYNET)[1], n_net_types)
 
-        τ_est = mean(Matrix(τ_chain), dims = 1)[:]
-        κ_est = mean(Matrix(κ_chain), dims = 1)[:]
+        COMBINED_A_TOTAL_samples = zeros(n_samples, size(FULL_A_BYNET)[1:2]...)
+        Γ_MONTHLY_TOTAL_samples = zeros(n_samples, size(FULL_A_BYNET)[1])
+        NPC_MONTHLY_TOTAL_samples = zeros(n_samples, size(FULL_A_BYNET)[1])
 
-        missing_nets_est = []
+        # Draw from subnational crop posterior
+        for i in ProgressBar(1:n_samples, leave = false)
+            τ_est = Vector(τ_chain[sampled_idxs[i],:])
+            κ_est = Vector(κ_chain[sampled_idxs[i],:])
 
-        if n_missing > 0
-            missing_nets_est = mean(Matrix(DataFrame(output)[:,(2+n_net_types*2+1):(2+n_net_types*2+n_missing)]), dims = 1)[:]
-        end 
+            missing_nets_est = []
 
-        # Define dict of results to save
-        output_dict = Dict("area_id" => area_id, "admin1_name" => admin1_name,
-                            "NET_NAMES" => NET_NAMES,
-                            "FULL_POPULATION_MONTHLY" => FULL_POPULATION_MONTHLY,
-                            "RAW_DISTRIBUTION_ANNUAL_BYNET" => ALLREGIONS_DISTRIBUTIONS_ARRAY,
-                            "ADJ_DISTRIBUTION_ANNUAL_BYNET" => DISTRIBUTION_ANNUAL_BYNET,
-                            "τ_chain" => τ_chain, "κ_chain" => κ_chain, "missing_nets_chain" => missing_nets_chain,
-                            "τ_est" => τ_est, "κ_est" => κ_est, "missing_nets_est" => missing_nets_est,
-                            "monthly_p" => monthly_p)
+            if n_missing > 0
+                missing_nets_est = Vector(missing_nets_chain[sampled_idxs[i],:])
+            end 
 
-        # Store in variable
-        admin1_outputs[admin1_name_i] = copy(output_dict)
+            # Forward simulation using drawn posterior parameters
+            rand_init_demography_idx = rand(unique(initial_demography_condition[:,4]))
+
+            rand_init_demography_idx
+            init_demography_sample = initial_demography_condition[initial_demography_condition.sample_idx .== rand_init_demography_idx,:]
+            initial_demography_condition    
+            
+            # Use posterior mean final net demography condition at YEAR_START from national model to initialise
+            A_BYNET = SUBNAT_monthly_itn_forward(YEARS_ANNUAL, MONTHS_MONTHLY,
+                                                            POPULATION_ANNUAL,
+                                                            DISTRIBUTION_ANNUAL_BYNET,
+                                                            NET_NAMES,
+                                                            init_demography_sample,
+                                                            τ_est, κ_est,
+                                                            missing_nets_est,
+                                                            monthly_p = monthly_p)[2]
+
+            # Join national and subnational draws at YEAR_START
+            # Need to first "de-mean" FULL_A_BYNET by multiplying the ratio of Γ_MONTHLY_samples_BYNET/Γ_MONTHLY_mean_BYNET
+            Γ_MONTHLY_sample = Γ_MONTHLY_samples_BYNET[rand(1:size(Γ_MONTHLY_samples_BYNET)[1]),:,:]
+            ADJ_ratio = Γ_MONTHLY_sample./Γ_MONTHLY_mean_BYNET
+            ADJ_ratio[findall(isnan.(ADJ_ratio))] .= 1 # Clean cases where there are NaNs
+            
+            ADJ_FULL_A_BYNET = copy(FULL_A_BYNET)
+            for month_i in 1:size(ADJ_FULL_A_BYNET)[1]
+                for net_type_i in 1:n_net_types
+                    ADJ_FULL_A_BYNET[month_i,:,net_type_i] = FULL_A_BYNET[month_i,:,net_type_i]*ADJ_ratio[month_i,net_type_i]
+                end
+            end
+            
+            # Replace national values with subnational draws
+            COMBINED_A_BYNET = copy(ADJ_FULL_A_BYNET)
+            
+            COMBINED_A_BYNET[end-size(A_BYNET)[1]+2:end,end-size(A_BYNET)[2]+2:end,:] .= copy(A_BYNET[1:end-1,1:end-1,:])
+
+            # Calculate summaries
+            Γ_MONTHLY_BYNET = sum(COMBINED_A_BYNET, dims = 2)[:,1,:]
+            NPC_MONTHLY_BYNET = zeros(size(Γ_MONTHLY_BYNET))
+            for net_type_i in 1:n_net_types
+                NPC_MONTHLY_BYNET[:,net_type_i] = Γ_MONTHLY_BYNET[:,net_type_i]./FULL_POPULATION_MONTHLY
+            end
+            
+            COMBINED_A_TOTAL = sum(COMBINED_A_BYNET, dims = 3)[:,:,1]
+            Γ_MONTHLY_TOTAL = sum(COMBINED_A_TOTAL, dims = 2)[:,1]
+            NPC_MONTHLY_TOTAL = Γ_MONTHLY_TOTAL./FULL_POPULATION_MONTHLY
+            Plots.plot(NPC_MONTHLY_TOTAL)
+            # Store sample in storage variable
+            COMBINED_A_BYNET_samples[i,:,:,:] = COMBINED_A_BYNET
+            Γ_MONTHLY_BYNET_samples[i,:,:] = Γ_MONTHLY_BYNET
+            NPC_MONTHLY_BYNET_samples[i,:,:] = NPC_MONTHLY_BYNET
+            COMBINED_A_TOTAL_samples[i,:,:] = COMBINED_A_TOTAL
+            Γ_MONTHLY_TOTAL_samples[i,:] = Γ_MONTHLY_TOTAL
+            NPC_MONTHLY_TOTAL_samples[i,:] = NPC_MONTHLY_TOTAL
+        end
+
+        # %% Sample posterior access, give subnational NPC draws
+        λ_ACCESS_samples = sample_net_access(ρ_chain_df, μ_chain_df, p_h,
+                                    FULL_POPULATION_MONTHLY, Γ_MONTHLY_TOTAL_samples;
+                                    n_max = 20)
+
+        # %% Add to collection of outputs
+        # Only keep mean for net sampled demography due to file size constraints (IGNORED on Tas' request for CI of mean net age)
+        COMBINED_A_BYNET_mean = mean(COMBINED_A_BYNET_samples, dims = 1)[1,:,:,:]
+        COMBINED_A_TOTAL_mean = mean(COMBINED_A_TOTAL_samples,dims = 1)[1,:,:]
+
+        admin1_output_full = Dict(   "area_id" => area_id,
+                                "COMBINED_A_BYNET_samples" => Float16.(COMBINED_A_BYNET_samples),
+                                "COMBINED_A_BYNET_mean" => COMBINED_A_BYNET_mean,
+                                "Γ_MONTHLY_BYNET_samples" => Γ_MONTHLY_BYNET_samples,
+                                "NPC_MONTHLY_BYNET_samples" => NPC_MONTHLY_BYNET_samples,
+                                "COMBINED_A_TOTAL_samples" => Float16.(COMBINED_A_TOTAL_samples),
+                                "COMBINED_A_TOTAL_mean" => COMBINED_A_TOTAL_mean,
+                                "Γ_MONTHLY_TOTAL_samples" => Γ_MONTHLY_TOTAL_samples,
+                                "NPC_MONTHLY_TOTAL_samples" => NPC_MONTHLY_TOTAL_samples,
+                                "λ_ACCESS_samples" => λ_ACCESS_samples)
+        admin1_output = Dict(   "area_id" => area_id,
+                                "COMBINED_A_BYNET_mean" => COMBINED_A_BYNET_mean,
+                                "Γ_MONTHLY_BYNET_samples" => Γ_MONTHLY_BYNET_samples,
+                                "NPC_MONTHLY_BYNET_samples" => NPC_MONTHLY_BYNET_samples,
+                                "COMBINED_A_TOTAL_mean" => COMBINED_A_TOTAL_mean,
+                                "Γ_MONTHLY_TOTAL_samples" => Γ_MONTHLY_TOTAL_samples,
+                                "NPC_MONTHLY_TOTAL_samples" => NPC_MONTHLY_TOTAL_samples,
+                                "λ_ACCESS_samples" => λ_ACCESS_samples)
+
+        # Store in variabl
+        admin1_outputs_full[admin1_name_i] = copy(admin1_output_full)
+        admin1_outputs[admin1_name_i] = copy(admin1_output)
+        # push!(admin1_outputs, admin1_output)
+
     end
 
     ##############################################
-    # %% Step 4: Save Outputs
+    # COMPILE UNADJUSTED POSTERIOR NET CROP DRAWS TO A NICE ARRAY FOR LATER REGRESSION
+    # %% Do draws for forward evolution
     ##############################################
-    mkpath(save_dir)
-    jldsave(save_dir*output_filename; ISO,
-                        YEAR_START_NAT,
-                        YEAR_START,
-                        YEAR_END,
-                        admin1_names,
-                        admin1_outputs,
-                        adj_weights = ω)
-end
 
+    ##############################
+    # %% COMPILE POPULATION DATA
+    ##############################
+    SUBNAT_POPULATION_MONTHLY = zeros(n_admin1, n_months)
+    for admin1_name_i in 1:n_admin1
+        SUBNAT_POPULATION_MONTHLY[admin1_name_i,:] = subnat_reg_data["admin1_outputs"][admin1_name_i]["FULL_POPULATION_MONTHLY"]
+    end
+    NAT_POPULATION_MONTHLY = sum(SUBNAT_POPULATION_MONTHLY, dims = 1)[:]
+
+    ##############################
+    # %% NATIONAL DATA PREP
+    ##############################
+    # Define Arrays to extract required Net Crop values
+    NATIONAL_Γ_MONTHLY_TOTAL_samples = sum(nat_netcrop_post_data["Γ_MONTHLY_samples_BYNET"], dims = 3)[:,:,1]
+
+    # Extract relevant data from household surveys
+    filt_nat_npc_monthly = nat_npc_monthly[(nat_npc_monthly.ISO .== ISO) .&
+                                            (nat_npc_monthly.year .>= YEAR_START_NAT) .&
+                                            (nat_npc_monthly.year .<= YEAR_END), :]
+
+    NAT_NET_CROP_MONTHLY = missings(Float64, n_months)
+    NAT_NET_CROP_STD_MONTHLY = missings(Float64, n_months)
+    NAT_NPC_MONTHLY = missings(Float64, n_months)
+    NAT_NPC_STD_MONTHLY = missings(Float64, n_months)
+
+    for row_i in 1:size(filt_nat_npc_monthly)[1]
+        month_val = filt_nat_npc_monthly[row_i,"month"]
+        year_val = filt_nat_npc_monthly[row_i,"year"]
+        monthidx = monthyear_to_monthidx(month_val, year_val, YEAR_START = YEAR_START_NAT)
+
+        μ_est = filt_nat_npc_monthly[row_i,"NPC_mean"]*NAT_POPULATION_MONTHLY[monthidx]
+        σ_est = filt_nat_npc_monthly[row_i,"NPC_adj_se"]*NAT_POPULATION_MONTHLY[monthidx]
+        if (σ_est < μ_est) && σ_est>0
+            NAT_NET_CROP_MONTHLY[monthidx] = μ_est
+            NAT_NET_CROP_STD_MONTHLY[monthidx] = σ_est
+            NAT_NPC_MONTHLY[monthidx] = filt_nat_npc_monthly[row_i,"NPC_mean"]
+            NAT_NPC_STD_MONTHLY[monthidx] = filt_nat_npc_monthly[row_i,"NPC_adj_se"]
+        end
+    end
+
+    ##############################
+    # %% SUBNATIONAL DATA PREP
+    ##############################
+    # Define Arrays to extract required Net Crop values, and household surveys
+    ALLREGIONS_Γ_MONTHLY_TOTAL_samples = zeros(n_admin1, n_samples, n_months)
+
+    SUBNAT_NET_CROP_MONTHLY = missings(Float64, n_admin1, n_months)
+    SUBNAT_NET_CROP_STD_MONTHLY = missings(Float64, n_admin1, n_months)
+    SUBNAT_NPC_MONTHLY = missings(Float64, n_admin1, n_months)
+    SUBNAT_NPC_STD_MONTHLY = missings(Float64, n_admin1, n_months)
+
+    for admin1_name_i in 1:n_admin1
+        # Look up posterior draws that were generated
+        ALLREGIONS_Γ_MONTHLY_TOTAL_samples[admin1_name_i,:,:,:] .= sum(admin1_outputs[admin1_name_i]["Γ_MONTHLY_BYNET_samples"], dims = 3)[:,:,1]
+
+        # Extract relevant data from household surveys
+        area_id = admin1_outputs[admin1_name_i]["area_id"]
+        filt_subnat_npc_monthly = subnat_npc_monthly[(subnat_npc_monthly.ISO .== ISO) .&
+                                        (subnat_npc_monthly.area_id .== area_id) .&
+                                        (subnat_npc_monthly.year .>= YEAR_START_NAT) .&
+                                        (subnat_npc_monthly.year .<= YEAR_END), :]
+        
+        for row_i in 1:size(filt_subnat_npc_monthly)[1]
+            month_val = filt_subnat_npc_monthly[row_i,"month"]
+            year_val = filt_subnat_npc_monthly[row_i,"year"]
+            monthidx = monthyear_to_monthidx(month_val, year_val, YEAR_START = YEAR_START_NAT)
+            μ_est = filt_subnat_npc_monthly[row_i,"NPC_mean"]*SUBNAT_POPULATION_MONTHLY[admin1_name_i, monthidx]
+            σ_est = filt_subnat_npc_monthly[row_i,"NPC_adj_se"]*SUBNAT_POPULATION_MONTHLY[admin1_name_i, monthidx]
+            if (σ_est < μ_est) && σ_est>0
+                SUBNAT_NET_CROP_MONTHLY[admin1_name_i,monthidx] = μ_est
+                SUBNAT_NET_CROP_STD_MONTHLY[admin1_name_i,monthidx] = σ_est
+                SUBNAT_NPC_MONTHLY[admin1_name_i,monthidx] = filt_subnat_npc_monthly[row_i,"NPC_mean"]
+                SUBNAT_NPC_STD_MONTHLY[admin1_name_i,monthidx] = filt_subnat_npc_monthly[row_i,"NPC_adj_se"]
+            end
+        end
+    end
+
+    ALLREGIONS_Γ_MONTHLY_TOTAL_mean = mean(ALLREGIONS_Γ_MONTHLY_TOTAL_samples, dims = 2)[:,1,:]
+
+    ##############################
+    # %% MCMC to reconcile National and Subnational Estimates
+    ##############################
+    # %% Define RWMH Sampler
+    rwmh_sampler = externalsampler(RWMH(MvNormal(zeros(n_admin1), I.*sample_var)))
+
+    DISTRIBUTION_ANNUAL_TOTAL = sum(ALLREGIONS_DISTRIBUTION_ANNUAL_BYNET, dims = 3)[:,:,1]
+    # %% MCMC Sampling for adjustment weights``
+    model = nat_subnat_calibration(NAT_NET_CROP_MONTHLY,
+                                        NAT_NET_CROP_STD_MONTHLY,
+                                        SUBNAT_NET_CROP_MONTHLY,
+                                        SUBNAT_NET_CROP_STD_MONTHLY,
+                                        ALLREGIONS_Γ_MONTHLY_TOTAL_mean)
+    
+    n_chains = min(16,Threads.nthreads()) # HARD CODED n_chains!!!
+    output = sample(model, rwmh_sampler, 
+                        MCMCThreads(), iterations, n_chains,
+                        progress = true, discard_initial = burn_in)
+
+    # %% Extract Admin1 Weights
+    ω = mean(Matrix(DataFrame(output)[:,3:end-1]), dims = 1)[:]
+    α = (ω./sum(ω)).*n_admin1 # Adjustment Weights
+
+    ##############################
+    # %% Update Posterior Net Crop Estimates by Adjustment Weights
+    ##############################
+    merged_outputs_full = Vector{Any}(undef, n_admin1)
+    merged_outputs = Vector{Any}(undef, n_admin1)
+    Threads.@threads for admin1_name_i in 1:n_admin1
+        println("Adjusted Access Sampling for $(ISO), region $(admin1_name_i) of $(n_admin1)...")
+        admin1_output_full = admin1_outputs_full[admin1_name_i]
+        admin1_output = admin1_outputs[admin1_name_i]
+
+        # Get Area Id
+        area_id = admin1_output["area_id"]
+
+        # Calculate Adjusted Estimates
+        ADJ_COMBINED_A_BYNET_mean = admin1_output["COMBINED_A_BYNET_mean"].*α[admin1_name_i]
+        ADJ_COMBINED_A_BYNET_samples = admin1_output_full["COMBINED_A_BYNET_samples"].*α[admin1_name_i]
+        ADJ_Γ_MONTHLY_BYNET_samples = admin1_output["Γ_MONTHLY_BYNET_samples"].*α[admin1_name_i]
+        ADJ_COMBINED_A_TOTAL_mean = sum(ADJ_COMBINED_A_BYNET_mean, dims = 3)[:,:,1]
+        ADJ_COMBINED_A_TOTAL_samples = zeros(n_samples, size(ADJ_COMBINED_A_TOTAL_mean)...)
+        for sample_i in 1:n_samples
+            ADJ_COMBINED_A_TOTAL_samples[sample_i,:,:] = sum(ADJ_COMBINED_A_BYNET_samples[sample_i,:,:,:], dims = 3)[:,:,1]
+        end
+        ADJ_Γ_MONTHLY_TOTAL_samples = sum(ADJ_Γ_MONTHLY_BYNET_samples, dims = 3)[:,:,1]
+        ADJ_NPC_MONTHLY_BYNET_samples = copy(ADJ_Γ_MONTHLY_BYNET_samples)
+        for i in 1:n_samples
+            for net_type_i in 1:n_net_types
+                ADJ_NPC_MONTHLY_BYNET_samples[i,:,net_type_i] = ADJ_NPC_MONTHLY_BYNET_samples[i,:,net_type_i]./SUBNAT_POPULATION_MONTHLY[admin1_name_i,:]
+            end
+        end
+        ADJ_NPC_MONTHLY_TOTAL_samples = ADJ_Γ_MONTHLY_TOTAL_samples./repeat(SUBNAT_POPULATION_MONTHLY[admin1_name_i,:]', n_samples,1)
+
+        # Re-sample Access
+
+        FULL_POPULATION_MONTHLY = subnat_reg_data["admin1_outputs"][admin1_name_i]["FULL_POPULATION_MONTHLY"]
+        ADJ_λ_ACCESS_samples = sample_net_access(ρ_chain_df, μ_chain_df, p_h,
+                                                    FULL_POPULATION_MONTHLY, ADJ_Γ_MONTHLY_TOTAL_samples;
+                                                n_max = 20)
+
+        adj_admin1_output_full = Dict(   "area_id" => area_id,
+                                    "ADJ_COMBINED_A_BYNET_samples" => Float16.(ADJ_COMBINED_A_BYNET_samples),
+                                    "ADJ_COMBINED_A_BYNET_mean" => ADJ_COMBINED_A_BYNET_mean,
+                                    "ADJ_Γ_MONTHLY_BYNET_samples" => ADJ_Γ_MONTHLY_BYNET_samples,
+                                    "ADJ_NPC_MONTHLY_BYNET_samples" => ADJ_NPC_MONTHLY_BYNET_samples,
+                                    "ADJ_COMBINED_A_TOTAL_samples" => Float16.(ADJ_COMBINED_A_TOTAL_samples),
+                                    "ADJ_COMBINED_A_TOTAL_mean" => ADJ_COMBINED_A_TOTAL_mean,
+                                    "ADJ_Γ_MONTHLY_TOTAL_samples" => ADJ_Γ_MONTHLY_TOTAL_samples,
+                                    "ADJ_NPC_MONTHLY_TOTAL_samples" => ADJ_NPC_MONTHLY_TOTAL_samples,
+                                    "ADJ_λ_ACCESS_samples" => ADJ_λ_ACCESS_samples,
+                                    "NAT_NPC_MONTHLY" => NAT_NPC_MONTHLY,
+                                    "NAT_NPC_STD_MONTHLY" => NAT_NPC_STD_MONTHLY,
+                                    "SUBNAT_NPC_MONTHLY" => SUBNAT_NPC_MONTHLY,
+                                    "SUBNAT_NPC_STD_MONTHLY" => SUBNAT_NPC_STD_MONTHLY
+                                    )
+
+        adj_admin1_output = Dict(   "area_id" => area_id,
+                                    "ADJ_COMBINED_A_BYNET_mean" => ADJ_COMBINED_A_BYNET_mean,
+                                    "ADJ_Γ_MONTHLY_BYNET_samples" => ADJ_Γ_MONTHLY_BYNET_samples,
+                                    "ADJ_NPC_MONTHLY_BYNET_samples" => ADJ_NPC_MONTHLY_BYNET_samples,
+                                    "ADJ_COMBINED_A_TOTAL_mean" => ADJ_COMBINED_A_TOTAL_mean,
+                                    "ADJ_Γ_MONTHLY_TOTAL_samples" => ADJ_Γ_MONTHLY_TOTAL_samples,
+                                    "ADJ_NPC_MONTHLY_TOTAL_samples" => ADJ_NPC_MONTHLY_TOTAL_samples,
+                                    "ADJ_λ_ACCESS_samples" => ADJ_λ_ACCESS_samples,
+                                    "NAT_NPC_MONTHLY" => NAT_NPC_MONTHLY,
+                                    "NAT_NPC_STD_MONTHLY" => NAT_NPC_STD_MONTHLY,
+                                    "SUBNAT_NPC_MONTHLY" => SUBNAT_NPC_MONTHLY,
+                                    "SUBNAT_NPC_STD_MONTHLY" => SUBNAT_NPC_STD_MONTHLY
+                                    )
+
+        merged_output_full = merge(admin1_output_full, adj_admin1_output_full)
+        merged_output = merge(admin1_output, adj_admin1_output)
+        
+        merged_outputs_full[admin1_name_i] = copy(merged_output_full)
+        merged_outputs[admin1_name_i] = copy(merged_output)
+    end
+    
+    ##############################
+    # %% Save outputs
+    ##############################
+    mkpath(save_dir)
+    jldsave(save_dir*"$(ISO)_SUBNAT_draws_full.jld2";
+                    YEAR_START_NAT, YEAR_START, YEAR_END,
+                    merged_outputs_full,
+                    admin1_names,
+                    α_weights = α)
+    jldsave(save_dir*"$(ISO)_SUBNAT_draws.jld2";
+                    YEAR_START_NAT, YEAR_START, YEAR_END,
+                    merged_outputs,
+                    admin1_names,
+                    α_weights = α)
+end

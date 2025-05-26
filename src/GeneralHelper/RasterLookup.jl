@@ -77,7 +77,7 @@ Calculate the weighted average of input 'raster', w.r.t to the weights given by 
 
 function aggregate_raster_weighted_mean(raster, weights)
     aligned_raster = resample(raster, to = weights)
-    nonmissing_idxs = intersect(findall(.!isnan.(weights)),findall(.!isnan.(aligned_raster)))
+    nonmissing_idxs = intersect(findall(.!isnan.(weights)),findall(.!isnan.(aligned_raster)), findall(.!isinf.(aligned_raster)))
     weight_total = sum(weights[nonmissing_idxs])
     weighted_sum = sum((aligned_raster.*weights)[nonmissing_idxs])
 

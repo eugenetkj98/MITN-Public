@@ -1,3 +1,15 @@
+# Set working directory
+setwd("/mnt/efs/userdata/etan/map-itn")
+
+# Install required packages in case not in DockerImage by default
+install.packages("tidyverse")
+install.packages("raster")
+install.packages("sf")
+install.packages("lattice")
+install.packages("grideExtra")
+install.packages("tomledit")
+install.packages("INLA", repos=c(getOption("repos"), INLA="https://inla.r-inla-download.org/R/stable"), dep=TRUE)
+
 # Load all packages
 library(INLA)
 library(raster)
@@ -5,16 +17,23 @@ library(tidyverse)
 library(sf)
 library(terra)
 library(matrixStats)
+library(tomledit)
 
 # Load custom transformation functions
 source("scripts/INLA/transforms.R")
 
 # Import Models
-load("outputs/INLA/model1_access_complete_pmodel_2.RData")
+load("/mnt/efs/userdata/etan/map-itn/outputs/INLA/model1_access_complete_pmodel.RData")
 
 # Check summary
 summary(m1)
 
+# Load provided arguments in script
+args <- commandArgs(trailingOnly = TRUE)
+year <- strtoi(args[1])
+
+# Load TOML Config file
+model_config = from_toml(read_toml("/mnt/efs/userdata/etan/map-itn/scripts/awsbatch/configs/model_config.toml"))
 
 ##############################
 # Select desired year and month to do predictions on
@@ -36,8 +55,8 @@ sf_use_s2(FALSE)
 global_shp <- read_sf("/mnt/s3/master_geometries/Admin_Units/Global/MAP/2023/MG_5K/admin2023_0_MG_5K.shp")
 
 # Filter for required countries
-ISO_list <- read.csv("datasets/ISO_list.csv")$ISO
-exclusion_ISOs <- c("CPV","ZAF")
+ISO_list <- model_config$ISO_LIST
+exclusion_ISOs <- model_config$EXCLUSION_ISOS
 filt_ISOs <- setdiff(ISO_list, exclusion_ISOs)
 
 test <- global_shp[global_shp$ISO %in% filt_ISOs,]
@@ -63,12 +82,12 @@ cov_NTL <- raster::extract(raster('/mnt/s3/mastergrids/Other_Global_Covariates/N
 cov_ELEV <- raster::extract(raster('/mnt/s3/mastergrids/Other_Global_Covariates/Elevation/SRTM-Elevation/5km/Synoptic/SRTM_elevation.Synoptic.Overall.Data.5km.mean.tif'), pred.points, df = TRUE)
 cov_SLP <- raster::extract(raster('/mnt/s3/mastergrids/Other_Global_Covariates/Elevation/SRTM-Slope/5km/Synoptic/SRTM_SlopePCT_Corrected.Synoptic.Overall.Data.5km.mean.tif'), pred.points, df = TRUE)
 
-start_year <- 2000
-end_year <- 2023
+start_year <- model_config$YEAR_NAT_START
+# end_year <- 2023
 
-for (year in start_year:end_year) {
+# for (year in start_year:end_year) {
 
-  print(str_glue("Analysing for y-{year} out of y-{end_year}"))
+  # print(str_glue("Analysing for y-{year} out of y-{end_year}"))
   
   # Adjust year string as needed
   adj_year <- max(min(year, 2021),2002)
@@ -104,7 +123,7 @@ for (year in start_year:end_year) {
   # Preprocess Covariate Values
   ##############################
   # Normalise all covariates and write as new variables
-  cov_norm_constants <- read.csv("outputs/data_prep/INLA/covariate_normalisation_constants.csv")
+  cov_norm_constants <- read.csv("/mnt/efs/userdata/etan/map-itn/outputs/data_prep/INLA/covariate_normalisation_constants.csv")
   norm_cov_var_names <- c()
   
   for (i in 1:(length(cov_norm_constants$cov)-6)){
@@ -122,7 +141,7 @@ for (year in start_year:end_year) {
   norm_cov_matrix <- as.matrix(do.call("rbind", as.list(lapply(norm_cov_var_names, get))))
   
   # Import projection matrix to covariates and calculated values for reduced proj_matrix
-  M_proj_raw <- read.csv("outputs/data_prep/INLA/proj_matrix.csv")
+  M_proj_raw <- read.csv("/mnt/efs/userdata/etan/map-itn/outputs/data_prep/INLA/proj_matrix.csv")
   M_proj <- as.matrix(M_proj_raw[1:(dim(M_proj_raw)[1]-2),2:(dim(M_proj_raw)[2]-6)])
   
   proj_cov_datavalues <- M_proj %*% norm_cov_matrix
@@ -161,7 +180,7 @@ for (year in start_year:end_year) {
   field <- (Aprediction %*% as.data.frame(sfield_nodes)[, 1])
 
   # Calculate Predicted values using regression formula
-  pred <- m1$summary.fixed['Intercept', 'mean'] +
+  pred <- #m1$summary.fixed['Intercept', 'mean'] +
     m1$summary.fixed['static_1', 'mean'] * proj_cov_dataset$static_1 +
     m1$summary.fixed['static_2', 'mean'] * proj_cov_dataset$static_2 +
     m1$summary.fixed['static_3', 'mean'] * proj_cov_dataset$static_3 +
@@ -191,7 +210,7 @@ for (year in start_year:end_year) {
   # Formula to evaluate when drawing posteriors
   inla_model_eval_fun <- function(){
     return(
-      Intercept +
+      #Intercept +
         static_1 * proj_cov_dataset$static_1 +
         static_2 * proj_cov_dataset$static_2 +
         static_3 * proj_cov_dataset$static_3 +
@@ -241,15 +260,17 @@ for (year in start_year:end_year) {
   pr.mdg.out_mean <- rasterFromXYZ(cbind(x, z_mean), crs = "+proj=longlat +datum=WGS84 +no_defs +type=crs")
   
   # Save Raster
-  save_filename_mean = str_glue("outputs/INLA/rasters/inla_pmodel_access/ACCESS_pmodel_{year}_mean.tif")
+  save_filename_mean = str_glue("/mnt/efs/userdata/etan/map-itn/outputs/INLA/rasters/inla_pmodel_access/ACCESS_pmodel_{year}_mean.tif")
   
   writeRaster(pr.mdg.out_mean, save_filename_mean, NAflag = -9999, overwrite = TRUE)
   
   # Save sample draws for calculating quantiles later
   for (i in 1:n_samples_saved){
     pr.mdg.out_sample <- rasterFromXYZ(cbind(x, z_samples[,i]), crs = "+proj=longlat +datum=WGS84 +no_defs +type=crs")
-    save_filename_sample = str_glue("outputs/INLA/rasters/inla_pmodel_access/ACCESS_pmodel_{year}_sample_{i}.tif")
+    save_filename_sample = str_glue("/mnt/efs/userdata/etan/map-itn/outputs/INLA/rasters/inla_pmodel_access/ACCESS_pmodel_{year}_sample_{i}.tif")
     writeRaster(pr.mdg.out_sample, save_filename_sample, NAflag = -9999, overwrite = TRUE)
   }
-}
+# }
+
+print("HURRAH! I FINISHED THE R SCRIPT THANK GOD")
 

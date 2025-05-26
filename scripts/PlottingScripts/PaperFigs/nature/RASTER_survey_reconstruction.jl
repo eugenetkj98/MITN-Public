@@ -22,7 +22,7 @@ using StatsBase
 using DateConversions
 
 # %% Fig save dir
-output_dir = OUTPUT_PLOTS_DIR*"raster summaries/"
+output_dir = OUTPUT_PLOTS_DIR*"PaperFigures/"
 
 # %% Import data lookup dataset
 data = CSV.read(OUTPUT_DIR*"coverage_timeseries/bv_mitn_survey_reconstructions.csv", DataFrame)
@@ -66,7 +66,7 @@ monthidxs = monthyear_to_monthidx.(filt_data.interview_month, filt_data.intervie
 fillalpha = 0.15
 la = 0.07
 lw = 1.2
-ms = 2
+ms = 3
 ma = 1
 colors = [  colorant"#00976A", # NPC
             colorant"#E72A3D", # Access
@@ -188,7 +188,7 @@ fig
 
 
 # %% Save figure
-save(output_dir*"bv_mitn_survey_reconstruction.pdf", fig)
+save(output_dir*"Survey_Reconstruction.pdf", fig)
 
 ##############################
 # %% Residuals Fit Plots using CairoMakie.jl
@@ -300,5 +300,5 @@ fig
 
 
 # %% Save figure
-save(output_dir*"bv_mitn_survey_reconstruction_residuals.pdf", fig)
+save(output_dir*"Survey_Reconstruction_residuals.pdf", fig)
 

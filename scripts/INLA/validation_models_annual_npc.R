@@ -9,7 +9,7 @@ library(terra)
 source("scripts/INLA/transforms.R")
 
 # Import Models
-load("outputs/INLA/model1_npc_complete_logmodel_2.RData")
+load("/mnt/efs/userdata/etan/map-itn/outputs/INLA/model1_npc_complete_logmodel.RData")
 # load("outputs/INLA/model1_npc_half_logmodel.RData")
 
 # Check summary
@@ -23,8 +23,8 @@ sf_use_s2(FALSE)
 #########################
 
 # load INLA regression data
-inla_data <- read.csv('outputs/data_prep/INLA/inla_dataset_reduced.csv')
-inla_data <- inla_data[seq(2,dim(inla_data)[1],2),]
+inla_data <- read.csv('/mnt/efs/userdata/etan/map-itn/outputs/data_prep/INLA/inla_dataset_reduced.csv')
+# inla_data <- inla_data[seq(2,dim(inla_data)[1],2),]
 # inla_data <- inla_data[1:1000,]
 inla_data$yearidx <- (inla_data$monthidx %/% 12)+1#*12
 inla_data$yearidx
@@ -87,7 +87,7 @@ sfield_nodes <- m1$summary.random$field['mean']
 field <- (Aprediction %*% as.data.frame(sfield_nodes)[, 1])
 summary(m1)
 # Calculate Predicted values using regression formula
-pred <- m1$summary.fixed['Intercept', 'mean'] +
+pred <- #m1$summary.fixed['Intercept', 'mean'] +
   # m1$summary.fixed['subnat_npc', 'mean'] * cov_data$subnat_npc +
   # m1$summary.fixed['subnat_access', 'mean'] * cov_data$subnat_access +
   m1$summary.fixed['static_1', 'mean'] * cov_data$static_1 +

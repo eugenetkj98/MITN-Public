@@ -7,8 +7,8 @@ Combines monthly rasters into annual rasters.
 # %% Prep environment and subdirectories
 include(pwd()*"/scripts/init_env.jl")
 
-# %% Import filenames and directories from config file
-include(pwd()*"/scripts/dir_configs.jl")
+# %% Import filenames and directories from TOML file
+include(pwd()*"/scripts/read_toml.jl")
 
 # %% Import relevant packages
 using ProgressBars
@@ -36,13 +36,13 @@ YEAR_START = YEAR_NAT_START
 YEAR_END = YEAR_NAT_END
 
 # %%
-year = 2010
+year = parse(Int, ARGS[1])
 
 # Define all required filenames for each metric
-npc_raster_monthly_dir = raster_dir*"final_npc/mean/monthly"
-access_raster_monthly_dir = raster_dir*"final_access/mean/monthly"
-use_raster_monthly_dir = raster_dir*"final_use/mean/monthly"
-util_raster_monthly_dir = raster_dir*"final_utilisation/mean/monthly"
+npc_raster_monthly_dir = raster_dir*"final_npc/mean/monthly/"
+access_raster_monthly_dir = raster_dir*"final_access/mean/monthly/"
+use_raster_monthly_dir = raster_dir*"final_use/mean/monthly/"
+util_raster_monthly_dir = raster_dir*"final_utilisation/mean/monthly/"
 
 npc_all_filenames = readdir(npc_raster_monthly_dir)
 access_all_filenames = readdir(access_raster_monthly_dir)
@@ -55,9 +55,8 @@ use_monthly_filenames = use_all_filenames[occursin.("$(year)", use_all_filenames
 util_monthly_filenames = util_all_filenames[occursin.("$(year)", util_all_filenames)]
 
 # Check to make sure nonempty filename lists
-if (length(npc_sample_filenames) < 1) || (length(access_sample_filenames) < 1) || (length(use_sample_filenames) < 1) || (length(util_sample_filenames) < 1)
+if (length(npc_monthly_filenames) < 1) || (length(access_monthly_filenames) < 1) || (length(use_monthly_filenames) < 1) || (length(util_monthly_filenames) < 1)
     println("No complete sample raster sets found for $(year)...skipping. :3")
-    continue
 else
     # Import each set of sample rasters
     npc_monthly_rasters = replace_missing.(Raster.(npc_raster_monthly_dir.*npc_monthly_filenames), missingval = NaN)
@@ -78,5 +77,5 @@ else
     write(output_dir*"final_utilisation/mean/annual/utilisation_$(year)_mean.tif", util_mean_raster, force = true)
 
     # Progress message
-    println("Constructed mean rasters for $(year)-$(month_str). Woohoo!")
+    println("Constructed mean rasters for $(year). Woohoo!")
 end

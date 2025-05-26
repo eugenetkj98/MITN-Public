@@ -1,33 +1,79 @@
 [general]
 
 [step1]
-ncpus = 16
+ncpus = 8
 memsize = 16384
 
 [step2]
 ncpus = 2
-memsize = 32768
+memsize = 16384
 
 [step3]
 ncpus = 8
-memsize = 16384
+memsize = 8192
 
 [step4]
-ncpus = 16
-memsize = 32768
+ncpus = 8
+memsize = 8192
 
 [step5]
-ncpus = 32
-memsize = 65536
+ncpus = 4
+memsize = 10240
 
 [step6]
 ncpus = 8
 memsize = 16384
 
 [step7]
-ncpus = 16
-memsize = 32768
+ncpus = 2
+memsize = 8192
 
 [step8]
-ncpus = 32
-memsize = 65536
+ncpus = 4
+memsize = 10240
+
+[step9]
+ncpus = 4
+memsize = 10240
+
+[step9b]
+ncpus = 8
+memsize = 32768
+
+[step10]
+ncpus = 4
+memsize = 131072
+
+[step11]
+ncpus = 1
+memsize = 4096
+
+[step12]
+ncpus = 64
+memsize = 32768
+
+[step13]
+ncpus = 1
+memsize = 6144
+
+
+
+[step18] # Should Need about 22GB Memory for computation.
+ncpus = 1
+memsize = 24576
+
+[step19]
+ncpus = 1 # Should need about 4-10GB Memory for compuration
+memsize = 16384
+
+[step19b]
+ncpus = 1
+memsize = 4096
+
+[step20]
+ncpus = 1 # Should need about 6-8GB Memory
+memsize = 16384
+
+[step20b]
+ncpus = 2
+memsize = 8192

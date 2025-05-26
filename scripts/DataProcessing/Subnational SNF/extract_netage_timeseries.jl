@@ -1,14 +1,14 @@
 """
 Author: Eugene Tan
 Date Created: 8/5/2025
-Last Updated: 8/5/2025
+Last Updated: 19/5/2025
 Postprocess SNF outputs to get data for mean net age by country
 """
 # %% Prep environment and subdirectories
 include(pwd()*"/scripts/init_env.jl")
 
-# %% Import filenames and directories from config file
-include(pwd()*"/scripts/dir_configs.jl")
+# %% Import filenames and directories from TOML file
+include(pwd()*"/scripts/read_toml.jl")
 
 # %% Import Public Packages
 using DataFrames
@@ -25,9 +25,6 @@ using StatsBase
 # %% Useful functions
 using DateConversions
 
-# %% Plotting Packages
-using CairoMakie
-
 # %% Years
 YEAR_START = YEAR_NAT_START
 YEAR_END = YEAR_NAT_END
@@ -42,7 +39,7 @@ output_filename = "snf_mean_netage.csv"
 admin0_shapes_geoIO = GeoIO.load(ADMIN0_SHAPEFILE)
 
 # %% Define list of countries to plot
-ISO_list = String.(CSV.read(RAW_DATASET_DIR*ISO_LIST_FILENAME, DataFrame)[:,1])
+ISO_list = ISO_LIST
 exclusion_ISOs = EXCLUSION_ISOS
 filt_ISOs = setdiff(ISO_list, exclusion_ISOs)
 
@@ -55,9 +52,10 @@ for ISO_i in ProgressBar(1:length(filt_ISOs))
 
     # Get Admin0 Name
     admin0_name = admin0_shapes_geoIO[findfirst(admin0_shapes_geoIO.ISO .== ISO),"Name_0"]
+    area_id = admin0_shapes_geoIO[findfirst(admin0_shapes_geoIO.ISO .== ISO),"area_id"]
 
     # Import SNF data
-    snf_posterior = JLD2.load(input_dir*"$(ISO)_SUBNAT_draws.jld2")
+    snf_posterior = JLD2.load(input_dir*"$(ISO)_SUBNAT_draws_full.jld2")
 
     # Get admin1 metadata
     admin1_names = snf_posterior["admin1_names"]
