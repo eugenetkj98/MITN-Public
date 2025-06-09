@@ -64,9 +64,6 @@ filt_ISOs = setdiff(ISO_list, exclusion_ISOs)
 year = parse(Int, ARGS[1])
 month = parse(Int, ARGS[2])
 
-# %%
-year = 2002
-month = 2
 # # Loop extraction code for each year and month
 # for year in YEAR_START:YEAR_END
 
@@ -632,6 +629,7 @@ end
 # %% Combine collections together and save
 compiled_dataframe = vcat(df0_full_collection...,df1_full_collection...)
 mkpath(output_dir)
+rm(output_dir*"mitn_extraction_$(year)_$(month).csv"; force=true)
 CSV.write(output_dir*"mitn_extraction_$(year)_$(month).csv", compiled_dataframe)
 
 

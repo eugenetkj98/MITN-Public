@@ -9,7 +9,7 @@ Script to use existing aggregated LLIN SNF model to produce estimates for multit
 include(pwd()*"/scripts/init_env.jl")
 
 # %% Prep environment and subdirectories
-include(pwd()*"/scripts/dir_configs.jl")
+include(pwd()*"/scripts/read_toml.jl")
 
 # %% Load packages
 using JLD2
@@ -36,15 +36,15 @@ filt_ISOs = setdiff(ISO_list, exclusion_ISOs)
 excl_citn_ISOs = EXCLUSION_CITN_ISOS
 
 # %% LOOP TO GENERATE PREDICTIONS
-# for ISO in filt_ISOs
+for ISO in filt_ISOs
     ########################################################
     # %% Define required directories and prediction settings
     ########################################################
-    input_timeseries_file = "datasets/forward_prediction_inputs/$(ISO)_prediction_input.csv"
-    mitn_posterior_chain = "outputs/regressions/crop/2000_2023/$(ISO)_2000_2023_cropchains.jld2"
+    input_timeseries_file = OUTPUT_FORWARD_PRED_DIR*"$(ISO)_prediction_input.csv"
+    mitn_posterior_chain = OUTPUT_DIR*"regressions/crop/2000_2023/$(ISO)_2000_2023_cropchains.jld2"
     n_samples = 100 # Number of posterior draws of time series
 
-    output_dir = "outputs/predictions/"
+    output_dir = OUTPUT_DIR*"predictions/"
     mkpath(output_dir)
 
     output_filename = "$(ISO)_netcrop_prediction.jld2" # NEED TO THINK OF A WAY TO AUTOMATE ADDING FILES

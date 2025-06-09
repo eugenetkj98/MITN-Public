@@ -137,7 +137,7 @@ for ISO_i in 1:length(filt_ISOs)
         weights = filt_ISOs.hh_sample_wt
         npc = sum(filt_ISOs.n_itn.*weights)/sum(filt_ISOs.hh_size.*weights) #sum(weights.*npc_entries)/sum(weights)
         access = sum(min.((2 .*filt_ISOs.n_itn)./(filt_ISOs.hh_size),1).*(filt_ISOs.hh_size).*weights)/sum((filt_ISOs.hh_size).*weights) #sum(weights.*access_entries)/sum(weights)
-        use = sum(min.(2 .*filt_ISOs.n_itn_used ./ filt_ISOs.hh_size, 1).*(filt_ISOs.hh_size).*weights)/sum(weights .* filt_ISOs.hh_size) #sum(weights.*use_entries)/sum(weights)
+        use = sum(min.(filt_ISOs.n_slept_under_itn ./ filt_ISOs.hh_size, 1).*(filt_ISOs.hh_size).*weights)/sum(weights .* filt_ISOs.hh_size) #sum(weights.*use_entries)/sum(weights)
         
         # use = dot(weights, filt_ISOs.n_slept_under_itn)/dot(weights, filt_ISOs.hh_size)
         sample_weight = sum(weights)

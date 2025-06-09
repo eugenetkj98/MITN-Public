@@ -8,7 +8,7 @@ Make continent level plots for paper
 include(pwd()*"/scripts/init_env.jl")
 
 # %% Import filenames and directories from config file
-include(pwd()*"/scripts/dir_configs.jl")
+include(pwd()*"/scripts/read_toml.jl")
 
 # %% Import Public Packages
 using DataFrames
@@ -67,10 +67,10 @@ use_raster_filenames = ["use_$(year)_mean.tif" for year in year_vals]
 util_raster_filenames = ["utilisation_$(year)_mean.tif" for year in year_vals]
 
 netage_rasters = replace_missing.(Raster.(OUTPUT_RASTERS_DIR.*"/final_netage/annual/".*netage_raster_filenames), missingval = NaN)
-npc_rasters = replace_missing.(Raster.(OUTPUT_RASTERS_DIR.*"/final_npc/annual/".*npc_raster_filenames), missingval = NaN)
-access_rasters = replace_missing.(Raster.(OUTPUT_RASTERS_DIR.*"/final_access/annual/".*access_raster_filenames), missingval = NaN)
-use_rasters = replace_missing.(Raster.(OUTPUT_RASTERS_DIR.*"/final_use/annual/".*use_raster_filenames), missingval = NaN)
-util_rasters = replace_missing.(Raster.(OUTPUT_RASTERS_DIR.*"/final_utilisation/annual/".*util_raster_filenames), missingval = NaN)
+npc_rasters = replace_missing.(Raster.(OUTPUT_RASTERS_DIR.*"final_npc/mean/annual/".*npc_raster_filenames), missingval = NaN)
+access_rasters = replace_missing.(Raster.(OUTPUT_RASTERS_DIR.*"final_access/mean/annual/".*access_raster_filenames), missingval = NaN)
+use_rasters = replace_missing.(Raster.(OUTPUT_RASTERS_DIR.*"final_use/mean/annual/".*use_raster_filenames), missingval = NaN)
+util_rasters = replace_missing.(Raster.(OUTPUT_RASTERS_DIR.*"final_utilisation/mean/annual/".*util_raster_filenames), missingval = NaN)
 
 # %% Construct snapshot plot
 # Make Figure and define axes
@@ -120,7 +120,7 @@ for i in 1:length(year_vals)
     plot!(plot_axs[2,i], npc_rasters[i], colormap = npc_cmap, colorrange = clims)
     plot!(plot_axs[3,i], access_rasters[i], colormap = access_cmap, colorrange = clims)
     plot!(plot_axs[4,i], use_rasters[i], colormap = use_cmap, colorrange = clims)
-    plot!(plot_axs[5,i], util_rasters[i], colormap = util_cmap, colorrange = clims)
+    plot!(plot_axs[5,i], use_rasters[i]./(2 .*npc_rasters[i]), colormap = util_cmap, colorrange = clims)
 end
 fig
 # %% Save figure

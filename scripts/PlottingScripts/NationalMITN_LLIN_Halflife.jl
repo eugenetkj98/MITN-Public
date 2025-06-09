@@ -21,7 +21,7 @@ using StatsBase
 
 # %% Plot packages
 using LaTeXStrings
-using Plots
+using CairoMakie
 using Measures
 
 # %% MITN Model packages
@@ -29,7 +29,8 @@ using NetAccessModel
 using DateConversions
 using NetLoss
 
-
+# %% Plotting Theme and general settings
+set_theme!(theme_ggplot2())
 
 # %% Define save paths
 output_path = OUTPUT_PLOTS_DIR*"snf/national/summaries/"
@@ -107,42 +108,43 @@ end
 model_halflifes = vcat(df_collection...)
 model_halflifes = model_halflifes[sortperm(model_halflifes[:, "mitn_halflife_median"]),:]
 
-# %% Make plot
-# Plot visual settings
-pythonplot()
-theme(:vibrant)
+# %%
 sep = 0.15
 lw = 2.8
-ms = 6
+ms = 10
 col_bv = colorant"#005684"
 col_mitn = colorant"#E72A3D"
+ISO_sorted  = model_halflifes.ISO[sortperm(model_halflifes.mitn_halflife_median)]
 
-# String labels
-xtickstrings = []
-for i in 1:size(model_halflifes)[1]
-    push!(xtickstrings, "[$(model_halflifes[i,"n_surveys"])] $(model_halflifes[i,"ISO"])")
+# %% 
+fig = Figure(size = (1200,350))
+ax = Axis(fig[1,1],
+            title = "LLIN Attrition Half-life",
+            xlabel = "Country", 
+            xticks = (1:1:length(ISO_sorted), ISO_sorted),
+            xticklabelrotation = pi/2,
+            xlabelsize = 20,
+            titlesize = 25,
+            ylabel = "Half-life (years)",
+            yticks = (0:0.5:5),
+            ylabelsize = 20)
+
+xlims!(ax, 0, length(filt_ISOs)+1)
+ylims!(-0.05,5.05)
+
+for ISO_i in 1:length(ISO_sorted)
+    dataslice = model_halflifes[model_halflifes.ISO .== ISO_sorted[ISO_i],:]
+    lines!(ax, [ISO_i,ISO_i].-sep, [(dataslice.bv_halflife_lower)[1], (dataslice.bv_halflife_upper)[1]],
+            color = col_bv, linewidth = lw)
+    lines!(ax, [ISO_i,ISO_i].+sep, [(dataslice.mitn_halflife_lower)[1], (dataslice.mitn_halflife_upper)[1]],
+            color = col_mitn, linewidth = lw)
+    scatter!(ax, [ISO_i].-sep, [(dataslice.bv_halflife_median)[1]],
+            color = col_bv, markersize = ms)
+    scatter!(ax, [ISO_i].+sep, [(dataslice.mitn_halflife_median)[1]],
+            color = col_mitn, markersize = ms)
 end
-
-# Plot outputs
-fig = plot(title = "LLIN Retention Halflives",
-            xticks = (1:size(model_halflifes)[1], xtickstrings),
-            xtickfontrotation = 90, ylims = (-0.05,8.05),
-            grid = true, minorgrid = false, framestyle = :box,
-            size = (1200,350), legend = :topleft,
-            ylabel = "Years")
-
-for i in 1:size(model_halflifes)[1]
-    plot!(fig, [i,i].-sep, Array(model_halflifes[i,["bv_halflife_lower", "bv_halflife_upper"]]),
-            linewidth = lw, linecolor = col_bv, label = nothing)
-    plot!(fig, [i,i].+sep, Array(model_halflifes[i,["mitn_halflife_lower", "mitn_halflife_upper"]]),
-            linewidth = lw, linecolor = col_mitn, label = nothing)
-end
-scatter!(fig, (1:size(model_halflifes)[1]).-sep, model_halflifes.bv_halflife_median,
-            color = col_bv, markersize = ms, label = "BV")
-scatter!(fig, (1:size(model_halflifes)[1]).+sep, model_halflifes.mitn_halflife_median,
-            color = col_mitn, markersize = ms, label = "MITN")
-
-savefig(fig, output_path*"snf_nat_halflife.pdf")
-
 fig
+
+# %% Save fig
+save(OUTPUT_PLOTS_DIR*"SNF_Halflife.pdf", fig, pdf_version = "1.4")
 

@@ -145,6 +145,7 @@ for ISO_i in 1:length(filt_ISOs)
             margin = (15, 10, 10, 10),
             halign = :left, valign = :top)
     # Save fig
+    mkpath(OUTPUT_PLOTS_DIR*"PaperFigures/Country_ITN_Types/")
     save(OUTPUT_PLOTS_DIR*"PaperFigures/Country_ITN_Types/$(ISO)_nettype.pdf", fig, pdf_version = "1.4")
 end
 

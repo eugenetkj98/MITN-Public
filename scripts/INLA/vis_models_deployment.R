@@ -26,7 +26,7 @@ library(tomledit)
 source("scripts/INLA/transforms.R")
 
 # Import Models
-load("/mnt/efs/userdata/etan/map-itn/outputs/INLA/model1_access_complete_pmodel.RData")
+load("/mnt/efs/userdata/etan/map-itn/outputs/INLA/model1_deployment_complete_pmodel.RData")
 
 # Check summary
 summary(m1)
@@ -37,6 +37,7 @@ year <- strtoi(args[1])
 
 # Load TOML Config file
 model_config = from_toml(read_toml("/mnt/efs/userdata/etan/map-itn/scripts/awsbatch/configs/model_config.toml"))
+
 
 ##############################
 # Select desired year and month to do predictions on
@@ -58,8 +59,8 @@ sf_use_s2(FALSE)
 global_shp <- read_sf("/mnt/s3/master_geometries/Admin_Units/Global/MAP/2023/MG_5K/admin2023_0_MG_5K.shp")
 
 # Filter for required countries
-ISO_list <- model_config$ISO_LIST
-exclusion_ISOs <- model_config$EXCLUSION_ISOS
+ISO_list <- read.csv("datasets/ISO_list.csv")$ISO
+exclusion_ISOs <- c("CPV","ZAF")
 filt_ISOs <- setdiff(ISO_list, exclusion_ISOs)
 
 test <- global_shp[global_shp$ISO %in% filt_ISOs,]
@@ -89,7 +90,7 @@ start_year <- model_config$YEAR_NAT_START
 # end_year <- 2023
 
 # for (year in start_year:end_year) {
-
+  
   # print(str_glue("Analysing for y-{year} out of y-{end_year}"))
   
   # Adjust year string as needed
@@ -181,7 +182,7 @@ start_year <- model_config$YEAR_NAT_START
   # Calculate spatial structure
   sfield_nodes <- m1$summary.random$field['mean']
   field <- (Aprediction %*% as.data.frame(sfield_nodes)[, 1])
-
+  
   # Calculate Predicted values using regression formula
   pred <- #m1$summary.fixed['Intercept', 'mean'] +
     m1$summary.fixed['static_1', 'mean'] * proj_cov_dataset$static_1 +
@@ -205,7 +206,7 @@ start_year <- model_config$YEAR_NAT_START
     m1$summary.fixed['annual_15', 'mean'] * proj_cov_dataset$annual_15 +
     field
   
-  pred_mean <- inv_gap_emplogit(inv_ihs(pred, access_theta))
+  pred_mean <- inv_gap_emplogit(inv_ihs(pred, dep_theta))
   
   ###########################################
   # ####### Proper posterior draws and evaluate mean and std of sample
@@ -214,7 +215,7 @@ start_year <- model_config$YEAR_NAT_START
   inla_model_eval_fun <- function(){
     return(
       #Intercept +
-        static_1 * proj_cov_dataset$static_1 +
+      static_1 * proj_cov_dataset$static_1 +
         static_2 * proj_cov_dataset$static_2 +
         static_3 * proj_cov_dataset$static_3 +
         annual_1 * proj_cov_dataset$annual_1 +
@@ -247,7 +248,7 @@ start_year <- model_config$YEAR_NAT_START
     pred_samples[,i] <- eval_samples[i][[1]]@x
   }
   
-  z_samples <- inv_gap_emplogit(inv_ihs(pred_samples, access_theta))
+  z_samples <- inv_gap_emplogit(inv_ihs(pred_samples, dep_theta))
   
   # Calculate the average and standard deviation raster
   z_mean <- pred_mean
@@ -263,17 +264,15 @@ start_year <- model_config$YEAR_NAT_START
   pr.mdg.out_mean <- rasterFromXYZ(cbind(x, z_mean), crs = "+proj=longlat +datum=WGS84 +no_defs +type=crs")
   
   # Save Raster
-  save_filename_mean = str_glue("/mnt/efs/userdata/etan/map-itn/outputs/INLA/rasters/inla_pmodel_access/ACCESS_pmodel_{year}_mean.tif")
+  save_filename_mean = str_glue("/mnt/efs/userdata/etan/map-itn/outputs/INLA/rasters/inla_pmodel_deployment/DEP_pmodel_{year}_mean.tif")
   
   writeRaster(pr.mdg.out_mean, save_filename_mean, NAflag = -9999, overwrite = TRUE)
   
   # Save sample draws for calculating quantiles later
   for (i in 1:n_samples_saved){
     pr.mdg.out_sample <- rasterFromXYZ(cbind(x, z_samples[,i]), crs = "+proj=longlat +datum=WGS84 +no_defs +type=crs")
-    save_filename_sample = str_glue("/mnt/efs/userdata/etan/map-itn/outputs/INLA/rasters/inla_pmodel_access/ACCESS_pmodel_{year}_sample_{i}.tif")
+    save_filename_sample = str_glue("/mnt/efs/userdata/etan/map-itn/outputs/INLA/rasters/inla_pmodel_deployment/DEP_pmodel_{year}_sample_{i}.tif")
     writeRaster(pr.mdg.out_sample, save_filename_sample, NAflag = -9999, overwrite = TRUE)
   }
 # }
-
-print("HURRAH! I FINISHED THE R SCRIPT THANK GOD")
 

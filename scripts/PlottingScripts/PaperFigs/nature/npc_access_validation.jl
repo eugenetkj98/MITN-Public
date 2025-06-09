@@ -8,7 +8,7 @@ Make validation plots to verify NPC-Access saturation relationship
 include(pwd()*"/scripts/init_env.jl")
 
 # %% Import filenames and directories from config file
-include(pwd()*"/scripts/dir_configs.jl")
+include(pwd()*"/scripts/read_toml.jl")
 
 # %% Import Public Packages
 using DataFrames
@@ -85,18 +85,12 @@ acc_val = []
 
 for ISO in filt_ISOs
 
-    data = JLD2.load("outputs/draws/national/crop_access/$(ISO)_$(YEAR_START)_$(YEAR_END)_post_crop_access.jld2")
+    data = JLD2.load(OUTPUT_DIR*"draws/national/crop_access/$(ISO)_$(YEAR_START)_$(YEAR_END)_post_crop_access.jld2")
 
     npc_val = vcat(npc_val,data["Γ_MONTHLY_mean_TOTAL"]./data["POPULATION_MONTHLY"])
     acc_val = vcat(acc_val,data["λ_access_mean"])
 end
 
-fig, ax = scatter(npc_val, acc_val, markersize = 5)
-scatter!(ax, NPC_SURVEY_aggregated, ACCESS_SURVEY_aggregated, markersize = 5)
-xlims!(ax, -0.05, 1.05)
-ylims!(ax, -0.05, 1.05)
-
-fig
 # %% Extract SNF and RASTER Relationships for NPC-Access at national level
 raster_timeseries = CSV.read(OUTPUT_DIR*"coverage_timeseries/master_extraction.csv", DataFrame)
 raster_timeseries_country = raster_timeseries[raster_timeseries.category .== "Admin0",:]
@@ -120,6 +114,7 @@ USE_SURVEY_CLUSTER = lookup_data.use
 NPC_RASTER_CLUSTER = lookup_data.mitn_npc
 ACCESS_RASTER_CLUSTER = lookup_data.mitn_access
 USE_RASTER_CLUSTER = lookup_data.mitn_use
+
 
 # %% ANALYTICAL MODEL CALCULATIONS - Import model
 # Analysis domain/ranges
@@ -200,7 +195,7 @@ end
 ###################################################
 # %% FIGURE 1: Measures and Metrics Relationships plot
 ###################################################
-fig = Figure(size = (1200,700))
+fig = Figure(size = (1200,730))
 ax1 = Axis(fig[1,1],
             xlabel = "NPC (γ)",
             ylabel = "Access (λ)",
@@ -208,50 +203,50 @@ ax1 = Axis(fig[1,1],
             ylabelsize = 16,
             xticks = 0:0.1:1,
             yticks = 0:0.1:1)
-ax2 = Axis(fig[1,2],
+ax2 = Axis(fig[2,1],
             xlabel = "NPC (γ)",
             ylabel = "Access (λ)",
             xlabelsize = 16,
             ylabelsize = 16,
             xticks = 0:0.1:1,
             yticks = 0:0.1:1)
-ax3 = Axis(fig[2,1],
+ax3 = Axis(fig[1,3],
             xlabel = "NPC (γ)",
             ylabel = "Access (λ)",
             xlabelsize = 16,
             ylabelsize = 16,
             xticks = 0:0.1:1,
             yticks = 0:0.1:1)
-ax4 = Axis(fig[2,2],
+ax4 = Axis(fig[1,2],
             xlabel = "NPC (γ)",
             ylabel = "Access (λ)",
             xlabelsize = 16,
             ylabelsize = 16,
             xticks = 0:0.1:1,
             yticks = 0:0.1:1)
-ax5 = Axis(fig[1,3],
+ax5 = Axis(fig[2,2],
                 xlabel = "NPC (γ)",
-                ylabel = "Utilisation",
+                ylabel = "Utilisation Rate (η)",
                 xlabelsize = 16,
                 ylabelsize = 16,
-                xticks = 0:0.2:2,
+                xticks = 0:0.1:1,
                 yticks = 0:0.2:2)
 ax6 = Axis(fig[2,3],
                 xlabel = "Access (λ)",
-                ylabel = "Efficiency",
+                ylabel = "Adoption Rate (α)",
                 xlabelsize = 16,
                 ylabelsize = 16,
-                xticks = 0:0.2:1,
-                yticks = 0:0.2:1)
+                xticks = 0:0.1:1,
+                yticks = 0:0.2:2)
                 
-Label(fig[0,:], "NPC-Access Relationships", font = :bold,
+Label(fig[0,:], "Metric Relationships", font = :bold,
         halign = :center, tellwidth = false, fontsize = 30)
 
 xlims!(ax1, -0.05,1.05)
 xlims!(ax2, -0.05,1.05)
 xlims!(ax3, -0.05,1.05)
 xlims!(ax4, -0.05,1.05)
-xlims!(ax5, -0.05,2.05)
+xlims!(ax5, -0.05,1.05)
 xlims!(ax6, -0.05,1.05)
 
 ylims!(ax1, -0.05,1.05)
@@ -259,22 +254,24 @@ ylims!(ax2, -0.05,1.05)
 ylims!(ax3, -0.05,1.05)
 ylims!(ax4, -0.05,1.05)
 ylims!(ax5, -0.05,2.05)
-ylims!(ax6, -0.05,1.05)
+ylims!(ax6, -0.05,2.05)
 
-hidexdecorations!(ax1, ticks = false, grid = false)
-hidexdecorations!(ax2, ticks = false, grid = false)
-hideydecorations!(ax2, ticks = false, grid = false)
-hideydecorations!(ax4, ticks = false, grid = false)
+# hidexdecorations!(ax1, ticks = false, grid = false)
+# hidexdecorations!(ax2, ticks = false, grid = false)
+# hideydecorations!(ax2, ticks = false, grid = false)
+# hideydecorations!(ax4, ticks = false, grid = false)
 
 # %%
 npc_snf = scatter!(ax1, NPC_SNF_aggregated[1], ACCESS_SNF_aggregated[1],
-        markersize = 3, color = (colors[1],1))
+        markersize = 4, color = (colors[1],1))
 scatter!(ax1, NPC_SNF_aggregated, ACCESS_SNF_aggregated,
-        markersize = 3, color = (colors[1],0.2))
+        markersize = 4, color = (colors[1],0.2))
 npc_survey = scatter!(ax1, NPC_SURVEY_aggregated, ACCESS_SURVEY_aggregated,
-        markersize = 5, color = (colors[2],1))
-Legend(fig[1,1], [npc_snf, npc_survey],
-        ["SNF", "Survey"], 
+        markersize = 4, color = (colors[2],1))
+linear_scale = lines!(ax1, 0:0.1:0.6, (0:0.1:0.6).*1.8,
+                color = :black, linestyle = :dash)
+Legend(fig[1,1], [npc_snf, npc_survey, linear_scale],
+        ["SNF", "Survey","BV Slope"], 
         tellwidth = false, tellheight = false,
         halign = :left, valign = :top,
         padding = (10,10,10,10))
@@ -283,16 +280,18 @@ Legend(fig[1,1], [npc_snf, npc_survey],
 # scatter!(ax2, NPC_RASTER_aggregated, ACCESS_RASTER_aggregated,
 #         markersize = 3, color = (colors[1],0.2))
 npc_cluster_survey = scatter!(ax2, NPC_SURVEY_CLUSTER[1], ACCESS_SURVEY_CLUSTER[1],
-        markersize = 3, color = (colors[2],1))
+        markersize = 4, color = (colors[2],1))
 scatter!(ax2, NPC_SURVEY_CLUSTER, ACCESS_SURVEY_CLUSTER,
-        markersize = 3, color = (colors[2],0.05))
+        markersize = 4, color = (colors[2],0.04))
 npc_cluster_raster = scatter!(ax2, NPC_RASTER_CLUSTER[1], ACCESS_RASTER_CLUSTER[1],
-        markersize = 5, color = (colors[1],1))
+        markersize = 4, color = (colors[1],1))
 scatter!(ax2, NPC_RASTER_CLUSTER, ACCESS_RASTER_CLUSTER,
-        markersize = 5, color = (colors[1],0.05))
+        markersize = 4, color = (colors[1],0.025))
+linear_scale = lines!(ax2, 0:0.1:0.6, (0:0.1:0.6).*1.8,
+                color = :black, linestyle = :dash)
 
-Legend(fig[1,2], [npc_cluster_raster, npc_cluster_survey],
-        ["Raster", "Survey"], 
+Legend(fig[2,1], [npc_cluster_raster, npc_cluster_survey, linear_scale],
+        ["Raster", "Survey","BV Slope"], 
         tellwidth = false, tellheight = false,
         halign = :left, valign = :top,
         padding = (10,10,10,10))
@@ -304,7 +303,9 @@ band!(ax3, γ_vals, acc_uniform_ci[:,1], acc_uniform_ci[:,3],
 poisson_line = lines!(ax3, γ_vals, acc_poisson_ci[:,2], color = colors[2])
 band!(ax3, γ_vals, acc_poisson_ci[:,1], acc_poisson_ci[:,3], 
         color = (colors[2], 0.2))
-Legend(fig[2,1], [unif_line, poisson_line],
+linear_scale = lines!(ax3, 0:0.1:0.6, (0:0.1:0.6).*1.8,
+        color = :black, linestyle = :dash)
+Legend(fig[1,3], [unif_line, poisson_line],
         ["Uniform", "Poisson"], 
         tellwidth = false, tellheight = false,
         halign = :left, valign = :top,
@@ -316,7 +317,7 @@ band!(ax4, γ_vals, acc_global_ci[:,1], acc_global_ci[:,3],
         color = (colors[1], 0.2))
 scatter!(ax4, NPC_SURVEY_aggregated, ACCESS_SURVEY_aggregated,
         markersize = 5, color = (colors[2],1))
-Legend(fig[2,2], [global_line],
+Legend(fig[1,2], [global_line],
         ["Africa HH Mean Demography"], 
         tellwidth = false, tellheight = false,
         halign = :left, valign = :top,
@@ -325,15 +326,15 @@ Legend(fig[2,2], [global_line],
 # %%
 
 util_cluster_survey = scatter!(ax5, NPC_SURVEY_CLUSTER[1], (USE_SURVEY_CLUSTER[1]/2)/NPC_SURVEY_CLUSTER[1],
-        markersize = 3, color = (colors[2],1))
+        markersize = 4, color = (colors[2],1))
 scatter!(ax5, NPC_SURVEY_CLUSTER, (USE_SURVEY_CLUSTER./2)./NPC_SURVEY_CLUSTER,
-        markersize = 3, color = (colors[2],0.1))
+        markersize = 4, color = (colors[2],0.1))
 util_cluster_raster = scatter!(ax5, NPC_RASTER_CLUSTER[1], (USE_RASTER_CLUSTER[1]/2)/NPC_RASTER_CLUSTER[1],
-        markersize = 5, color = (colors[1],1))
+        markersize = 4, color = (colors[1],1))
 scatter!(ax5, NPC_RASTER_CLUSTER, (USE_RASTER_CLUSTER./2)./NPC_RASTER_CLUSTER,
-        markersize = 5, color = (colors[1],0.05))
+        markersize = 4, color = (colors[1],0.03))
 
-Legend(fig[1,3], [util_cluster_raster, util_cluster_survey],
+Legend(fig[2,2], [util_cluster_raster, util_cluster_survey],
         ["Raster", "Survey"], 
         tellwidth = false, tellheight = false,
         halign = :right, valign = :top,
@@ -343,22 +344,21 @@ Legend(fig[1,3], [util_cluster_raster, util_cluster_survey],
 
 
 eff_cluster_survey = scatter!(ax6, ACCESS_SURVEY_CLUSTER[1], USE_SURVEY_CLUSTER[1]/ACCESS_SURVEY_CLUSTER[1],
-        markersize = 3, color = (colors[2],1))
+        markersize = 4, color = (colors[2],1))
 scatter!(ax6, ACCESS_SURVEY_CLUSTER, USE_SURVEY_CLUSTER./ACCESS_SURVEY_CLUSTER,
-        markersize = 3, color = (colors[2],0.1))
+        markersize = 4, color = (colors[2],0.1))
 eff_cluster_raster = scatter!(ax6, ACCESS_RASTER_CLUSTER[1], USE_RASTER_CLUSTER[1]/USE_RASTER_CLUSTER[1],
-        markersize = 5, color = (colors[1],1))
+        markersize = 4, color = (colors[1],1))
 scatter!(ax6, ACCESS_RASTER_CLUSTER, USE_RASTER_CLUSTER./ACCESS_RASTER_CLUSTER,
-        markersize = 5, color = (colors[1],0.05))
+        markersize = 4, color = (colors[1],0.05))
 
 Legend(fig[2,3], [eff_cluster_raster, eff_cluster_survey],
         ["Raster", "Survey"], 
         tellwidth = false, tellheight = false,
-        halign = :right, valign = :bottom,
-        padding = (10,10,10,10))
- 
-fig
+        halign = :right, valign = :top,
+        padding = (10,10,10,10)) 
 
+fig
 # %%
 mkpath(OUTPUT_PLOTS_DIR*"PaperFigures/")
-save(OUTPUT_PLOTS_DIR*"PaperFigures/NPC_Access_Relationship.pdf", fig)
+save(OUTPUT_PLOTS_DIR*"PaperFigures/Metric_Relationship.pdf", fig)

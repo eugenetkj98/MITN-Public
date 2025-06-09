@@ -54,13 +54,13 @@ memsize = 32768
 
 [step13]
 ncpus = 1
-memsize = 6144
+memsize = 32768
 
 
 
 [step18] # Should Need about 22GB Memory for computation.
 ncpus = 1
-memsize = 24576
+memsize = 32762
 
 [step19]
 ncpus = 1 # Should need about 4-10GB Memory for compuration

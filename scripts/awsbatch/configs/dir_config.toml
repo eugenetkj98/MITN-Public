@@ -4,6 +4,7 @@
 
 [base]
 BASE_DIR = "/mnt/efs/userdata/etan/map-itn/"
+OUTPUT_BASE_DIR = "/mnt/efs/userdata/etan/mitn_outputs/"
 
 [input_raw_dirs]
 HOUSEHOLD_SURVEY_DIR = "/mnt/s3/malaria_survey_extraction/mse_v10/data/custom/20250326/"

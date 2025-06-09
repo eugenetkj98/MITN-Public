@@ -9,7 +9,7 @@ Script to calculate and compare rmse of BV and MITN and make associated plots
 include(pwd()*"/scripts/init_env.jl")
 
 # %% Import filenames and directories from config file
-include(pwd()*"/scripts/dir_configs.jl")
+include(pwd()*"/scripts/read_toml.jl")
 
 # %% Import Public Packages
 using DataFrames
@@ -26,7 +26,35 @@ output_dir = OUTPUT_PLOTS_DIR*"PaperFigures/"
 
 # %% Import data lookup dataset
 data = CSV.read(OUTPUT_DIR*"coverage_timeseries/bv_mitn_survey_reconstructions.csv", DataFrame)
+cluster_summaries = CSV.read(OUTPUT_DIR*"coverage_timeseries/bv_mitn_validation_values.csv", DataFrame)
 
+
+#############################################################
+# %% Calculate cluster level RMSE for NPC, Access and USE
+#############################################################
+npc_idxs = findall(.!isnan.(cluster_summaries.npc) .* .!isnan.(cluster_summaries.mitn_npc) .* .!isnan.(cluster_summaries.bv_npc))
+npc_mitn_cluster_rmse = sqrt(mean((cluster_summaries.npc[npc_idxs] .- cluster_summaries.mitn_npc[npc_idxs]).^2))
+npc_bv_cluster_rmse = sqrt(mean((cluster_summaries.npc[npc_idxs] .- cluster_summaries.bv_npc[npc_idxs]).^2))
+npc_mitn_cluster_cor = cor(cluster_summaries.npc[npc_idxs],cluster_summaries.mitn_npc[npc_idxs])
+npc_bv_cluster_cor = cor(cluster_summaries.npc[npc_idxs],cluster_summaries.bv_npc[npc_idxs])
+
+
+access_idxs = findall(.!isnan.(cluster_summaries.access) .* .!isnan.(cluster_summaries.mitn_access) .* .!isnan.(cluster_summaries.bv_access))
+access_mitn_cluster_rmse = sqrt(mean((cluster_summaries.access[access_idxs] .- cluster_summaries.mitn_access[access_idxs]).^2))
+access_bv_cluster_rmse = sqrt(mean((cluster_summaries.access[access_idxs] .- cluster_summaries.bv_access[access_idxs]).^2))
+access_mitn_cluster_cor = cor(cluster_summaries.access[access_idxs], cluster_summaries.mitn_access[access_idxs])
+access_bv_cluster_cor = cor(cluster_summaries.access[access_idxs], cluster_summaries.bv_access[access_idxs])
+
+use_idxs = findall(.!isnan.(cluster_summaries.use) .* .!isnan.(cluster_summaries.mitn_use) .* .!isnan.(cluster_summaries.bv_use))
+use_mitn_cluster_rmse = sqrt(mean((cluster_summaries.use[use_idxs] .- cluster_summaries.mitn_use[use_idxs]).^2))
+use_bv_cluster_rmse = sqrt(mean((cluster_summaries.use[use_idxs] .- cluster_summaries.bv_use[use_idxs]).^2))
+use_mitn_cluster_cor = cor(cluster_summaries.use[use_idxs], cluster_summaries.mitn_use[use_idxs])
+use_bv_cluster_cor = cor(cluster_summaries.use[use_idxs], cluster_summaries.bv_use[use_idxs])
+
+
+#############################################################
+# %% Calculate survey reconstruction RMSE for NPC, Access and USE
+#############################################################
 # %% Filter all NaNs
 filt_data = data[findall(.!isnan.(data.bv_npc) .&& .!isnan.(data.bv_access) .&& .!isnan.(data.bv_use) .&& 
                     .!isnan.(data.mitn_npc) .&& .!isnan.(data.mitn_access) .&& .!isnan.(data.mitn_use)),:]
@@ -61,13 +89,11 @@ mitn_use_res = mean(filt_data.mitn_use .- filt_data.use)
 monthidxs = monthyear_to_monthidx.(filt_data.interview_month, filt_data.interview_year, YEAR_START = YEAR_NAT_START)
 
 # %% Plot visual settings
-# pythonplot()
-# theme(:vibrant)
 fillalpha = 0.15
 la = 0.07
 lw = 1.2
 ms = 3
-ma = 1
+ma = 0.1
 colors = [  colorant"#00976A", # NPC
             colorant"#E72A3D", # Access
             colorant"#0082C7", # Use
@@ -80,17 +106,55 @@ colorrange = (YEAR_NAT_START, YEAR_NAT_END)
 # %% RMSE Fit Plots using CairoMakie.jl
 ##############################
 set_theme!(theme_ggplot2())
-fig = Figure(size = (800,520))
+fig = Figure(size = (800,1100))
 BV_suptitle = fig[1,1:4] = GridLayout()
 BV_plots = fig[2,1:4] = GridLayout()
 MITN_suptitle = fig[3,1:4] = GridLayout()
 MITN_plots = fig[4,1:4] = GridLayout()
 
 # BV Title
-Label(BV_suptitle[1,1:3],"BV Model", fontsize = 20, padding = (0,0,-20,-10))
+Label(BV_suptitle[1,1:3],"BV Model", fontsize = 23, padding = (0,0,-20,-10))
 
 # BV Plots
-ax_bv_npc = Axis(BV_plots[1,1],
+## Cluster Level
+ax_bv_cluster_npc = Axis(BV_plots[1,1],
+                    title = "NPC\nRMSE = $(round(npc_bv_cluster_rmse, digits = 3))", 
+                    xlabel = "Cluster Value", ylabel = "Fitted Value")
+xlims!(ax_bv_cluster_npc, -0.05, 1.05)
+ylims!(ax_bv_cluster_npc, -0.05, 1.05)
+scatter!(ax_bv_cluster_npc, 
+        cluster_summaries.npc, cluster_summaries.bv_npc,
+        color = Vector(cluster_summaries.interview_year),
+        colorrange = colorrange, colormap = cgrad([colorant"#2A2A2A", colors[3]]),
+        markersize = ms, alpha = ma)
+lines!(ax_bv_cluster_npc, [0,1],[0,1], color = :black)
+
+ax_bv_cluster_access = Axis(BV_plots[1,2],
+                    title = "Access\nRMSE = $(round(access_bv_cluster_rmse, digits = 3))", 
+                    xlabel = "Cluster Value", ylabel = "Fitted Value")
+xlims!(ax_bv_cluster_access, -0.05, 1.05)
+ylims!(ax_bv_cluster_access, -0.05, 1.05)
+scatter!(ax_bv_cluster_access, 
+        cluster_summaries.access, cluster_summaries.bv_access,
+        color = Vector(cluster_summaries.interview_year),
+        colorrange = colorrange, colormap = cgrad([colorant"#2A2A2A", colors[3]]),
+        markersize = ms, alpha = ma)
+lines!(ax_bv_cluster_access, [0,1], [0,1], color = :black)
+
+ax_bv_cluster_use = Axis(BV_plots[1,3],
+                    title = "Use\nRMSE = $(round(use_bv_cluster_rmse, digits = 3))", 
+                    xlabel = "Cluster Value", ylabel = "Fitted Value")
+xlims!(ax_bv_cluster_use, -0.05, 1.05)
+ylims!(ax_bv_cluster_use, -0.05, 1.05)
+scatter!(ax_bv_cluster_use, 
+        cluster_summaries.use, cluster_summaries.bv_use,
+        color = Vector(cluster_summaries.interview_year),
+        colorrange = colorrange, colormap = cgrad([colorant"#2A2A2A", colors[3]]),
+        markersize = ms, alpha = ma)
+lines!(ax_bv_cluster_use, [0,1], [0,1], color = :black)
+
+## Survey Reconstruction
+ax_bv_npc = Axis(BV_plots[2,1],
                     title = "NPC\nRMSE = $(round(bv_npc_rmse, digits = 4))", 
                     xlabel = "Survey Aggregate", ylabel = "Reconstructed Aggregate")
 xlims!(ax_bv_npc, -0.05, 1.05)
@@ -99,10 +163,10 @@ scatter!(ax_bv_npc,
         filt_data.npc, filt_data.bv_npc, 
         color = (monthidxs./12).+YEAR_NAT_START,
         colorrange = colorrange, colormap = cgrad([colorant"#2A2A2A", colors[3]]),
-        markersize = ms, alpha = ma)
+        markersize = ms, alpha = 1)
 lines!(ax_bv_npc, [0,1],[0,1], color = :black)
 
-ax_bv_access = Axis(BV_plots[1,2],
+ax_bv_access = Axis(BV_plots[2,2],
                     title = "Access\nRMSE = $(round(bv_access_rmse, digits = 4))", 
                     xlabel = "Survey Aggregate", ylabel = "Reconstructed Aggregate")
 xlims!(ax_bv_access, -0.05, 1.05)
@@ -111,10 +175,10 @@ scatter!(ax_bv_access,
         filt_data.access, filt_data.bv_access, 
         color = (monthidxs./12).+YEAR_NAT_START,
         colorrange = colorrange, colormap = cgrad([colorant"#2A2A2A", colors[3]]),
-        markersize = ms, alpha = ma)
+        markersize = ms, alpha = 1)
 lines!(ax_bv_access, [0,1], [0,1], color = :black)
 
-ax_bv_use = Axis(BV_plots[1,3],
+ax_bv_use = Axis(BV_plots[2,3],
                     title = "Use\nRMSE = $(round(bv_use_rmse, digits = 4))", 
                     xlabel = "Survey Aggregate", ylabel = "Reconstructed Aggregate")
 xlims!(ax_bv_use, -0.05, 1.05)
@@ -123,18 +187,56 @@ scatter!(ax_bv_use,
         filt_data.use, filt_data.bv_use, 
         color = (monthidxs./12).+YEAR_NAT_START,
         colorrange = colorrange, colormap = cgrad([colorant"#2A2A2A", colors[3]]),
-        markersize = ms, alpha = ma)
+        markersize = ms, alpha = 1)
 lines!(ax_bv_use, [0,1], [0,1], color = :black)
 
-Colorbar(BV_plots[1,4], limits = colorrange, label = "Year",
+Colorbar(BV_plots[1:2,4], limits = colorrange, label = "Year",
         colormap = cgrad([colorant"#2A2A2A", colors[3]]))
 
 # MITN Title
-Label(MITN_suptitle[1,1:3],"MITN Model", fontsize = 20, padding = (0,0,-20,-10))
+Label(MITN_suptitle[1,1:3],"MITN Model", fontsize = 23, padding = (0,0,-20,-10))
 
 # MITN Plots
+## Cluster Level
+ax_mitn_cluster_npc = Axis(MITN_plots[1,1],
+                    title = "NPC\nRMSE = $(round(npc_mitn_cluster_rmse, digits = 3))", 
+                    xlabel = "Cluster Value", ylabel = "Fitted Value")
+xlims!(ax_mitn_cluster_npc, -0.05, 1.05)
+ylims!(ax_mitn_cluster_npc, -0.05, 1.05)
+scatter!(ax_mitn_cluster_npc, 
+        cluster_summaries.npc, cluster_summaries.mitn_npc,
+        color = Vector(cluster_summaries.interview_year),
+        colorrange = colorrange, colormap = cgrad([colorant"#2A2A2A", colors[2]]),
+        markersize = ms, alpha = ma)
+lines!(ax_mitn_cluster_npc, [0,1],[0,1], color = :black)
 
-ax_mitn_npc = Axis(MITN_plots[1,1],
+ax_mitn_cluster_access = Axis(MITN_plots[1,2],
+                    title = "Access\nRMSE = $(round(access_mitn_cluster_rmse, digits = 3))", 
+                    xlabel = "Cluster Value", ylabel = "Fitted Value")
+xlims!(ax_mitn_cluster_access, -0.05, 1.05)
+ylims!(ax_mitn_cluster_access, -0.05, 1.05)
+scatter!(ax_mitn_cluster_access, 
+        cluster_summaries.access, cluster_summaries.mitn_access,
+        color = Vector(cluster_summaries.interview_year),
+        colorrange = colorrange, colormap = cgrad([colorant"#2A2A2A", colors[2]]),
+        markersize = ms, alpha = ma)
+lines!(ax_mitn_cluster_access, [0,1], [0,1], color = :black)
+
+ax_mitn_cluster_use = Axis(MITN_plots[1,3],
+                    title = "Use\nRMSE = $(round(use_mitn_cluster_rmse, digits = 3))", 
+                    xlabel = "Cluster Value", ylabel = "Fitted Value")
+xlims!(ax_mitn_cluster_use, -0.05, 1.05)
+ylims!(ax_mitn_cluster_use, -0.05, 1.05)
+scatter!(ax_mitn_cluster_use, 
+        cluster_summaries.use, cluster_summaries.mitn_use,
+        color = Vector(cluster_summaries.interview_year),
+        colorrange = colorrange, colormap = cgrad([colorant"#2A2A2A", colors[2]]),
+        markersize = ms, alpha = ma)
+lines!(ax_mitn_cluster_use, [0,1], [0,1], color = :black)
+
+
+## Survey Reconstruction
+ax_mitn_npc = Axis(MITN_plots[2,1],
                     title = "NPC\nRMSE = $(round(mitn_npc_rmse, digits = 4))", 
                     xlabel = "Survey Aggregate", ylabel = "Reconstructed Aggregate")
 xlims!(ax_mitn_npc, -0.05, 1.05)
@@ -143,10 +245,10 @@ scatter!(ax_mitn_npc,
         filt_data.npc, filt_data.mitn_npc, 
         color = (monthidxs./12).+YEAR_NAT_START,
         colorrange = colorrange, colormap = cgrad([colorant"#2A2A2A", colors[2]]),
-        markersize = ms, alpha = ma)
+        markersize = ms, alpha = 1)
 lines!(ax_mitn_npc, [0,1],[0,1], color = :black)
 
-ax_mitn_access = Axis(MITN_plots[1,2],
+ax_mitn_access = Axis(MITN_plots[2,2],
                     title = "Access\nRMSE = $(round(mitn_access_rmse, digits = 4))", 
                     xlabel = "Survey Aggregate", ylabel = "Reconstructed Aggregate")
 xlims!(ax_mitn_access, -0.05, 1.05)
@@ -155,10 +257,10 @@ scatter!(ax_mitn_access,
         filt_data.access, filt_data.mitn_access, 
         color = (monthidxs./12).+YEAR_NAT_START,
         colorrange = colorrange, colormap = cgrad([colorant"#2A2A2A", colors[2]]),
-        markersize = ms, alpha = ma)
+        markersize = ms, alpha = 1)
 lines!(ax_mitn_access, [0,1], [0,1], color = :black)
 
-ax_mitn_use = Axis(MITN_plots[1,3],
+ax_mitn_use = Axis(MITN_plots[2,3],
                     title = "Use\nRMSE = $(round(mitn_use_rmse, digits = 4))", 
                     xlabel = "Survey Aggregate", ylabel = "Reconstructed Aggregate")
 xlims!(ax_mitn_use, -0.05, 1.05)
@@ -167,10 +269,10 @@ scatter!(ax_mitn_use,
         filt_data.use, filt_data.mitn_use, 
         color = (monthidxs./12).+YEAR_NAT_START,
         colorrange = colorrange, colormap = cgrad([colorant"#2A2A2A", colors[2]]),
-        markersize = ms, alpha = ma)
+        markersize = ms, alpha = 1)
 lines!(ax_mitn_use, [0,1], [0,1], color = :black)
 
-Colorbar(MITN_plots[1,4], limits = colorrange, label = "Year",
+Colorbar(MITN_plots[1:2,4], limits = colorrange, label = "Year",
         colormap = cgrad([colorant"#2A2A2A", colors[2]]))
 
 # Adjust Gaps
@@ -188,7 +290,7 @@ fig
 
 
 # %% Save figure
-save(output_dir*"Survey_Reconstruction.pdf", fig)
+save(output_dir*"MITN_RMSE.pdf", fig)
 
 ##############################
 # %% Residuals Fit Plots using CairoMakie.jl
@@ -213,7 +315,7 @@ scatter!(ax_bv_npc,
         filt_data.npc, filt_data.bv_npc .- filt_data.npc, 
         color = (monthidxs./12).+YEAR_NAT_START,
         colorrange = colorrange, colormap = cgrad([colorant"#2A2A2A", colors[3]]),
-        markersize = ms, alpha = ma)
+        markersize = ms, alpha = 1)
 lines!(ax_bv_npc, [0,1],[0,0], color = :black)
 
 ax_bv_access = Axis(BV_plots[1,2],
@@ -225,7 +327,7 @@ scatter!(ax_bv_access,
         filt_data.access, filt_data.bv_access .- filt_data.access, 
         color = (monthidxs./12).+YEAR_NAT_START,
         colorrange = colorrange, colormap = cgrad([colorant"#2A2A2A", colors[3]]),
-        markersize = ms, alpha = ma)
+        markersize = ms, alpha = 1)
 lines!(ax_bv_access, [0,1], [0,0], color = :black)
 
 ax_bv_use = Axis(BV_plots[1,3],
@@ -237,7 +339,7 @@ scatter!(ax_bv_use,
         filt_data.use, filt_data.bv_use .- filt_data.use, 
         color = (monthidxs./12).+YEAR_NAT_START,
         colorrange = colorrange, colormap = cgrad([colorant"#2A2A2A", colors[3]]),
-        markersize = ms, alpha = ma)
+        markersize = ms, alpha = 1)
 lines!(ax_bv_use, [0,1], [0,0], color = :black)
 
 Colorbar(BV_plots[1,4], limits = colorrange, label = "Year",
@@ -257,7 +359,7 @@ scatter!(ax_mitn_npc,
         filt_data.npc, filt_data.mitn_npc .- filt_data.npc, 
         color = (monthidxs./12).+YEAR_NAT_START,
         colorrange = colorrange, colormap = cgrad([colorant"#2A2A2A", colors[2]]),
-        markersize = ms, alpha = ma)
+        markersize = ms, alpha = 1)
 lines!(ax_mitn_npc, [0,1],[0,0], color = :black)
 
 ax_mitn_access = Axis(MITN_plots[1,2],
@@ -269,7 +371,7 @@ scatter!(ax_mitn_access,
         filt_data.access, filt_data.mitn_access .- filt_data.access, 
         color = (monthidxs./12).+YEAR_NAT_START,
         colorrange = colorrange, colormap = cgrad([colorant"#2A2A2A", colors[2]]),
-        markersize = ms, alpha = ma)
+        markersize = ms, alpha = 1)
 lines!(ax_mitn_access, [0,1], [0,0], color = :black)
 
 ax_mitn_use = Axis(MITN_plots[1,3],
@@ -281,7 +383,7 @@ scatter!(ax_mitn_use,
         filt_data.use, filt_data.mitn_use .- filt_data.use, 
         color = (monthidxs./12).+YEAR_NAT_START,
         colorrange = colorrange, colormap = cgrad([colorant"#2A2A2A", colors[2]]),
-        markersize = ms, alpha = ma)
+        markersize = ms, alpha = 1)
 lines!(ax_mitn_use, [0,1], [0,0], color = :black)
 
 Colorbar(MITN_plots[1,4], limits = colorrange, label = "Year",

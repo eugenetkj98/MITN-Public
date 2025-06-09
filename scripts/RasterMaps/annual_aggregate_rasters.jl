@@ -9,7 +9,7 @@ Script to combine monthly resolution rasters for ITN metrics into annual rasters
 include(pwd()*"/scripts/init_env.jl")
 
 # %% Import filenames and directories from config file
-include(pwd()*"/scripts/dir_configs.jl")
+include(pwd()*"/scripts/read_toml.jl")
 
 # %% Import relevant packages
 using ProgressBars
@@ -57,7 +57,7 @@ for year in ProgressBar(YEAR_START:YEAR_END, leave = false)
 
     # Get list of raster filenames for current year
     netage_rasters = replace_missing.(Raster.(input_dir.*"final_netage/snf_netage/".*netage_filename_strings), missingval = NaN)
-    npc_rasters = replace_missing.(Raster.(input_dir.*"final_npc/logmodel_npc/".*npc_filename_strings), missingval = NaN)
+    npc_rasters = replace_missing.(Raster.(input_dir.*"final_npc/mean/monthly/".*npc_filename_strings), missingval = NaN)
     access_rasters = replace_missing.(Raster.(input_dir.*"final_access/pmodel_access/".*access_filename_strings), missingval = NaN)
     use_rasters = replace_missing.(Raster.(input_dir.*"final_use/logis_use/".*use_filename_strings), missingval = NaN)
     util_rasters = replace_missing.(Raster.(input_dir.*"final_utilisation/monthly/".*utilisation_filename_strings), missingval = NaN)

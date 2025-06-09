@@ -121,7 +121,7 @@ heatmap(τ_vals, κ_vals, SS_val',
 # %% Define loss/net attrition function
 loss_t_vals = 0:1/12:5
 τ = 1.4
-κ = exp(-1)
+κ = exp(4)
 
 L_base = net_loss_compact.(loss_t_vals, τ, κ)
 
@@ -159,6 +159,8 @@ fig_crop = plot(t_vals, convolution(L_base,d)[1:length(t_vals)],
 plot(fig_attrition, fig_dist, fig_crop, 
         layout = (1,3), size = (1200,300), margins = 5mm)
 
+
+    
 # # Combine into a single plot
 # fig = Figure(size = (1200,300))
 # ax1 = Axis(fig[1,1], 
@@ -195,7 +197,7 @@ k = 3
 τ_vals = 0.1:0.05:5
 κ_vals = exp.(-4:0.1:4)
 
-MAX_val = zeros(length(ω_vals), length(τ_vals), length(κ_vals))
+MEAN_val = zeros(length(ω_vals), length(τ_vals), length(κ_vals))
 STD_val = zeros(length(ω_vals), length(τ_vals), length(κ_vals))
 
 for ω_i in ProgressBar(1:length(ω_vals), leave = false)
@@ -215,7 +217,7 @@ for ω_i in ProgressBar(1:length(ω_vals), leave = false)
             response = convolution(L,d)[1:length(t_vals)]
 
             # Store Variables
-            MAX_val[ω_i, τ_i, κ_i] = maximum(response)
+            MEAN_val[ω_i, τ_i, κ_i] = mean(response[end-48:end])
             STD_val[ω_i, τ_i, κ_i] = std(response[end-48:end])
         end
     end
@@ -224,27 +226,28 @@ end
 # %%
 
 
-heatmap(τ_vals, log.(κ_vals), MAX_val[end,:,:]',
+heatmap(τ_vals, log.(κ_vals), MEAN_val[end,:,:]',
         xlabel = L"\tau", ylabel = L"\log \kappa",
-        colorbartitle = L"\Gamma_{SS}",
+        colorbartitle = L"\Gamma_{\mu}",
         labelfontsize = 15, colorbar_titlefontsize = 15,
         title = "Uniform Annual Distribution")
 
 heatmap(τ_vals, log.(κ_vals), STD_val[5,:,:]',
         xlabel = L"\tau", ylabel = L"\log \kappa",
-        colorbartitle = L"\Gamma_{SS}",
+        colorbartitle = L"\Gamma_{\sigma}",
         labelfontsize = 15, colorbar_titlefontsize = 15,
         title = "Uniform Annual Distribution")
 
 # %% 
-max_val_collection = []
+mean_val_collection = []
 std_val_collection = []
+norm_std_val_collection = []
 
 for ω_i in 1:length(ω_vals)
     ω = ω_vals[ω_i]
-    max_fig = heatmap(τ_vals, log.(κ_vals), MAX_val[ω_i,:,:]',
+    mean_fig = heatmap(τ_vals, log.(κ_vals), MEAN_val[ω_i,:,:]',
             xlabel = L"\tau", ylabel = L"\log \kappa",
-            colorbartitle = L"\Gamma_{max}",
+            colorbartitle = L"\Gamma_{\mu}",
             labelfontsize = 15, colorbar_titlefontsize = 15,
             title = L"\omega = %$(ω)", clims = (0,5))
             
@@ -253,12 +256,22 @@ for ω_i in 1:length(ω_vals)
             colorbartitle = L"\Gamma_{\sigma}",
             labelfontsize = 15, colorbar_titlefontsize = 15,
             title = L"\omega = %$(ω)", clims = (0,0.3))
-    push!(max_val_collection, max_fig)
+
+    norm_std_fig = heatmap(τ_vals, log.(κ_vals), (STD_val[ω_i,:,:]./MEAN_val[ω_i,:,:])',
+            xlabel = L"\tau", ylabel = L"\log \kappa",
+            colorbartitle = L"\Gamma_{\sigma}",
+            labelfontsize = 15, colorbar_titlefontsize = 15,
+            title = L"\omega = %$(ω)", clims = (0,0.5))
+    
+    push!(mean_val_collection, mean_fig)
     push!(std_val_collection, std_fig)
+    push!(norm_std_val_collection, norm_std_fig)
 end
 
 # %%
-plot(max_val_collection..., layout = (3,4), 
+plot(mean_val_collection..., layout = (3,4), 
         size = (1920,800), margins = 2mm)
 plot(std_val_collection..., layout = (3,4), 
+        size = (1920,800), margins = 2mm)
+plot(norm_std_val_collection..., layout = (3,4), 
         size = (1920,800), margins = 2mm)

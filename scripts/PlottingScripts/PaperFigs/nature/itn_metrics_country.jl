@@ -8,7 +8,7 @@ Make country level plots for paper
 include(pwd()*"/scripts/init_env.jl")
 
 # %% Import filenames and directories from config file
-include(pwd()*"/scripts/dir_configs.jl")
+include(pwd()*"/scripts/read_toml.jl")
 
 # %% Import Public Packages
 using DataFrames
@@ -40,7 +40,7 @@ colors = [  colorant"#0082C7", # NPC
             ];
 
 # General settings
-fillalpha = 0.2
+fillalpha = 0.15
 la = 0.5
 lw = 2
 africa_lw = 1.4
@@ -188,8 +188,7 @@ for ISO_i in ProgressBar(1:length(filt_ISOs))
 
     ### Access
     band!(ax, 1:n_months, country_access[ISO_i,:,1], country_access[ISO_i,:,3],
-    color = (colors[2], fillalpha)
-    )
+    color = (colors[2], fillalpha))
     access_line = lines!(ax, 1:n_months, country_access[ISO_i,:,2],
             color = colors[2], linewidth = lw)
     lines!(ax, 1:n_months, country_access[ISO_i,:,1],
@@ -329,16 +328,22 @@ for ISO_i in ProgressBar(1:length(filt_ISOs), leave = false)
     ISO = filt_ISOs[ISO_i]
 
     # Add lines
-
     ### NPC
+    band!(plot_axs[ISO_i], 1:n_months, country_npc[ISO_i,:,1], country_npc[ISO_i,:,3],
+            color = (colors[1], fillalpha))
     npc_line = lines!(plot_axs[ISO_i], 1:n_months, country_npc[ISO_i,:,2],
             color = colors[1], linewidth = africa_lw)
+    
 
     ### Access
+    band!(plot_axs[ISO_i], 1:n_months, country_access[ISO_i,:,1], country_access[ISO_i,:,3],
+                color = (colors[2], fillalpha))
     access_line = lines!(plot_axs[ISO_i], 1:n_months, country_access[ISO_i,:,2],
             color = colors[2], linewidth = africa_lw)
 
     ### Use
+    band!(plot_axs[ISO_i], 1:n_months, country_use[ISO_i,:,1], country_use[ISO_i,:,3],
+            color = (colors[3], fillalpha))
     use_line = lines!(plot_axs[ISO_i], 1:n_months, country_use[ISO_i,:,2],
             color = colors[3], linewidth = africa_lw)
 
@@ -480,10 +485,10 @@ for ISO_i in 1:length(filt_ISOs)
                 xticks = ((1:12:n_months)[1:5:end], year_strings[1:5:end]),
                 xticklabelrotation = pi/2,
                 # ylabel = "Metric",
-                yticks = (0:0.2:1.5),
+                yticks = (0:0.2:1.8),
                 ylabelsize = 20)
     xlims!(ax,-0.5,n_months+0.5)
-    ylims!(ax,-0.02, 1.52)
+    ylims!(ax,-0.02, 1.82)
 
     lb = Label(fig[2*(x_idx-1)+1,y_idx], "$(country_name)")
     
@@ -552,7 +557,7 @@ ls = 18
 fig = Figure(size = (600,400))
 ax1 = Axis(fig[1,1],
         xlabel = "NPC",
-        ylabel = "Utilisation (Use/(2NPC))",
+        ylabel = "Utilisation (η)",
         xlabelsize = ls, ylabelsize = ls,
         xticks = 0:0.25:2,
         yticks = 0:1:5)

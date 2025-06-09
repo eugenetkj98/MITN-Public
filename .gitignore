@@ -10,3 +10,4 @@
 *.tar
 datasets/
 outputs/
+env_files/.CondaPkg/

@@ -44,9 +44,10 @@ attrition_curves_collection = Array{Any}(undef, n_countries)
 YEAR_START = 2000
 YEAR_END = 2023
 
-for ISO_i in ProgressBar(1:length(filt_ISOs))
+# for ISO_i in ProgressBar(1:length(filt_ISOs))
     # Select ISO
     ISO = filt_ISOs[ISO_i]
+    ISO = "NGA"
     input_dict = load(OUTPUT_EXTRACTIONS_DIR*"crop/$(YEAR_START)_$(YEAR_END)/$(ISO)_$(YEAR_START)_$(YEAR_END)_cropextract.jld2")
     regression_dict = load(OUTPUT_REGRESSIONS_DIR*"crop/$(YEAR_START)_$(YEAR_END)/$(ISO)_$(YEAR_START)_$(YEAR_END)_cropchains.jld2")
     net_access_input_dict = load(OUTPUT_EXTRACTIONS_DIR*"access/reg_data/$(YEAR_START)_$(YEAR_END)/$(ISO)_$(YEAR_START)_$(YEAR_END)_accessextract.jld2")

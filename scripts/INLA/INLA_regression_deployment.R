@@ -22,11 +22,11 @@ library(lattice)
 library(gridExtra)
 library(tomledit)
 
-# Load custom transformation functions
-source("scripts/INLA/transforms.R")
-
 # Load TOML Config file
 model_config = from_toml(read_toml("/mnt/efs/userdata/etan/map-itn/scripts/awsbatch/configs/model_config.toml"))
+
+# Load custom transformation functions
+source("/mnt/efs/userdata/etan/map-itn/scripts/INLA/transforms.R")
 
 # Random fix
 sf_use_s2(FALSE)
@@ -34,7 +34,8 @@ sf_use_s2(FALSE)
 # load INLA regression data
 inla_data <- read.csv('/mnt/efs/userdata/etan/map-itn/outputs/data_prep/INLA/inla_dataset_reduced.csv')
 # inla_data <- inla_data[seq(1,dim(inla_data)[1],2),]
-inla_data <- inla_data[which(inla_data$access > 0),]
+# inla_data <- inla_data[which(inla_data$access > 0),]
+inla_data <- inla_data[which(inla_data$npc > 0),]
 inla_data$yearidx <- (inla_data$monthidx %/% 12)+1#*12
 inla_data$yearidx
 
@@ -60,38 +61,36 @@ africa_spde <- inla.spde2.matern(mesh = africa_mesh)
 
 plot(africa_mesh)
 
-
 # Construct temporal parts of model
 start_year = model_config$YEAR_NAT_START
 end_year = model_config$YEAR_NAT_END
 n_years = (end_year-start_year + 1)
-n_months = n_years*12
-
-
 # generate temporal mesh
-temporal_mesh_monthly <- inla.mesh.1d(seq(1,n_months,by=12),interval=c(1, n_months),degree=2)
+temporal_mesh_annual <- inla.mesh.1d(seq(1,n_years+1,by=2),interval=c(1, n_years+1),degree=2)
 
 # Make projection matrices
-A_proj_monthly <- inla.spde.make.A(mesh = africa_spde, loc = coords,
-                                   group = inla_data$monthidx,
-                                   group.mesh = temporal_mesh_monthly)
+A_proj_annual <- inla.spde.make.A(mesh = africa_spde, loc = coords,
+                                  group = inla_data$yearidx,
+                                  group.mesh = temporal_mesh_annual)
 
-S_index_monthly <- inla.spde.make.index(name = "field",
-                                        n.spde = africa_mesh$n,
-                                        n.group = temporal_mesh_monthly$m)
+S_index_annual <- inla.spde.make.index(name = "field",
+                                       n.spde = africa_mesh$n,
+                                       n.group = temporal_mesh_annual$m)
 
 # Construct INLA stack for spatial
-# Calculate optimum ihs theta and transformation for use response
-# Use gap
-epsilon <- 1e-5
-for (i in 1:length(inla_data$use)){
-  inla_data$p_use[i] <- p_transform(inla_data$use[i], inla_data$access[i], n = 2)
+# Calculate optimum ihs theta and transformation for access response
+inla_data$access_subnat <- inla_data$access - inla_data$access_gap
+inla_data$npc_subnat <- inla_data$npc - inla_data$npc_gap
+for (i in 1:length(inla_data$access)){
+  inla_data$dep_subnat <- min(inla_data$access_subnat[i]/(2*inla_data$npc_subnat[i]),1)
+  inla_data$dep[i] <- min(inla_data$access[i]/(2*inla_data$npc[i]),1)
+  inla_data$p_dep[i] <- p_transform(inla_data$dep[i], inla_data$dep_subnat[i], n = 2)
 }
 
-use_theta <- optimise(ihs_loglik, lower = 0.001, upper = 200, x = gap_emplogit(inla_data$p_use[which(abs(inla_data$p_use) > 0.001)]), maximum = TRUE)$maximum
-res_use_gap <- ihs(gap_emplogit(inla_data$p_use), use_theta)
+dep_theta <- optimise(ihs_loglik, lower = 0.001, upper = 1000, x = gap_emplogit(inla_data$p_dep[which(inla_data$p_dep != 0)]), maximum = TRUE)$maximum
+res_dep_gap <- ihs(gap_emplogit(inla_data$p_dep), dep_theta)
 
-response_data <- list(res_use_gap = res_use_gap)
+response_data <- list(res_dep_gap = res_dep_gap)
 
 cov_data <- list(yearidx = inla_data$yearidx,
                  monthidx = inla_data$monthidx,
@@ -117,18 +116,18 @@ cov_data <- list(yearidx = inla_data$yearidx,
                  monthly_2 = inla_data$monthly_2
 )
 
-effects_data_monthly <- list(c(S_index_monthly, list(Intercept = 1)),cov_data)
+effects_data_annual <- list(c(S_index_annual, list(Intercept = 1)),cov_data)
 
-africa_stack_monthly <- inla.stack(data = response_data,
-                                   A = list(A_proj_monthly,1),
-                                   effects = effects_data_monthly,
-                                   tag = "use.data")
+africa_stack_annual <- inla.stack(data = response_data,
+                                  A = list(A_proj_annual,1),
+                                  effects = effects_data_annual,
+                                  tag = "npc.data")
 
 #############################
-# Fit USE GAP model
+# Fit ACCESS GAP model
 #############################
-print("Fitting Use gap spatio-temporal model...")
-m1 <- inla(res_use_gap ~ -1 +# Intercept + 
+print("Fitting Deployment gap spatio-temporal model...")
+m1 <- inla(res_dep_gap ~  -1 + #Intercept + 
              static_1 +
              static_2 +
              static_3 +
@@ -147,24 +146,19 @@ m1 <- inla(res_use_gap ~ -1 +# Intercept +
              annual_13 +
              annual_14 +
              annual_15 +
-             monthly_1 +
-             monthly_2 +
              f(field, model = spde, group = field.group, 
                control.group = list(model = 'ar1') ),
-           data = inla.stack.data(africa_stack_monthly, spde = africa_spde),
+           data = inla.stack.data(africa_stack_annual, spde = africa_spde),
            family = "gaussian",
-           control.predictor = list(A = inla.stack.A(africa_stack_monthly), compute = TRUE),
+           control.predictor = list(A = inla.stack.A(africa_stack_annual), compute = TRUE),
            control.compute = list(cpo = TRUE, dic = TRUE, config = TRUE), 
            control.inla = list(strategy = "adaptive", int.strategy = "eb"),
            verbose = TRUE)
 
-print("Saving Use gap model outputs...")
+print("Saving Deployment gap model outputs...")
 
-save(africa_mesh, africa_spde, temporal_mesh_monthly, m1, use_theta, file = "/mnt/efs/userdata/etan/map-itn/outputs/INLA/model1_use_complete_logis.RData")
+save(africa_mesh, africa_spde, temporal_mesh_annual, m1, dep_theta, file = "/mnt/efs/userdata/etan/map-itn/outputs/INLA/model1_deployment_complete_pmodel.RData")
 
-print("Saved Use model Part")
-
-summary(m1)
+print("Saved Deployment model")
 
 print("HURRAH! I FINISHED THE R SCRIPT THANK GOD")
-

@@ -22,7 +22,7 @@ RAW_SUBNAT_DATASET_DIR = RAW_DATASET_DIR*dir_config["input_rel_dirs"]["BASEDIR_R
 POPULATION_RASTER_DIR = dir_config["input_pop_raw_dir"]["POPULATION_RASTER_DIR"];
 
 # Output Data Directories
-OUTPUT_DIR = BASE_DIR*dir_config["output_rel_dirs"]["BASEDIR_REL_OUTPUT_DIR"];
+OUTPUT_DIR = dir_config["base"]["OUTPUT_BASE_DIR"]*dir_config["output_rel_dirs"]["BASEDIR_REL_OUTPUT_DIR"];
 OUTPUT_DATAPREP_DIR = OUTPUT_DIR*dir_config["output_rel_dirs"]["OUTPUTDIR_REL_DATAPREP_DIR"];
 OUTPUT_SUBNAT_DATAPREP_DIR = OUTPUT_DATAPREP_DIR*dir_config["output_rel_dirs"]["OUTPUTDIR_REL_SUBNAT_DATAPREP_DIR"];
 OUTPUT_EXTRACTIONS_DIR = OUTPUT_DIR*dir_config["output_rel_dirs"]["OUTPUTDIR_REL_EXTRACTIONS_DIR"];

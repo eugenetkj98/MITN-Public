@@ -9,7 +9,7 @@ Construct prediction inputs for running forward/backcasting estimates with multi
 include(pwd()*"/scripts/init_env.jl")
 
 # %% Import filenames and directories from config file
-include(pwd()*"/scripts/dir_configs.jl")
+include(pwd()*"/scripts/read_toml.jl")
 
 # %% Load packages
 using JLD2

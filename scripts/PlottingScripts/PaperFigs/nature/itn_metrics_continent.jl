@@ -8,7 +8,7 @@ Make continent level plots for paper
 include(pwd()*"/scripts/init_env.jl")
 
 # %% Import filenames and directories from config file
-include(pwd()*"/scripts/dir_configs.jl")
+include(pwd()*"/scripts/read_toml.jl")
 
 # %% Import Public Packages
 using DataFrames
@@ -179,7 +179,7 @@ Legend(fig[1, 2],
     [npc_line, access_line, use_line],
     ["NPC", "Access", "Use"])
 
-save(OUTPUT_PLOTS_DIR*"PaperFigures/Country_ITN_Metrics.pdf", fig, pdf_version = "1.4")
+save(OUTPUT_PLOTS_DIR*"PaperFigures/Continent_ITN_Metrics.pdf", fig, pdf_version = "1.4")
 fig
 
 ####################################################################
@@ -197,25 +197,33 @@ ax = Axis(fig[1,1],
         xlabelsize = 20,
         titlesize = 25,
         ylabel = "Utilisation Rate (η)",
-        yticks = (0:0.2:1),
+        yticks = (0:0.2:2),
         ylabelsize = 20
         )
 xlims!(-0.5,n_months+0.5)
-ylims!(-0.02, 1.02)
+ylims!(-0.02, 2.02)
 
 # Add Line
-lines!(ax, 1:n_months, continent_use[:,2]./continent_access[:,2],
-        color = colors[1], linewidth = africa_lw)
+lines!(ax, 1:n_months, continent_use[:,2]./(2 .*continent_npc[:,2]),
+        color = colors[1], linewidth = lw)
+hlines!(ax, [1], color = :black, linestyle = :dash, linewidth = lw)
 save(OUTPUT_PLOTS_DIR*"PaperFigures/Continent_ITN_utilisation.pdf", fig, pdf_version = "1.4")
 fig
 
 ####################################################################
 # %% FIGURE 2: Moving Window Gains plot
 ####################################################################
+# Linearly extrapolate population for period of 2021-2023
+est_pop_change = continent_population[20*12]-continent_population[20*12-1]
+
+est_population = continent_population
+for monthidx in 20*12+1:length(continent_population)
+        est_population[monthidx] = est_population[monthidx-1] + est_pop_change
+end
 
 # Mean downsample to annual data
 continent_crop_annual = [mean(continent_crop[((i-1)*12+1):(12*i),2]) for i in 1:n_years]
-continent_pop_annual = [mean(continent_population[((i-1)*12+1):(12*i)]) for i in 1:n_years]
+continent_pop_annual = [mean(est_population[((i-1)*12+1):(12*i)]) for i in 1:n_years]
 
 # Calculate Moving Averages
 ma_crop = MA_filter(continent_crop_annual, window = 3)
@@ -281,3 +289,5 @@ text!([(i+1,-10) for i in 1:length(delta_crop)],
 
 # Save fig
 save(OUTPUT_PLOTS_DIR*"PaperFigures/Continent_ITN_trend.pdf", fig, pdf_version = "1.4")
+
+fig

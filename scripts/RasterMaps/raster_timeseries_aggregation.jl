@@ -93,15 +93,15 @@ for year in YEAR_START:YEAR_END
         use_mean_raster = replace_missing(Raster(raster_dir*"final_use/logis_use/use_$(year)_$(month_str)_mean.tif"), missingval = NaN)
 
         # Import ITN sample rasters
-        npc_sample_raster_filenames = readdir(raster_dir*"final_npc/joint_posterior_samples/$(year)_$(month_str)/")
-        npc_sample_rasters = replace_missing.(Raster.(raster_dir*"final_npc/joint_posterior_samples/$(year)_$(month_str)/".*npc_sample_raster_filenames), missingval = NaN)
+        npc_sample_raster_filenames = readdir(raster_dir*"final_npc/posterior_samples/$(year)_$(month_str)/")
+        npc_sample_rasters = replace_missing.(Raster.(raster_dir*"final_npc/posterior_samples/$(year)_$(month_str)/".*npc_sample_raster_filenames), missingval = NaN)
 
-        access_sample_raster_filenames = readdir(raster_dir*"final_access/joint_posterior_samples/$(year)_$(month_str)/")
-        access_sample_rasters = replace_missing.(Raster.(raster_dir*"final_access/joint_posterior_samples/$(year)_$(month_str)/".*access_sample_raster_filenames), missingval = NaN)
+        access_sample_raster_filenames = readdir(raster_dir*"final_access/posterior_samples/$(year)_$(month_str)/")
+        access_sample_rasters = replace_missing.(Raster.(raster_dir*"final_access/posterior_samples/$(year)_$(month_str)/".*access_sample_raster_filenames), missingval = NaN)
 
         raster_dir*"final_use/joint_posterior_samples/$(year)_$(month_str)/"
-        use_sample_raster_filenames = readdir(raster_dir*"final_use/joint_posterior_samples/$(year)_$(month_str)/")
-        use_sample_rasters = replace_missing.(Raster.(raster_dir*"final_use/joint_posterior_samples/$(year)_$(month_str)/".*use_sample_raster_filenames), missingval = NaN)
+        use_sample_raster_filenames = readdir(raster_dir*"final_use/posterior_samples/$(year)_$(month_str)/")
+        use_sample_rasters = replace_missing.(Raster.(raster_dir*"final_use/posterior_samples/$(year)_$(month_str)/".*use_sample_raster_filenames), missingval = NaN)
 
         for ISO_i in 1:length(filt_ISOs)
             # Select Country

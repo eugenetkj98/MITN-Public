@@ -1,6 +1,9 @@
 # Set working directory
 setwd("/mnt/efs/userdata/etan/map-itn")
 
+# Set timeout to allow enough time to install INLA
+options(timeout=3600)
+
 # Install required packages in case not in DockerImage by default
 install.packages("tidyverse")
 install.packages("raster")

@@ -28,7 +28,6 @@ mkpath(raster_dir*"final_access/mean/monthly")
 mkpath(raster_dir*"final_use/mean/monthly")
 mkpath(raster_dir*"final_utilisation/mean/monthly")
 
-
 # %% Year Bounds
 # YEAR_START = 2004 #YEAR_NAT_START
 # YEAR_END = YEAR_NAT_END
