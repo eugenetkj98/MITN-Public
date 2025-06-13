@@ -78,13 +78,14 @@ n_years = YEAR_END-YEAR_START+1
 n_months = n_years*12
 
 # %% Construct continent time series to plot
-filt_data = raster_timeseries[raster_timeseries.category .== "Admin0",:]
+filt_data = raster_timeseries[raster_timeseries.category .== "Continent",:]
 
 continent_population = zeros(n_months)
-continent_crop = zeros(n_months, 3)
-continent_access_pop = zeros(n_months, 3)
-continent_use_pop = zeros(n_months, 3)
-
+continent_npc = zeros(n_months, 3)
+continent_access = zeros(n_months, 3)
+continent_use = zeros(n_months, 3)
+continent_util = zeros(n_months, 3)
+continent_eff = zeros(n_months, 3)
 
 for monthidx in 1:n_months
     # Get timestamps
@@ -93,25 +94,59 @@ for monthidx in 1:n_months
 
     # Further filter data and extract data
     data_slice = filt_data[filt_data.month .== month_val .&& filt_data.year .== year_val,:]
+    continent_population[monthidx] = sum(data_slice[1,:].population)
 
-    continent_population[monthidx] = sum(data_slice.population)
+    
+    continent_npc[monthidx,1] = data_slice[1,"raster_npc_95lower"]
+    continent_npc[monthidx,2] = data_slice[1,"raster_npc_mean"]
+    continent_npc[monthidx,3] = data_slice[1,"raster_npc_95upper"]
 
-    continent_crop[monthidx,1] = sum(data_slice.raster_npc_95lower.*data_slice.population)
-    continent_crop[monthidx,2] = sum(data_slice.raster_npc_mean.*data_slice.population)
-    continent_crop[monthidx,3] = sum(data_slice.raster_npc_95upper.*data_slice.population)
+    continent_access[monthidx,1] = data_slice[1,"raster_access_95lower"]
+    continent_access[monthidx,2] = data_slice[1,"raster_access_mean"]
+    continent_access[monthidx,3] = data_slice[1,"raster_access_95upper"]
 
-    continent_access_pop[monthidx,1] = sum(data_slice.raster_access_95lower.*data_slice.population)
-    continent_access_pop[monthidx,2] = sum(data_slice.raster_access_mean.*data_slice.population)
-    continent_access_pop[monthidx,3] = sum(data_slice.raster_access_95upper.*data_slice.population)
+    continent_use[monthidx,1] = data_slice[1,"raster_use_95lower"]
+    continent_use[monthidx,2] = data_slice[1,"raster_use_mean"]
+    continent_use[monthidx,3] = data_slice[1,"raster_use_95upper"]
 
-    continent_use_pop[monthidx,1] = sum(data_slice.raster_use_95lower.*data_slice.population)
-    continent_use_pop[monthidx,2] = sum(data_slice.raster_use_mean.*data_slice.population)
-    continent_use_pop[monthidx,3] = sum(data_slice.raster_use_95upper.*data_slice.population)
+    continent_util[monthidx,1] = data_slice[1,"raster_util_95lower"]
+    continent_util[monthidx,2] = data_slice[1,"raster_util_mean"]
+    continent_util[monthidx,3] = data_slice[1,"raster_util_95upper"]
+
+    continent_eff[monthidx,1] = data_slice[1,"raster_eff_95lower"]
+    continent_eff[monthidx,2] = data_slice[1,"raster_eff_mean"]
+    continent_eff[monthidx,3] = data_slice[1,"raster_eff_95upper"]
 end
 
-continent_npc = continent_crop./repeat(continent_population,1,3)
-continent_access = continent_access_pop./repeat(continent_population,1,3)
-continent_use = continent_use_pop./repeat(continent_population,1,3)
+# %% Calculate annual downsampled
+
+
+continent_npc_annual = zeros(n_years,3)
+continent_access_annual = zeros(n_years,3)
+continent_use_annual = zeros(n_years,3)
+continent_util_annual = zeros(n_years,3)
+continent_eff_annual = zeros(n_years,3)
+
+continent_npc_annual[:,1] = [mean(continent_npc[((i-1)*12+1):((i-1)*12+12),1]) for i in 1:n_years]
+continent_npc_annual[:,2] = [mean(continent_npc[((i-1)*12+1):((i-1)*12+12),2]) for i in 1:n_years]
+continent_npc_annual[:,3] = [mean(continent_npc[((i-1)*12+1):((i-1)*12+12),3]) for i in 1:n_years]
+
+continent_access_annual[:,1] = [mean(continent_access[((i-1)*12+1):((i-1)*12+12),1]) for i in 1:n_years]
+continent_access_annual[:,2] = [mean(continent_access[((i-1)*12+1):((i-1)*12+12),2]) for i in 1:n_years]
+continent_access_annual[:,3] = [mean(continent_access[((i-1)*12+1):((i-1)*12+12),3]) for i in 1:n_years]
+
+continent_use_annual[:,1] = [mean(continent_use[((i-1)*12+1):((i-1)*12+12),1]) for i in 1:n_years]
+continent_use_annual[:,2] = [mean(continent_use[((i-1)*12+1):((i-1)*12+12),2]) for i in 1:n_years]
+continent_use_annual[:,3] = [mean(continent_use[((i-1)*12+1):((i-1)*12+12),3]) for i in 1:n_years]
+
+continent_util_annual[:,1] = [mean(continent_util[((i-1)*12+1):((i-1)*12+12),1]) for i in 1:n_years]
+continent_util_annual[:,2] = [mean(continent_util[((i-1)*12+1):((i-1)*12+12),2]) for i in 1:n_years]
+continent_util_annual[:,3] = [mean(continent_util[((i-1)*12+1):((i-1)*12+12),3]) for i in 1:n_years]
+
+continent_eff_annual[:,1] = [mean(continent_eff[((i-1)*12+1):((i-1)*12+12),1]) for i in 1:n_years]
+continent_eff_annual[:,2] = [mean(continent_eff[((i-1)*12+1):((i-1)*12+12),2]) for i in 1:n_years]
+continent_eff_annual[:,3] = [mean(continent_eff[((i-1)*12+1):((i-1)*12+12),3]) for i in 1:n_years]
+
 
 ####################################################################
 # %% FIGURE 1: ITN Coverage plots for Africa continent
@@ -163,7 +198,7 @@ lines!(ax, 1:n_months, continent_access[:,3],
 
 ### Use
 band!(ax, 1:n_months, continent_use[:,1], continent_use[:,3],
-color = (colors[2], fillalpha)
+color = (colors[3], fillalpha)
 )
 use_line = lines!(ax, 1:n_months, continent_use[:,2],
         color = colors[3], linewidth = lw)
@@ -179,11 +214,80 @@ Legend(fig[1, 2],
     [npc_line, access_line, use_line],
     ["NPC", "Access", "Use"])
 
-save(OUTPUT_PLOTS_DIR*"PaperFigures/Continent_ITN_Metrics.pdf", fig, pdf_version = "1.4")
+save(OUTPUT_PLOTS_DIR*"PaperFigures/Continent_ITN_Metrics_monthly.pdf", fig, pdf_version = "1.4")
 fig
 
 ####################################################################
-# %% FIGURE 4: Continent Utilisation Plot
+# %% FIGURE 1B: ITN Coverage plots for Africa continent (ANNUAL)
+####################################################################
+# %% Construct plot
+# Base axes
+fig = Figure(size = (800,500))
+ax = Axis(fig[1,1],
+        title = "Continent ITN Metrics",
+        xlabel = "Years", 
+        xticks = (1:n_years, string.(YEAR_START:YEAR_END)),
+        xticklabelrotation = pi/2,
+        xlabelsize = 20,
+        titlesize = 25,
+        ylabel = "Coverage Metric",
+        yticks = (0:0.2:1),
+        ylabelsize = 20
+        )
+xlims!(0.5,n_years+0.5)
+ylims!(-0.02, 1.02)
+
+# Add lines
+
+### NPC
+band!(ax, 1:n_years, continent_npc_annual[:,1], continent_npc_annual[:,3],
+        color = (colors[1], fillalpha)
+        )
+npc_line = lines!(ax, 1:n_years, continent_npc_annual[:,2],
+        color = colors[1], linewidth = lw)
+lines!(ax, 1:n_years, continent_npc_annual[:,1],
+        color = (colors[1], la), 
+        linewidth = lw, linestyle = :dash)
+lines!(ax, 1:n_years, continent_npc_annual[:,3],
+        color = (colors[1], la), linewidth = lw, 
+        linestyle = :dash)
+
+### Access
+band!(ax, 1:n_years, continent_access_annual[:,1], continent_access_annual[:,3],
+color = (colors[2], fillalpha)
+)
+access_line = lines!(ax, 1:n_years, continent_access_annual[:,2],
+        color = colors[2], linewidth = lw)
+lines!(ax, 1:n_years, continent_access_annual[:,1],
+        color = (colors[2], la), 
+        linewidth = lw, linestyle = :dash)
+lines!(ax, 1:n_years, continent_access_annual[:,3],
+        color = (colors[2], la), linewidth = lw, 
+        linestyle = :dash)
+
+### Use
+band!(ax, 1:n_years, continent_use_annual[:,1], continent_use_annual[:,3],
+color = (colors[3], fillalpha)
+)
+use_line = lines!(ax, 1:n_years, continent_use_annual[:,2],
+        color = colors[3], linewidth = lw)
+lines!(ax, 1:n_years, continent_use_annual[:,1],
+        color = (colors[3], la), 
+        linewidth = lw, linestyle = :dash)
+lines!(ax, 1:n_years, continent_use_annual[:,3],
+        color = (colors[3], la), linewidth = lw, 
+        linestyle = :dash)
+
+# Legend
+Legend(fig[1, 2],
+    [npc_line, access_line, use_line],
+    ["NPC", "Access", "Use"])
+
+save(OUTPUT_PLOTS_DIR*"PaperFigures/Continent_ITN_Metrics_annual.pdf", fig, pdf_version = "1.4")
+fig
+
+####################################################################
+# %% FIGURE 4: Continent Utilisation Plot (MONTHLY)
 ####################################################################
 # Make figure
 layout_res = (1500,1300)
@@ -196,7 +300,7 @@ ax = Axis(fig[1,1],
         xticklabelrotation = pi/2,
         xlabelsize = 20,
         titlesize = 25,
-        ylabel = "Utilisation Rate (η)",
+        ylabel = "Metric Rate",
         yticks = (0:0.2:2),
         ylabelsize = 20
         )
@@ -204,10 +308,71 @@ xlims!(-0.5,n_months+0.5)
 ylims!(-0.02, 2.02)
 
 # Add Line
-lines!(ax, 1:n_months, continent_use[:,2]./(2 .*continent_npc[:,2]),
+band!(ax, 1:n_months, continent_util[:,1], continent_util[:,3],
+                color = (colors[1], fillalpha)
+                )
+util_line = lines!(ax, 1:n_months, continent_util[:,2],
         color = colors[1], linewidth = lw)
 hlines!(ax, [1], color = :black, linestyle = :dash, linewidth = lw)
-save(OUTPUT_PLOTS_DIR*"PaperFigures/Continent_ITN_utilisation.pdf", fig, pdf_version = "1.4")
+
+# Add Line
+band!(ax, 1:n_months, continent_eff[:,1], continent_eff[:,3],
+                color = (colors[2], fillalpha)
+                )
+eff_line = lines!(ax, 1:n_months, continent_eff[:,2],
+        color = colors[2], linewidth = lw)
+hlines!(ax, [2], color = :black, linestyle = :dash, linewidth = lw)
+
+# Legend
+Legend(fig[1, 2],
+    [util_line, eff_line],
+    ["Utilisation (η)", "Efficiency (α)"])
+
+save(OUTPUT_PLOTS_DIR*"PaperFigures/Continent_ITN_utilisation_monthly.pdf", fig, pdf_version = "1.4")
+fig
+
+####################################################################
+# %% FIGURE 4B: Continent Utilisation Plot (ANNUAL)
+####################################################################
+# Make figure
+layout_res = (1500,1300)
+fig = Figure(size = (800,500))
+
+ax = Axis(fig[1,1],
+        title = "Continent ITN Metrics",
+        xlabel = "Years", 
+        xticks = (1:n_years, string.(YEAR_START:YEAR_END)),
+        xticklabelrotation = pi/2,
+        xlabelsize = 20,
+        titlesize = 25,
+        ylabel = "Metric Rate",
+        yticks = (0:0.2:2),
+        ylabelsize = 20
+        )
+xlims!(0.5,n_years+0.5)
+ylims!(-0.02, 2.02)
+
+# Add Line
+band!(ax, 1:n_years, continent_util_annual[:,1], continent_util_annual[:,3],
+                color = (colors[1], fillalpha)
+                )
+util_line = lines!(ax, 1:n_years, continent_util_annual[:,2],
+        color = colors[1], linewidth = lw)
+hlines!(ax, [1], color = :black, linestyle = :dash, linewidth = lw)
+
+# Add Line
+band!(ax, 1:n_years, continent_eff_annual[:,1], continent_eff_annual[:,3],
+                color = (colors[2], fillalpha)
+                )
+eff_line = lines!(ax, 1:n_years, continent_eff_annual[:,2],
+        color = colors[2], linewidth = lw)
+
+# Legend
+Legend(fig[1, 2],
+    [util_line, eff_line],
+    ["Utilisation (η)", "Efficiency (α)"])
+
+save(OUTPUT_PLOTS_DIR*"PaperFigures/Continent_ITN_utilisation_annual.pdf", fig, pdf_version = "1.4")
 fig
 
 ####################################################################
@@ -222,7 +387,7 @@ for monthidx in 20*12+1:length(continent_population)
 end
 
 # Mean downsample to annual data
-continent_crop_annual = [mean(continent_crop[((i-1)*12+1):(12*i),2]) for i in 1:n_years]
+continent_crop_annual = [mean((continent_npc.*continent_population)[((i-1)*12+1):(12*i),2]) for i in 1:n_years]
 continent_pop_annual = [mean(est_population[((i-1)*12+1):(12*i)]) for i in 1:n_years]
 
 # Calculate Moving Averages

@@ -37,7 +37,7 @@ admin1_legend_dir = RAW_DATASET_DIR*"subnational/"
 admin1_legend_filename = ADMIN1_AREAID_LEGEND_FILENAME
 
 # %% Location to save data to
-output_dir = OUTPUT_DIR*"coverage_timeseries/master_extractions_parts/"
+output_dir = OUTPUT_DIR*"coverage_timeseries/master_extractions_parts/admin0/"
 
 # Population Rasters directory
 pop_dir = POPULATION_RASTER_DIR

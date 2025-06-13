@@ -7,6 +7,7 @@ Code that defined the PPL model for the estimating parameters for Net Access
 
 module NetAccessPrediction
 export sample_net_access
+export mean_net_access
 
 # Package requirements
 using DataFrames
@@ -119,6 +120,73 @@ function sample_net_access(ρ_chain_df, μ_chain_df, p_h,
     end
 
     return λ_access_samples_MONTHLY
+end
+
+"""
+Simplified version of sample_net_access but instead calculated the mean. Much faster calculation where no need for CI.
+"""
+function mean_net_access(ρ_chain_df, μ_chain_df, p_h_mean,
+                            POPULATION_MONTHLY, Γ_MONTHLY_mean;
+                            n_max = 20)
+    
+    
+    # Storage variable for mean values of ρ_h and μ_h
+    h_max = length(p_h_mean)
+
+    # Pre-declare estimated distribution parameters
+    ρ_h_mean = Matrix{Float64}(undef,size(Γ_MONTHLY_mean)[1], h_max)
+    μ_h_mean = Matrix{Float64}(undef,size(Γ_MONTHLY_mean)[1], h_max)
+
+    # Get posterior samples from dataframe chain and arrange in neat format
+    β_ρ_mean = mean(ρ_chain_df[:,1:6], dims = 1)[:]
+    τ_ρ_mean = mean(ρ_chain_df[:,7])
+
+    β_μ_mean = mean(μ_chain_df[:,1:6], dims = 1)[:]
+    τ_μ_mean = mean(μ_chain_df[:,7])
+
+    γ_MONTHLY_mean = Γ_MONTHLY_mean./POPULATION_MONTHLY
+    for month_idx in 1:size(γ_MONTHLY_mean)[1]
+        γ = γ_MONTHLY_mean[month_idx]
+        for h in 1:h_max
+            # NEW MODEL ADJUSTED FOR NPC = 0
+            input_vec = [asinh(((1+0.001)/(γ+0.001))-1), h, h^2, γ*h, γ^2, γ^3]
+            nu_h = (β_ρ_mean'*input_vec) - (τ_ρ_mean^2)/2
+            ρ_h_mean[month_idx,h] = 2*inv_emplogit(exp(nu_h + (τ_ρ_mean^2)/2))-1
+        end
+
+        # Sample μ_h from posterior
+        for h in 1:h_max
+            β_0, β_1, β_2, β_3, β_4, β_5 = β_μ_mean
+            μ_mean = β_0 + β_1*(h) + β_2*sqrt(h) + β_3*γ + β_4*(h^2)+ β_5*(h*γ)
+            μ_h_mean[month_idx,h] = μ_mean
+        end
+    end
+
+    # Calculate H matrix for survey
+    H_mean_MONTHLY = zeros(Float64, size(Γ_MONTHLY_mean)[1],h_max,n_max);
+
+    for monthidx in 1:size(Γ_MONTHLY_mean)[1]
+        for h in 1:h_max
+            for n in 0:n_max-1
+                if n == 0
+                    H_mean_MONTHLY[monthidx,h,n+1] = p_h_mean[h]*ρ_h_mean[monthidx,h]
+                else
+                    H_mean_MONTHLY[monthidx,h,n+1] = p_h_mean[h]*(1-ρ_h_mean[monthidx,h])*((μ_h_mean[monthidx,h]^n)/(factorial(big(n))*(exp(μ_h_mean[monthidx,h])-1)))
+                    # TEMPORARY FIX FOR NANS
+                    if H_mean_MONTHLY[monthidx,h,n+1] == NaN
+                        H_mean_MONTHLY[monthidx,h,n+1] = 0
+                    end
+                end
+            end
+        end
+    end
+
+    λ_access_mean_MONTHLY  = zeros(Float64, size(Γ_MONTHLY_mean)[1]);
+    for monthidx in 1:size(Γ_MONTHLY_mean)[1]
+        λ_access_mean_MONTHLY[monthidx] = sum(H_to_access(H_mean_MONTHLY[monthidx,:,:]))
+    end
+
+    return λ_access_mean_MONTHLY
 end
 
 end
