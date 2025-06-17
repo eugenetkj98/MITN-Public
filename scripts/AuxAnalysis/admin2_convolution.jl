@@ -29,12 +29,8 @@ using NetLoss
 using NetAccessPrediction
 using Convolutions
 
-# %% Plot packages
-using LaTeXStrings
-using CairoMakie
-
 # %% Load Admin2 Distribution Dataset
-admin2_filepath = "/mnt/efs/model_dev/meerkat/data/monthly_volume_13062025.csv"
+admin2_filepath = "/mnt/efs/model_dev/meerkat/data/monthly_volume_17062025.csv"
 admin2_data = CSV.read(admin2_filepath, DataFrame)
 
 # %% Define save file name
@@ -75,6 +71,7 @@ loss_t_vals = 0:1/12:30
 # %% Storage variable for outputs
 df_collection = Vector{DataFrame}(undef, length(ISOs))
 # %% Do prediction for each ISO
+
 for ISO_i in ProgressBar(1:length(ISOs))
     ISO = ISOs[ISO_i]
 
@@ -99,7 +96,8 @@ for ISO_i in ProgressBar(1:length(ISOs))
 
     # Get admin1 ids - Need to do in layers because some countries have bad data
     admin1_ids = unique(admin2_data[admin2_data.ISO3 .== ISO,"ID_1"])
-
+    admin1_df = Vector{DataFrame}(undef, length(admin1_ids))
+    
     Threads.@threads for admin1_id_i in ProgressBar(1:length(admin1_ids), leave = false)
         admin1_id = admin1_ids[admin1_id_i]
         # Get admin2 ids
@@ -179,9 +177,12 @@ for ISO_i in ProgressBar(1:length(ISOs))
             admin2_df[admin2_id_i] = hcat(df1, df2, df3, df4, df5)
         end
 
-        # Concatenate data frame for each admin2 region and save to storage variable
-        df_collection[ISO_i] = vcat(admin2_df...)
+        admin1_df[admin1_id_i] = vcat(admin2_df...)
     end
+
+    # Concatenate data frame for each admin2 region and save to storage variable
+    df_collection[ISO_i] = vcat(admin1_df...)
+
 end
 
 # %%
