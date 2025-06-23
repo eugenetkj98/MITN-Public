@@ -9,7 +9,7 @@ Need to write documentation
 include(pwd()*"/scripts/init_env.jl")
 
 # %% Import filenames and directories from config file
-include(pwd()*"/scripts/dir_configs.jl")
+include(pwd()*"/scripts/read_toml.jl")
 
 # %% Import Public Packages
 using JLD2
@@ -212,7 +212,7 @@ for i in ProgressBar(1:length(surveyid_list))
     survey_filt = nonmissing_entries[findall(nonmissing_entries.SurveyId.==surveyid),:]
 
     # Calculate scores and store
-    unique_months, norm_H_months, H_survey, KL_months = survey_homog_score(survey_filt; YEAR_START = YEAR_START)
+    unique_months, norm_H_months, H_survey, KL_months = survey_homog_score(survey_filt; YEAR_START = YEAR_START, resolution = 50)
     score_breakdown_matrix[i, unique_months] .= KL_months#norm_H_months
     survey_entropies[i] = H_survey
     # survey_KLs[i, unique_months] = KL_months
@@ -254,12 +254,12 @@ clims = (0,1)
 heatmap!(ax, 1:n_months, 1:length(filt_ISOs), 1 .- country_score_matrix',
             colormap = :buda, colorrange = clims)
 Colorbar(fig[1,2], colorrange = clims, colormap = :buda,
-            label = "Homogeneity Score", labelsize = 22,
+            label = L"\text{Homogeneity Score }(H)", labelsize = 22,
             ticklabelsize = 20)
 fig
 
 # %%
-save(OUTPUT_PLOTS_DIR*"PaperFigures/AllSurveyHomogeneity_JSD.pdf", fig, pdf_version = "1.4")
+save(OUTPUT_PLOTS_DIR*"PaperFigures/TechnicalPaper/AllSurveyHomogeneity_JSD.pdf", fig, pdf_version = "1.4")
 
 
 ###########################################
@@ -269,7 +269,7 @@ save(OUTPUT_PLOTS_DIR*"PaperFigures/AllSurveyHomogeneity_JSD.pdf", fig, pdf_vers
 surveyid = "NG2013DHS"
 # surveyid = "MD2016MIS"
 # surveyid = "MZ2022DHS"
-resolution = 100
+resolution = 50
 α = 3
 
 # Get full survey data
@@ -314,18 +314,10 @@ for i in 1:length(unique_months)
     z_month, H_month = survey_entropy(x_centres, y_centres, pos_month, α = α)
     push!(z_survey_months, z_month)
     push!(H_survey_months, H_month)
-
-    # # Calculate KL divergence
-    # KL_matrix = z_survey.*log.(z_survey./z_survey_months[i])
-    # KL_matrix[findall(isnan.(KL_matrix))].=0
-    # KL_matrix[findall(isinf.(KL_matrix))].=0
-    # KL_div = sum(KL_matrix)
-    # push!(KL_survey_months, KL_div)
-
 end
 
 # %%
-fig = Figure(size = (950,700), figure_padding = 20)
+fig = Figure(size = (1550,750), figure_padding = 20)
 layout = (2,3)
 idx_matrix = collect(Iterators.product(1:layout[1],1:layout[2]))
 idx_matrix_transpose = Matrix{Tuple{Int64, Int64}}(undef, size(idx_matrix)[2], size(idx_matrix)[1])
@@ -335,27 +327,40 @@ for i in 1:size(idx_matrix)[1]
     end
 end
 fig_idxs = idx_matrix_transpose[:]
-axs = [Axis(fig[fig_idxs[i][1], fig_idxs[i][2]],
-            title = L"\hat{H} = %$(round(H_survey_months[i]./H_survey, digits = 3)),\,JSD = %$(round(month_scores[2][i], digits = 3))", 
+
+# Layout Left (Components)
+fig_L = fig[1,1:2] = GridLayout()
+axs_L = [Axis(fig_L[fig_idxs[i][1], fig_idxs[i][2]],
+            title = L"H = %$(round(month_scores[2][i], digits = 3))", 
             titlesize = 23,
             xticklabelsize = 18, yticklabelsize = 18) for i in 1:length(month_scores[2])]
-Label(fig[0,:], "Survey Sample Distribution - $(surveyid)", fontsize = 30)
-Label(fig[:,0], "Longitude", fontsize = 25, rotation = pi/2,
+Label(fig_L[0,:], "Survey Sample Distribution - $(surveyid)", fontsize = 33,font = :bold)
+Label(fig_L[:,0], "Longitude", fontsize = 25, rotation = pi/2,
                 tellheight = false)
-Label(fig[layout[1]+1,:], "Latitude", fontsize = 25, 
+Label(fig_L[layout[1]+1,:], "Latitude", fontsize = 25, 
                 tellwidth = false, padding = (70,0,0,0))
 
 clims = (0,0.001)
 for i in 1:length(month_scores[2])
-    heatmap!(axs[i], x_centres, y_centres, z_survey_months[i],
+    heatmap!(axs_L[i], x_centres, y_centres, z_survey_months[i],
                 colorrange = clims)
 end
-Colorbar(fig[1:end-1, end+1], colorrange = clims, ticklabelsize = 20,
-            label = "Density", labelsize = 25, ticks = 0:0.0002:0.001)
 
+
+# Layout Left (full Survey)
+fig_R = fig[1,3] = GridLayout()
+axs_R = Axis(fig_R[1,1],
+                title = "Full Survey",
+                titlesize = 35,
+                xticklabelsize = 18, yticklabelsize = 18)
+heatmap!(axs_R, x_centres, y_centres, z_survey,
+            colorrange = clims)
+Colorbar(fig_R[1:end, end+1], colorrange = clims, ticklabelsize = 20,
+            label = "Density", labelsize = 25, ticks = 0:0.0002:0.001)
+colsize!(fig.layout, 1, Fixed(170))
 fig
 
 # %%
-save(OUTPUT_PLOTS_DIR*"PaperFigures/$(surveyid)_Homogeneity.pdf", fig, pdf_version = "1.4")
+save(OUTPUT_PLOTS_DIR*"PaperFigures/TechnicalPaper/$(surveyid)_Homogeneity.pdf", fig, pdf_version = "1.4")
 
 

@@ -109,9 +109,9 @@ for monthidx in 1:n_months
     continent_use[monthidx,2] = data_slice[1,"raster_use_mean"]
     continent_use[monthidx,3] = data_slice[1,"raster_use_95upper"]
 
-    continent_util[monthidx,1] = data_slice[1,"raster_util_95lower"]
-    continent_util[monthidx,2] = data_slice[1,"raster_util_mean"]
-    continent_util[monthidx,3] = data_slice[1,"raster_util_95upper"]
+    continent_util[monthidx,1] = 2 .*data_slice[1,"raster_util_95lower"]
+    continent_util[monthidx,2] = 2 .*data_slice[1,"raster_util_mean"]
+    continent_util[monthidx,3] = 2 .*data_slice[1,"raster_util_95upper"]
 
     continent_eff[monthidx,1] = data_slice[1,"raster_eff_95lower"]
     continent_eff[monthidx,2] = data_slice[1,"raster_eff_mean"]
@@ -301,11 +301,11 @@ ax = Axis(fig[1,1],
         xlabelsize = 20,
         titlesize = 25,
         ylabel = "Metric Rate",
-        yticks = (0:0.2:2),
+        yticks = (0:0.5:4),
         ylabelsize = 20
         )
 xlims!(-0.5,n_months+0.5)
-ylims!(-0.02, 2.02)
+ylims!(-0.02, 4.02)
 
 # Add Line
 band!(ax, 1:n_months, continent_util[:,1], continent_util[:,3],
@@ -313,7 +313,7 @@ band!(ax, 1:n_months, continent_util[:,1], continent_util[:,3],
                 )
 util_line = lines!(ax, 1:n_months, continent_util[:,2],
         color = colors[1], linewidth = lw)
-hlines!(ax, [1], color = :black, linestyle = :dash, linewidth = lw)
+hlines!(ax, [2], color = colors[1], linestyle = :dash, linewidth = lw)
 
 # Add Line
 band!(ax, 1:n_months, continent_eff[:,1], continent_eff[:,3],
@@ -321,12 +321,12 @@ band!(ax, 1:n_months, continent_eff[:,1], continent_eff[:,3],
                 )
 eff_line = lines!(ax, 1:n_months, continent_eff[:,2],
         color = colors[2], linewidth = lw)
-hlines!(ax, [2], color = :black, linestyle = :dash, linewidth = lw)
+hlines!(ax, [1], color = colors[2], linestyle = :dash, linewidth = lw)
 
 # Legend
 Legend(fig[1, 2],
     [util_line, eff_line],
-    ["Utilisation (η)", "Efficiency (α)"])
+    ["Utilisation (η)", "Use Rate (α)"])
 
 save(OUTPUT_PLOTS_DIR*"PaperFigures/Continent_ITN_utilisation_monthly.pdf", fig, pdf_version = "1.4")
 fig
@@ -346,11 +346,11 @@ ax = Axis(fig[1,1],
         xlabelsize = 20,
         titlesize = 25,
         ylabel = "Metric Rate",
-        yticks = (0:0.2:2),
+        yticks = (0:0.5:4),
         ylabelsize = 20
         )
 xlims!(0.5,n_years+0.5)
-ylims!(-0.02, 2.02)
+ylims!(-0.02, 4.02)
 
 # Add Line
 band!(ax, 1:n_years, continent_util_annual[:,1], continent_util_annual[:,3],
@@ -358,7 +358,7 @@ band!(ax, 1:n_years, continent_util_annual[:,1], continent_util_annual[:,3],
                 )
 util_line = lines!(ax, 1:n_years, continent_util_annual[:,2],
         color = colors[1], linewidth = lw)
-hlines!(ax, [1], color = :black, linestyle = :dash, linewidth = lw)
+hlines!(ax, [2], color = colors[1], linestyle = :dash, linewidth = lw)
 
 # Add Line
 band!(ax, 1:n_years, continent_eff_annual[:,1], continent_eff_annual[:,3],
@@ -366,6 +366,7 @@ band!(ax, 1:n_years, continent_eff_annual[:,1], continent_eff_annual[:,3],
                 )
 eff_line = lines!(ax, 1:n_years, continent_eff_annual[:,2],
         color = colors[2], linewidth = lw)
+hlines!(ax, [1], color = colors[2], linestyle = :dash, linewidth = lw)
 
 # Legend
 Legend(fig[1, 2],
@@ -379,15 +380,15 @@ fig
 # %% FIGURE 2: Moving Window Gains plot
 ####################################################################
 # Linearly extrapolate population for period of 2021-2023
-est_pop_change = continent_population[20*12]-continent_population[20*12-1]
+est_pop_change = continent_population[23*12]-continent_population[23*12-1]
 
 est_population = continent_population
-for monthidx in 20*12+1:length(continent_population)
+for monthidx in 23*12+1:length(continent_population)
         est_population[monthidx] = est_population[monthidx-1] + est_pop_change
 end
 
 # Mean downsample to annual data
-continent_crop_annual = [mean((continent_npc.*continent_population)[((i-1)*12+1):(12*i),2]) for i in 1:n_years]
+continent_crop_annual = [mean((continent_npc.*est_population)[((i-1)*12+1):(12*i),2]) for i in 1:n_years]
 continent_pop_annual = [mean(est_population[((i-1)*12+1):(12*i)]) for i in 1:n_years]
 
 # Calculate Moving Averages

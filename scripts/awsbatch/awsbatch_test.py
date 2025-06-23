@@ -156,10 +156,10 @@ def create_workflow(wf: Workflow):
     # NEED TO GET R CODE READY!!
     ##########################################
 
-    month_year_argslist = []
-    for year in range(model_config["YEAR_NAT_START"], model_config["YEAR_NAT_END"]+1):
-        for month in range(1,13):
-                month_year_argslist.append(f"{year} {month}")
+    # month_year_argslist = []
+    # for year in range(model_config["YEAR_NAT_START"], model_config["YEAR_NAT_END"]+1):
+    #     for month in range(1,13):
+    #             month_year_argslist.append(f"{year} {month}")
 
     # step12 = wf.add_task(
     #     name = "INLA_NPC_Regression",
@@ -234,9 +234,12 @@ def create_workflow(wf: Workflow):
     # )
 
     month_year_argslist = []
-    for year in range(model_config["YEAR_NAT_START"], model_config["YEAR_NAT_END"]+1):
+    # for year in range(model_config["YEAR_NAT_START"], model_config["YEAR_NAT_END"]+1):
+    #     for month in range(1,13):
+    #             month_year_argslist.append(f"{year} {month}")    
+    for year in range(2021, model_config["YEAR_NAT_END"]+1):
         for month in range(1,13):
-                month_year_argslist.append(f"{year} {month}")    
+                month_year_argslist.append(f"{year} {month}")   
 
     # step13c = wf.add_task(
     #     name = "INLA_Use_Sampling",
@@ -281,16 +284,16 @@ def create_workflow(wf: Workflow):
     # print("Completed Step 18 Successfully!")
 
     # print("Commencing Step 19: Extract timeseries from generated rasters \n")
-    # step19 = wf.add_task(
-    #     name = "Extract_Country_Raster_Timeseries",
-    #     memory_mb = config["step19"]["memsize"],
-    #     vcpus = config["step19"]["ncpus"],
-    #     command = f"julia --threads={config["step19"]["ncpus"]} scripts/RasterMaps/samples_based_run/raster_timeseries_aggregation_samples.jl "+"${monthyear_arg}",
-    #     after = [step18],
-    #     array_parameters = {
-    #         "monthyear_arg": month_year_argslist  
-    #     }
-    # )
+    step19 = wf.add_task(
+        name = "Extract_Country_Raster_Timeseries",
+        memory_mb = config["step19"]["memsize"],
+        vcpus = config["step19"]["ncpus"],
+        command = f"julia --threads={config["step19"]["ncpus"]} scripts/RasterMaps/samples_based_run/raster_timeseries_aggregation_samples.jl "+"${monthyear_arg}",
+        # after = [step18],
+        array_parameters = {
+            "monthyear_arg": month_year_argslist  
+        }
+    )
     # print("Completed Step 19 Successfully!")
 
     # print("Commencing Step 19: Extract timeseries from generated rasters \n")
@@ -307,13 +310,13 @@ def create_workflow(wf: Workflow):
     # print("Completed Step 19 Successfully!")
 
     # print("Commencing Step 19b: Aggregate raster time series .csv \n")
-    step19b = wf.add_task(
-        name = "Aggregate_Raster_Timeseries",
-        memory_mb = config["step19b"]["memsize"],
-        vcpus = config["step19b"]["ncpus"],
-        command = f"julia --threads={config["step19b"]["ncpus"]} scripts/RasterMaps/samples_based_run/join_timeseries_aggregates_samples.jl",
-        after = [step19b]
-    )
+    # step19c = wf.add_task(
+    #     name = "Aggregate_Raster_Timeseries",
+    #     memory_mb = config["step19b"]["memsize"],
+    #     vcpus = config["step19b"]["ncpus"],
+    #     command = f"julia --threads={config["step19b"]["ncpus"]} scripts/RasterMaps/samples_based_run/join_timeseries_aggregates_samples.jl",
+    #     after = [step19b]
+    # )
     # print("Completed Step 19 Successfully!")
 
     # print("Commencing Step 20: Construct mean monthly rasters \n")

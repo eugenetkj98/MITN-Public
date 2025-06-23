@@ -68,8 +68,13 @@ month = parse(Int, ARGS[2])
 # for year in YEAR_START:YEAR_END
 
 # Import population raster
-pop_year = min(max(year, 2000), 2020)
-population_raster = replace_missing(Raster(pop_dir*"WorldPop_UNAdj_v3_DRC_fix.$(pop_year).Annual.Data.5km.sum.tif"), missingval = NaN)
+pop_year = year
+if pop_year <= 2020
+    # pop_year = min(max(year, 2000), 2020)
+    population_raster = replace_missing(Raster(pop_dir*"WorldPop_UNAdj_v3_DRC_fix.$(pop_year).Annual.Data.5km.sum.tif"), missingval = NaN)
+else
+    population_raster = replace_missing(Raster("/mnt/s3/mastergrids/Other_Global_Covariates/Population/WorldPop/v3/PopulationCounts_DRC_fixed_projected/5km/"*"WorldPop_UNAdj_v3_DRC_fix_projected.$(pop_year).Annual.Data.5km.sum.tif"), missingval = NaN)
+end
 
     # for month in 1:12
 

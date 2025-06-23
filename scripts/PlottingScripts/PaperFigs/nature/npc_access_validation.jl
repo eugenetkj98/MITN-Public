@@ -116,6 +116,10 @@ ACCESS_RASTER_CLUSTER = lookup_data.mitn_access
 USE_RASTER_CLUSTER = lookup_data.mitn_use
 
 
+PERFECT_ADOPTION_USE_SLACK = ACCESS_RASTER_CLUSTER .- 2 .* NPC_RASTER_CLUSTER
+TOTAL_USE_SLACK = USE_RASTER_CLUSTER .- 2 .* NPC_RASTER_CLUSTER
+
+
 # %% ANALYTICAL MODEL CALCULATIONS - Import model
 # Analysis domain/ranges
 n_access_samples = 100 # number of access parameter posterior samples to draw
@@ -230,14 +234,14 @@ ax5 = Axis(fig[2,2],
                 xlabelsize = 16,
                 ylabelsize = 16,
                 xticks = 0:0.1:1,
-                yticks = 0:0.2:2)
+                yticks = 0:0.5:4)
 ax6 = Axis(fig[2,3],
-                xlabel = "Access (λ)",
-                ylabel = "Adoption Rate (α)",
+                xlabel = "NPC (γ)",
+                ylabel = "Distribution Factor (ζ)",
                 xlabelsize = 16,
                 ylabelsize = 16,
                 xticks = 0:0.1:1,
-                yticks = 0:0.2:2)
+                yticks = 0:0.5:4)
                 
 Label(fig[0,:], "Metric Relationships", font = :bold,
         halign = :center, tellwidth = false, fontsize = 30)
@@ -253,8 +257,8 @@ ylims!(ax1, -0.05,1.05)
 ylims!(ax2, -0.05,1.05)
 ylims!(ax3, -0.05,1.05)
 ylims!(ax4, -0.05,1.05)
-ylims!(ax5, -0.05,2.05)
-ylims!(ax6, -0.05,2.05)
+ylims!(ax5, -0.05,4.05)
+ylims!(ax6, -0.05,3.05)
 
 # hidexdecorations!(ax1, ticks = false, grid = false)
 # hidexdecorations!(ax2, ticks = false, grid = false)
@@ -325,13 +329,13 @@ Legend(fig[1,2], [global_line],
 
 # %%
 
-util_cluster_survey = scatter!(ax5, NPC_SURVEY_CLUSTER[1], (USE_SURVEY_CLUSTER[1]/2)/NPC_SURVEY_CLUSTER[1],
+util_cluster_survey = scatter!(ax5, NPC_SURVEY_CLUSTER[1], (USE_SURVEY_CLUSTER[1])/NPC_SURVEY_CLUSTER[1],
         markersize = 4, color = (colors[2],1))
-scatter!(ax5, NPC_SURVEY_CLUSTER, (USE_SURVEY_CLUSTER./2)./NPC_SURVEY_CLUSTER,
+scatter!(ax5, NPC_SURVEY_CLUSTER, (USE_SURVEY_CLUSTER)./NPC_SURVEY_CLUSTER,
         markersize = 4, color = (colors[2],0.1))
-util_cluster_raster = scatter!(ax5, NPC_RASTER_CLUSTER[1], (USE_RASTER_CLUSTER[1]/2)/NPC_RASTER_CLUSTER[1],
+util_cluster_raster = scatter!(ax5, NPC_RASTER_CLUSTER[1], (USE_RASTER_CLUSTER[1])/NPC_RASTER_CLUSTER[1],
         markersize = 4, color = (colors[1],1))
-scatter!(ax5, NPC_RASTER_CLUSTER, (USE_RASTER_CLUSTER./2)./NPC_RASTER_CLUSTER,
+scatter!(ax5, NPC_RASTER_CLUSTER, (USE_RASTER_CLUSTER)./NPC_RASTER_CLUSTER,
         markersize = 4, color = (colors[1],0.03))
 
 Legend(fig[2,2], [util_cluster_raster, util_cluster_survey],
@@ -343,14 +347,35 @@ Legend(fig[2,2], [util_cluster_raster, util_cluster_survey],
 # %%
 
 
-eff_cluster_survey = scatter!(ax6, ACCESS_SURVEY_CLUSTER[1], USE_SURVEY_CLUSTER[1]/ACCESS_SURVEY_CLUSTER[1],
+# eff_cluster_survey = scatter!(ax6, NPC_SURVEY_CLUSTER[1], USE_SURVEY_CLUSTER[1]/ACCESS_SURVEY_CLUSTER[1],
+#         markersize = 4, color = (colors[2],1))
+# scatter!(ax6, NPC_SURVEY_CLUSTER, USE_SURVEY_CLUSTER./ACCESS_SURVEY_CLUSTER,
+#         markersize = 4, color = (colors[2],0.1))
+# eff_cluster_raster = scatter!(ax6, NPC_RASTER_CLUSTER[1], USE_RASTER_CLUSTER[1]/USE_RASTER_CLUSTER[1],
+#         markersize = 4, color = (colors[1],1))
+# scatter!(ax6, NPC_RASTER_CLUSTER, USE_RASTER_CLUSTER./ACCESS_RASTER_CLUSTER,
+#         markersize = 4, color = (colors[1],0.05))
+
+K = 2
+
+survey_dist_factor = (min.(K .* NPC_SURVEY_CLUSTER,1) .- ACCESS_SURVEY_CLUSTER)./(min.(K .* NPC_SURVEY_CLUSTER,1) .- USE_SURVEY_CLUSTER)
+raster_dist_factor = (min.(K .* NPC_RASTER_CLUSTER,1) .- ACCESS_RASTER_CLUSTER)./(min.(K .* NPC_RASTER_CLUSTER,1) .- USE_RASTER_CLUSTER)
+
+survey_valididx = findall(.!isinf.(survey_dist_factor))
+raster_valididx = findall(.!isinf.(raster_dist_factor))
+
+
+eff_cluster_survey = scatter!(ax6, NPC_SURVEY_CLUSTER[1], survey_dist_factor[1],
         markersize = 4, color = (colors[2],1))
-scatter!(ax6, ACCESS_SURVEY_CLUSTER, USE_SURVEY_CLUSTER./ACCESS_SURVEY_CLUSTER,
+scatter!(ax6, NPC_SURVEY_CLUSTER[survey_valididx], survey_dist_factor[survey_valididx],
         markersize = 4, color = (colors[2],0.1))
-eff_cluster_raster = scatter!(ax6, ACCESS_RASTER_CLUSTER[1], USE_RASTER_CLUSTER[1]/USE_RASTER_CLUSTER[1],
+
+eff_cluster_raster = scatter!(ax6, NPC_RASTER_CLUSTER[1], raster_dist_factor[1],
         markersize = 4, color = (colors[1],1))
-scatter!(ax6, ACCESS_RASTER_CLUSTER, USE_RASTER_CLUSTER./ACCESS_RASTER_CLUSTER,
+scatter!(ax6, NPC_RASTER_CLUSTER[raster_valididx], raster_dist_factor[raster_valididx],
         markersize = 4, color = (colors[1],0.05))
+
+
 
 Legend(fig[2,3], [eff_cluster_raster, eff_cluster_survey],
         ["Raster", "Survey"], 
@@ -362,3 +387,85 @@ fig
 # %%
 mkpath(OUTPUT_PLOTS_DIR*"PaperFigures/")
 save(OUTPUT_PLOTS_DIR*"PaperFigures/Metric_Relationship.pdf", fig)
+
+###################################################
+# %% FIGURE 2: Metric Gap Plot
+###################################################
+
+# Calculate Distribution Factors
+K = 2
+RASTER_Δλ = min.(K .* NPC_RASTER_CLUSTER,1) .- ACCESS_RASTER_CLUSTER
+RASTER_Δξ = min.(K .* NPC_RASTER_CLUSTER,1) .- USE_RASTER_CLUSTER
+
+SURVEY_Δλ = min.(K .* NPC_SURVEY_CLUSTER,1) .- ACCESS_SURVEY_CLUSTER
+SURVEY_Δξ = min.(K .* NPC_SURVEY_CLUSTER,1) .- USE_SURVEY_CLUSTER
+
+# Make Plot
+ms = 4
+ls = 30
+alpha = 0.5
+ts = 40
+
+fig = Figure(size = (1980,660))
+ax1 = Axis(fig[1,1],
+        xlabel = "Δξ",
+        ylabel = "Δλ",
+        xlabelsize = ls,
+        ylabelsize = ls,
+        xticks = -1:0.5:1,
+        yticks = -1:0.5:1,
+        xticklabelsize = ls*0.85,
+        yticklabelsize = ls*0.85)
+ax2 = Axis(fig[1,2],
+        xlabel = "Δξ",
+        ylabel = "Δλ",
+        xlabelsize = ls,
+        ylabelsize = ls,
+        xticks = -1:0.5:1,
+        yticks = -1:0.5:1,
+        title = "Survey Clusters",
+        titlesize = ts,
+        xticklabelsize = ls*0.85,
+        yticklabelsize = ls*0.85)
+ax3 = Axis(fig[1,3],
+        xlabel = "Δξ",
+        ylabel = "Δλ",
+        xlabelsize = ls,
+        ylabelsize = ls,
+        xticks = -1:0.5:1,
+        yticks = -1:0.5:1,
+        title = "Raster Clusters",
+        titlesize = ts,
+        xticklabelsize = ls*0.85,
+        yticklabelsize = ls*0.85)
+
+xlims!.([ax1,ax2,ax3], -1.05,1.05)
+ylims!.([ax1,ax2,ax3], -1.05,1.05)
+
+scatter!(ax2, SURVEY_Δξ, SURVEY_Δλ, color = NPC_SURVEY_CLUSTER, 
+                alpha = alpha,
+                colorrange = (0,1), markersize = ms)
+scatter!(ax3, RASTER_Δξ, RASTER_Δλ, color = NPC_RASTER_CLUSTER, 
+                alpha = alpha, 
+                colorrange = (0,1), markersize = ms)
+
+hlines!(ax1, 0, color = :black, alpha = 0.7, linewidth = 4)
+hlines!(ax2, 0, color = :black, alpha = 0.7, linewidth = 4)
+hlines!(ax3, 0, color = :black, alpha = 0.7, linewidth = 4)
+
+vlines!(ax1, 0, color = :black, alpha = 0.7, linewidth = 4)
+vlines!(ax2, 0, color = :black, alpha = 0.7, linewidth = 4)
+vlines!(ax3, 0, color = :black, alpha = 0.7, linewidth = 4)
+
+lines!(ax1, [-1,1],[-1,1], color = :firebrick, alpha = 0.8,
+        linestyle = :dash, linewidth = 4)
+lines!(ax2, [-1,1],[-1,1], color = :firebrick, alpha = 0.8,
+        linestyle = :dash, linewidth = 4)
+lines!(ax3, [-1,1],[-1,1], color = :firebrick, alpha = 0.8,
+        linestyle = :dash, linewidth = 4)
+
+Colorbar(fig[1,4], colorrange = (0,1), label = "NPC (γ)",
+        ticks = 0:0.2:1, labelsize = ls, ticklabelsize = ls*0.85)
+
+save(OUTPUT_PLOTS_DIR*"PaperFigures/Gap_plot.png", fig)
+fig

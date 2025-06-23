@@ -49,7 +49,9 @@ nonmissingidx_llin = findall(.!ismissing.(input_dict["LLIN_CROP_MONTHLY"]))
 nonmissingidx_nets = findall(.!ismissing.(input_dict["NET_CROP_MONTHLY"]))
 
 # Define number of data to preserve for regression
-n_data = min(parse(Int, ARGS[1]), length(nonmissingidx_llin))
+
+# n_data = min(parse(Int, ARGS[1]), length(nonmissingidx_llin))
+n_data = min(10, length(nonmissingidx_llin))
 println("Number of data points in regression: $(n_data)/$(length(nonmissingidx_llin))...")
 
 
@@ -134,6 +136,12 @@ CHRONOLOGICAL_input_dict["HOUSEHOLD_NPC_MONTHLY"] = CHRONOLOGICAL_HOUSEHOLD_NPC_
 CHRONOLOGICAL_input_dict["HOUSEHOLD_NPC_STD_MONTHLY"] = CHRONOLOGICAL_HOUSEHOLD_NPC_STD_MONTHLY
 
 # Do regression
+findall(.!ismissing.(CHRONOLOGICAL_input_dict["HOUSEHOLD_NPC_STD_MONTHLY"]))
+
+scatter(input_dict["HOUSEHOLD_NPC_STD_MONTHLY"])
+
+#
+
 println("Commencing SA for Chronological Case...")
 bayes_GD(CHRONOLOGICAL_input_dict;
             chain_output_dir = output_dir*"chronological/",

@@ -29,7 +29,7 @@ OUTPUT_EXTRACTIONS_DIR = OUTPUT_DIR*dir_config["output_rel_dirs"]["OUTPUTDIR_REL
 OUTPUT_REGRESSIONS_DIR = OUTPUT_DIR*dir_config["output_rel_dirs"]["OUTPUTDIR_REL_REGRESSIONS_DIR"];
 OUTPUT_DRAWS_DIR = OUTPUT_DIR*dir_config["output_rel_dirs"]["OUTPUTDIR_REL_DRAWS_DIR"];
 OUTPUT_RASTERS_DIR = OUTPUT_DIR*dir_config["output_rel_dirs"]["OUTPUTDIR_REL_RASTERS_DIR"];
-OUTPUT_PLOTS_DIR = BASE_DIR*dir_config["output_rel_dirs"]["BASEDIR_REL_OUTPUT_PLOTS_DIR"];
+OUTPUT_PLOTS_DIR = dir_config["base"]["OUTPUT_BASE_DIR"]*dir_config["output_rel_dirs"]["BASEDIR_REL_OUTPUT_PLOTS_DIR"];
 OUTPUT_FORWARD_PRED_DIR = OUTPUT_DIR*dir_config["output_rel_dirs"]["OUTPUTDIR_REL_FORWARD_PRED_DIR"];
 
 # BV Output Cube Directory

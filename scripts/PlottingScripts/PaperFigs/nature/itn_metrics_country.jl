@@ -129,9 +129,9 @@ for ISO_i in 1:length(filt_ISOs)
         country_use_pop[ISO_i,monthidx,2] = sum(data_slice.raster_use_mean.*data_slice.population)
         country_use_pop[ISO_i,monthidx,3] = sum(data_slice.raster_use_95upper.*data_slice.population)
 
-        country_utilisation[ISO_i,monthidx,1] = data_slice.raster_util_95lower[1]
-        country_utilisation[ISO_i,monthidx,2] = data_slice.raster_util_mean[1]
-        country_utilisation[ISO_i,monthidx,3] = data_slice.raster_util_95upper[1]
+        country_utilisation[ISO_i,monthidx,1] = 2 .*data_slice.raster_util_95lower[1]
+        country_utilisation[ISO_i,monthidx,2] = 2 .*data_slice.raster_util_mean[1]
+        country_utilisation[ISO_i,monthidx,3] = 2 .*data_slice.raster_util_95upper[1]
 
         country_efficiency[ISO_i,monthidx,1] = data_slice.raster_eff_95lower[1]
         country_efficiency[ISO_i,monthidx,2] = data_slice.raster_eff_mean[1]
@@ -438,31 +438,34 @@ for ISO_i in ProgressBar(1:length(filt_ISOs))
             xlabelsize = 20,
             titlesize = 25,
             ylabel = "Net Utilisation (η)",
-            yticks = (0:0.2:1.5),
+            yticks = (0:0.5:4),
             ylabelsize = 20
             )
     xlims!(ax2, -0.5,n_months+0.5)
-    ylims!(ax2, -0.02, 1.52)
+    ylims!(ax2, -0.05, 4.05)
 
     # Add lines
 
-    ### NPC
+    ### Utilisation
     band!(ax2, 1:n_months, country_utilisation[ISO_i,:,1], country_utilisation[ISO_i,:,3],
             color = (colors[1], fillalpha)
             )
     util_line = lines!(ax2, 1:n_months, country_utilisation[ISO_i,:,2],
             color = colors[1], linewidth = lw)
+    hlines!(ax2, [2], color = colors[1], linewidth = lw, linestyle = :dash)
 
+    ### Use Rate
     band!(ax2, 1:n_months, country_efficiency[ISO_i,:,1], country_efficiency[ISO_i,:,3],
             color = (colors[2], fillalpha)
             )
     eff_line = lines!(ax2, 1:n_months, country_efficiency[ISO_i,:,2],
             color = colors[2], linewidth = lw)
+    hlines!(ax2, [1], color = colors[2], linewidth = lw, linestyle = :dash)
 
     # Legend
     Legend(fig[2, 2],
         [util_line, eff_line],
-        ["Utilisation", "Efficiency"])
+        ["Utilisation", "Use Rate"])
     fig
     save(OUTPUT_PLOTS_DIR*"PaperFigures/Country_ITN_Metrics/$(ISO)_ITN_Utilisation.pdf", fig, pdf_version = "1.4")
 end
@@ -485,10 +488,10 @@ for ISO_i in 1:length(filt_ISOs)
                 xticks = ((1:12:n_months)[1:5:end], year_strings[1:5:end]),
                 xticklabelrotation = pi/2,
                 # ylabel = "Metric",
-                yticks = (0:0.2:1.8),
+                yticks = (0:0.5:4),
                 ylabelsize = 20)
     xlims!(ax,-0.5,n_months+0.5)
-    ylims!(ax,-0.02, 1.82)
+    ylims!(ax,-0.05, 4.05)
 
     lb = Label(fig[2*(x_idx-1)+1,y_idx], "$(country_name)")
     
@@ -521,6 +524,7 @@ for ISO_i in ProgressBar(1:length(filt_ISOs), leave = false)
     )
     util_line = lines!(plot_axs[ISO_i], 1:n_months, country_utilisation[ISO_i,:,2],
             color = colors[1], linewidth = africa_lw)
+    hlines!(plot_axs[ISO_i], [2], color = colors[1], linewidth = africa_lw, linestyle = :dash)
 
 
     band!(plot_axs[ISO_i], 1:n_months, country_efficiency[ISO_i,:,1], country_efficiency[ISO_i,:,3],
@@ -529,13 +533,13 @@ for ISO_i in ProgressBar(1:length(filt_ISOs), leave = false)
     eff_line = lines!(plot_axs[ISO_i], 1:n_months, country_efficiency[ISO_i,:,2],
             color = colors[2], linewidth = africa_lw)
     
-    hlines!(plot_axs[ISO_i], [1], color = :black, linestyle = :dash, linewidth = africa_lw)
+    hlines!(plot_axs[ISO_i], [1], color = colors[2], linewidth = africa_lw, linestyle = :dash)
         
     # Add legend
     if ISO_i == 1
         Legend(fig[10, 1],
             [util_line, eff_line],
-            ["Utilisation","Efficiency"])
+            ["Utilisation","Use Rate"])
     end
 
 end

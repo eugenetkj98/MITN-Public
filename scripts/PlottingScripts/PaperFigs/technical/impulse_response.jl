@@ -85,37 +85,48 @@ ax2 = Axis(fig[1,2],
                 xlabel = "Years", xlabelsize = 18,
                 ylabel = "Net Crop (Γ)",ylabelsize = 18,
                 xticks = 0:1:10)
-ax3 = Axis(fig[2,1], 
+ax3 = Axis(fig[3,1], 
                 title = L"$b = %$(b), \, k = %$(k)$",
                 titlesize = 20,
                 xlabel = "Years", xlabelsize = 18,
                 ylabel = "Survival Rate", ylabelsize = 18,
                 xticks = 0:1:10)
-ax4 = Axis(fig[2,2], 
+ax4 = Axis(fig[3,2], 
                 title = L"$b = %$(b), \, k = %$(k)$",
                 titlesize = 20,
                 xlabel = "Years", xlabelsize = 18,
                 ylabel = "Net Crop (Γ)",ylabelsize = 18,
                 xticks = 0:1:10)
 ylims!(ax1, -0.05, 1.05)
+ylims!(ax2, -0.05, 1.75)
 ylims!(ax3, -0.05, 1.05)
+ylims!(ax4, -0.05, 1.05)
 lines!(ax1, loss_t_vals, L_base_compact)
 lines!(ax2, t_vals, convolution(L_base_compact,d)[1:length(t_vals)])
 
 lines!(ax3, loss_t_vals, L_base_weibull)
 lines!(ax4, t_vals, convolution(L_base_weibull,d)[1:length(t_vals)])
-fig
 
-# %% Do a parameter scan
+Label(fig[0,:], "Compact Exponential",
+        font = :bold, padding = (0,0,-10,-10), fontsize = 21)
+
+Label(fig[2,:], "Weibull",
+        font = :bold, padding = (0,0,-10,-10), fontsize = 21)
+
+save(OUTPUT_PLOTS_DIR*"PaperFigures/TechnicalPaper/Uniform_Dist_TS.pdf", fig, pdf_version = "1.4")
+fig
+######################################
+# %% Scenario 1b: Uniform Distribution, Heatmap
+######################################
 # Time series bounds
 loss_t_vals = 0:1/12:5
-n_years = 10
+n_years = 30
 t_vals = 0:(1/12):(n_years)
 
 # Uniform distribution behaviour
 d = zeros(length(t_vals)).= 1/12
 
-τ_vals = 0.1:0.01:5
+τ_vals = 0.1:0.1:5
 κ_vals = exp.(-4:0.1:4)
 
 b_vals = 0.5:0.1:5
@@ -124,7 +135,7 @@ k_vals = exp.(-2:0.1:4)
 SS_val_compact = zeros(length(τ_vals), length(κ_vals))
 SS_val_weibull = zeros(length(b_vals), length(k_vals))
 
-for i in 1:length(τ_vals)
+Threads.@threads for i in ProgressBar(1:length(τ_vals))
     for j in 1:length(κ_vals)
         τ = τ_vals[i]
         κ = κ_vals[j]
@@ -133,7 +144,7 @@ for i in 1:length(τ_vals)
     end
 end
 
-for i in 1:length(b_vals)
+Threads.@threads for i in ProgressBar(1:length(b_vals))
     for j in 1:length(k_vals)
         b = b_vals[i]
         k = k_vals[j]
@@ -146,31 +157,31 @@ fig = Figure(size = (800,400))
 ax1 = Axis(fig[1,1],
         title = L"\text{Compact Exponential}",
         titlesize = 25,
-        xlabel = L"\tau", xlabelsize = 20,
-        ylabel = L"\kappa", ylabelsize = 20,
+        xlabel = L"\tau", xlabelsize = 23,
+        ylabel = L"\kappa", ylabelsize = 23,
         yscale = log,
         yticks = round.(exp.(-4:1:4), digits = 2)
         )
 ax2 = Axis(fig[1,2],
         title = L"\text{Weibull}",
         titlesize = 25,
-        xlabel = L"b", xlabelsize = 20,
-        ylabel = L"k", ylabelsize = 20,
+        xlabel = L"b", xlabelsize = 23,
+        ylabel = L"k", ylabelsize = 23,
         yscale = log,
         yticks = round.(exp.(-1:1:4), digits = 2)
         )
 clims = (0,4)
 Colorbar(fig[1,3], 
         colorrange = clims, colormap = :viridis, 
-        label = L"\Gamma_{SS}", labelsize = 20)
+        label = L"\bar{\Gamma}", labelsize = 23)
 heatmap!(ax1, τ_vals, κ_vals, SS_val_compact, colorrange = clims)
 heatmap!(ax2, b_vals, k_vals, SS_val_weibull, colorrange = clims)
 
 
 contour!(ax1, τ_vals, κ_vals, [net_life_compact(0.5, τ, κ) for τ in τ_vals, κ in κ_vals],
-            levels = 1:0.5:3, labels = true, color = :black, labelsize = 20)
+            levels = 1:0.5:3, labels = true, color = :white, labelsize = 20)
 contour!(ax2, b_vals, k_vals, [net_life_weibull(0.5, b, k) for b in b_vals, k in k_vals],
-            levels = 1:0.5:3, labels = true, color = :black, labelsize = 20)
+            levels = 1:0.5:3, labels = true, color = :white, labelsize = 20)
 
 save(OUTPUT_PLOTS_DIR*"PaperFigures/TechnicalPaper/Uniform_Heatmaps.pdf", fig, pdf_version = "1.4")
 fig
@@ -192,8 +203,8 @@ d = ((n_years)/sum(d_shape)) .* d_shape
 
 # %% Define loss/net attrition function
 loss_t_vals = 0:1/12:10
-τ_vals = [2,4,10,20]
-κ_vals = [0.5,1.5,6,12]
+τ_vals = [1.5,8,8,1.2]
+κ_vals = [0.3,28,4,20]
 
 # b_vals = [1.0,2.0,3.0,4.0]
 # k_vals = [1.0,4.0,8.0,20.0]
@@ -240,19 +251,19 @@ ax3 = Axis(fig[1,3],
                 xlabel = "Years",  xlabelsize = 18, 
                 ylabel = L"\text{Net Crop }(\Gamma)", ylabelsize = 18,
                 xticks = 0:n_years)
-ax4 = Axis(fig[2,1], 
+ax4 = Axis(fig[3,1], 
                 title = L"\text{Net Attrition Curve}",
                 titlesize = 22,
                 xlabel = "Years",  xlabelsize = 18,
                 ylabel = "Survival Rate", ylabelsize = 18,
                 xticks = 0:1:10)
-ax5 = Axis(fig[2,2], 
+ax5 = Axis(fig[3,2], 
                 title = L"\text{Distribution Time Series}",
                 titlesize = 22,
                 xlabel = "Years",  xlabelsize = 18,
                 ylabel = "Normalised\nDistribution", ylabelsize = 18,
                 xticks = 0:n_years)
-ax6 = Axis(fig[2,3], 
+ax6 = Axis(fig[3,3], 
                 title = L"\text{Effective Net Crop}",
                 titlesize = 22,
                 xlabel = "Years",  xlabelsize = 18, 
@@ -279,7 +290,7 @@ Legend(fig[1,4], survival_lines_compact,
         padding = (5,5,5,5),
         margin = (5,5,5,5),
         [L"$\tau = %$(τ_vals[i]), \,\kappa = %$(round(κ_vals[i], digits = 2))$" for i in 1:length(τ_vals)])
-Legend(fig[2,4], survival_lines_weibull,
+Legend(fig[3,4], survival_lines_weibull,
         # tellwidth = false, tellheight = false,
         labelsize = 18,
         halign = :right, valign = :center,
@@ -303,7 +314,14 @@ xlims!(ax2, -0.5, 5.5)
 xlims!(ax4, -0.5, 5.5)
 xlims!(ax5, -0.5, 5.5)
 # xlims!(ax6, -0.5, 5.5)
-# save(OUTPUT_PLOTS_DIR*"PaperFigures/TechnicalPaper/Periodic_Dist_Timeseries.pdf", fig, pdf_version = "1.4")
+
+Label(fig[0,:], "Compact Exponential",
+        font = :bold, padding = (0,0,-10,-10), fontsize = 23)
+
+Label(fig[2,:], "Weibull",
+        font = :bold, padding = (0,0,-10,-10), fontsize = 23)
+
+save(OUTPUT_PLOTS_DIR*"PaperFigures/TechnicalPaper/Periodic_Dist_TS.pdf", fig, pdf_version = "1.4")
 fig
 
 ######################################
@@ -395,11 +413,11 @@ fig
 subsample_ratio = 36
 time_resolution = 1/subsample_ratio
 loss_t_vals = 0:time_resolution:5
-n_years = 40
+n_years = 30
 t_vals = 0:(time_resolution):(n_years)
 # Periodic distribution behaviour
 ϕ = 0
-k = 3
+k = 2
 ω_vals = [0.5,1,1.5,2]
 τ_vals = 1:0.25:20
 κ_vals_linear = 5:0.25:22
@@ -469,7 +487,7 @@ for ω_i in 1:length(ω_vals)
     heatmap!(ax, τ_vals, κ_vals_linear, MEAN_val_linear[ω_i, :,:], colorrange = clims)
     scatter!(ax, τ_regs, κ_regs, markersize = 4, color = :red)
     contour!(ax, τ_vals, κ_vals_linear, [net_life_compact(0.5, τ, κ) for τ in τ_vals, κ in κ_vals_linear],
-                levels = 1:1:5, labels = true, color = (:black, 0.7), labelsize = 10)
+                levels = 1:1:5, labels = true, color = (:white, 1), labelsize = 10)
     xlims!(ax, 1,20)
     ylims!(ax, 5,22)
 
@@ -481,7 +499,7 @@ for ω_i in 1:length(ω_vals)
     heatmap!(ax, τ_vals, κ_vals_exp, MEAN_val_exp[ω_i, :,:], colorrange = clims)
     scatter!(ax, τ_regs, κ_regs, markersize = 4, color = :red)
     contour!(ax, τ_vals, κ_vals_exp, [net_life_compact(0.5, τ, κ) for τ in τ_vals, κ in κ_vals_exp],
-                levels = 1:1:5, labels = true, color = (:black, 0.7), labelsize = 10)
+                levels = 1:1:5, labels = true, color = (:white, 1), labelsize = 10)
     xlims!(ax, 1,20)
     ylims!(ax, minimum(κ_vals_exp), maximum(κ_vals_exp)+0.5)
 end
@@ -509,7 +527,7 @@ for ω_i in 1:length(ω_vals)
     heatmap!(ax, τ_vals, κ_vals_linear, STD_val_linear[ω_i, :,:], colorrange = clims)
     scatter!(ax, τ_regs, κ_regs, markersize = 4, color = :red)
     contour!(ax, τ_vals, κ_vals_linear, [net_life_compact(0.5, τ, κ) for τ in τ_vals, κ in κ_vals_linear],
-                levels = 1:1:5, labels = true, color = (:black, 0.7), labelsize = 10)
+                levels = 1:1:5, labels = true, color = (:white, 1), labelsize = 10)
     xlims!(ax, 1,20)
     ylims!(ax, 5,22)
 
@@ -521,7 +539,7 @@ for ω_i in 1:length(ω_vals)
     heatmap!(ax, τ_vals, κ_vals_exp, STD_val_exp[ω_i, :,:], colorrange = clims)
     scatter!(ax, τ_regs, κ_regs, markersize = 4, color = :red)
     contour!(ax, τ_vals, κ_vals_exp, [net_life_compact(0.5, τ, κ) for τ in τ_vals, κ in κ_vals_exp],
-                levels = 1:1:5, labels = true, color = (:black, 0.7), labelsize = 10)
+                levels = 1:1:5, labels = true, color = (:white, 1), labelsize = 10)
     xlims!(ax, 1,20)
     ylims!(ax, minimum(κ_vals_exp), maximum(κ_vals_exp)+0.5)
 end
@@ -541,12 +559,12 @@ save(OUTPUT_PLOTS_DIR*"PaperFigures/TechnicalPaper/Periodic_STD_Heatmap_COMPACT.
 subsample_ratio = 36
 time_resolution = 1/subsample_ratio
 loss_t_vals = 0:time_resolution:5
-n_years = 40
+n_years = 30
 t_vals = 0:(time_resolution):(n_years)
 # Periodic distribution behaviour
 ω_vals = [0.5,1,1.5,2]
 ϕ = 0
-K = 3
+K = 2
 b_vals = 0.5:0.1:10
 k_vals = exp.(-1:0.1:4)
 
@@ -571,7 +589,7 @@ for ω_i in ProgressBar(1:length(ω_vals), leave = false)
 
             # Store Variables
             MEAN_val[ω_i, b_i, k_i] = mean(response)
-            STD_val[ω_i, b_i, k_i] = std(response[end-20*subsample_ratio:end])
+            STD_val[ω_i, b_i, k_i] = std(response[end-10*subsample_ratio:end])
         end
     end
 end
@@ -589,7 +607,7 @@ for ω_i in 1:length(ω_vals)
                 yscale = log, yticks = round.(exp.(-1:1:4), digits = 2))
     heatmap!(ax, b_vals, k_vals, MEAN_val[ω_i, :,:], colorrange = mean_clims)
     contour!(ax, b_vals, k_vals, [net_life_weibull(0.5, b, k) for b in b_vals, k in k_vals],
-        levels = 1:1:5, labels = true, color = (:black, 0.7), labelsize = 10)
+        levels = 1:1:5, labels = true, color = (:white,1), labelsize = 10)
 
     ax = Axis(fig[2, ω_i],
             xlabel = L"b", xlabelsize = 22,
@@ -598,7 +616,7 @@ for ω_i in 1:length(ω_vals)
             yscale = log, yticks = round.(exp.(-1:1:4), digits = 2))
     heatmap!(ax, b_vals, k_vals, STD_val[ω_i, :,:], colorrange = std_clims)
     contour!(ax, b_vals, k_vals, [net_life_weibull(0.5, b, k) for b in b_vals, k in k_vals],
-    levels = 1:1:5, labels = true, color = (:black, 0.7), labelsize = 10)
+    levels = 1:1:5, labels = true, color = (:white,1), labelsize = 10)
 end
 
 Colorbar(fig[1,length(ω_vals)+1], colorrange = mean_clims, colormap = :viridis, 
