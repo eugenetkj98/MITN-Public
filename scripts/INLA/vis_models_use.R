@@ -26,7 +26,7 @@ library(tomledit)
 source("scripts/INLA/transforms.R")
 
 # Import Models
-load("/mnt/efs/userdata/etan/map-itn/outputs/INLA/model1_use_complete_logis.RData")
+load("/mnt/efs/userdata/etan/mitn_outputs/outputs/INLA/model1_use_complete_logis.RData")
 
 # Check summary
 summary(m1)
@@ -156,7 +156,7 @@ start_year <- model_config$YEAR_NAT_START
     # Preprocess Covariate Values
     ##############################
     # Normalise all covariates and write as new variables
-    cov_norm_constants <- read.csv("/mnt/efs/userdata/etan/map-itn/outputs/data_prep/INLA/covariate_normalisation_constants.csv")
+    cov_norm_constants <- read.csv("/mnt/efs/userdata/etan/mitn_outputs/outputs/data_prep/INLA/covariate_normalisation_constants.csv")
     norm_cov_var_names <- c()
     
     for (i in 1:(length(cov_norm_constants$cov))){
@@ -174,7 +174,7 @@ start_year <- model_config$YEAR_NAT_START
     norm_cov_matrix <- as.matrix(do.call("rbind", as.list(lapply(norm_cov_var_names, get))))
     
     # Import projection matrix to covariates and calculated values for reduced proj_matrix
-    M_proj_raw <- read.csv("/mnt/efs/userdata/etan/map-itn/outputs/data_prep/INLA/proj_matrix.csv")
+    M_proj_raw <- read.csv("/mnt/efs/userdata/etan/mitn_outputs/outputs/data_prep/INLA/proj_matrix.csv")
     
     M_proj <- as.matrix(M_proj_raw[1:(dim(M_proj_raw)[1]),2:(dim(M_proj_raw)[2])])
 
@@ -300,14 +300,14 @@ start_year <- model_config$YEAR_NAT_START
     pr.mdg.out_mean <- rasterFromXYZ(cbind(x, z_mean), crs = "+proj=longlat +datum=WGS84 +no_defs +type=crs")
     
     # Save Raster
-    save_filename_mean = str_glue("/mnt/efs/userdata/etan/map-itn/outputs/INLA/rasters/inla_use_logis/USE_logismodel_{year}_{month}_mean.tif")
+    save_filename_mean = str_glue("/mnt/efs/userdata/etan/mitn_outputs/outputs/INLA/rasters/inla_use_logis/USE_logismodel_{year}_{month}_mean.tif")
 
     writeRaster(pr.mdg.out_mean, save_filename_mean, NAflag = -9999, overwrite = TRUE)
     
     # Save sample draws for calculating quantiles later
     for (i in 1:n_samples_saved){
       pr.mdg.out_sample <- rasterFromXYZ(cbind(x, z_samples[,i]), crs = "+proj=longlat +datum=WGS84 +no_defs +type=crs")
-      save_filename_sample = str_glue("/mnt/efs/userdata/etan/map-itn/outputs/INLA/rasters/inla_use_logis/USE_logismodel_{year}_{month}_sample_{i}.tif")
+      save_filename_sample = str_glue("/mnt/efs/userdata/etan/mitn_outputs/outputs/INLA/rasters/inla_use_logis/USE_logismodel_{year}_{month}_sample_{i}.tif")
       writeRaster(pr.mdg.out_sample, save_filename_sample, NAflag = -9999, overwrite = TRUE)
     }
 

@@ -263,14 +263,14 @@ start_year <- model_config$YEAR_NAT_START
   pr.mdg.out_mean <- rasterFromXYZ(cbind(x, z_mean), crs = "+proj=longlat +datum=WGS84 +no_defs +type=crs")
   
   # Save Raster
-  save_filename_mean = str_glue("/mnt/efs/userdata/etan/map-itn/outputs/INLA/rasters/inla_pmodel_access/ACCESS_pmodel_{year}_mean.tif")
+  save_filename_mean = str_glue("/mnt/efs/userdata/etan/mitn_outputs/outputs/INLA/rasters/inla_pmodel_access/ACCESS_pmodel_{year}_mean.tif")
   
   writeRaster(pr.mdg.out_mean, save_filename_mean, NAflag = -9999, overwrite = TRUE)
   
   # Save sample draws for calculating quantiles later
   for (i in 1:n_samples_saved){
     pr.mdg.out_sample <- rasterFromXYZ(cbind(x, z_samples[,i]), crs = "+proj=longlat +datum=WGS84 +no_defs +type=crs")
-    save_filename_sample = str_glue("/mnt/efs/userdata/etan/map-itn/outputs/INLA/rasters/inla_pmodel_access/ACCESS_pmodel_{year}_sample_{i}.tif")
+    save_filename_sample = str_glue("/mnt/efs/userdata/etan/mitn_outputs/outputs/INLA/rasters/inla_pmodel_access/ACCESS_pmodel_{year}_sample_{i}.tif")
     writeRaster(pr.mdg.out_sample, save_filename_sample, NAflag = -9999, overwrite = TRUE)
   }
 # }

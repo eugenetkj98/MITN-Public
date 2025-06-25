@@ -33,7 +33,7 @@ model_config = from_toml(read_toml("/mnt/efs/userdata/etan/map-itn/scripts/awsba
 sf_use_s2(FALSE)
 
 # load INLA regression data
-inla_data <- read.csv('/mnt/efs/userdata/etan/map-itn/outputs/data_prep/INLA/inla_dataset_reduced.csv')
+inla_data <- read.csv('/mnt/efs/userdata/etan/mitn_outputs/outputs/data_prep/INLA/inla_dataset_reduced.csv')
 # inla_data <- inla_data[seq(1,dim(inla_data)[1],2),]
 # inla_data <- inla_data[sample(dim(inla_data)[1], 25000, replace = FALSE),]
 inla_data$yearidx <- (inla_data$monthidx %/% 12)+1#*12
@@ -156,7 +156,7 @@ m1 <- inla(res_npc_gap ~ -1 +
 
 print("Saving NPC gap model outputs...")
 
-save(africa_mesh, africa_spde, temporal_mesh_annual, m1, epsilon, file = "/mnt/efs/userdata/etan/map-itn/outputs/INLA/model1_npc_complete_logmodel.RData")
+save(africa_mesh, africa_spde, temporal_mesh_annual, m1, epsilon, file = "/mnt/efs/userdata/etan/mitn_outputs/outputs/INLA/model1_npc_complete_logmodel.RData")
 
 print("Saved NPC gap model")
 

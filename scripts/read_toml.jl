@@ -97,6 +97,7 @@ ADMIN1_SHAPEFILE = dir_config["input_admin_shapefiles"]["ADMIN1_SHAPEFILE"];
 BV_OUTPUTS_FILENAME = dir_config["filenames"]["BV_OUTPUTS_FILENAME"];
 
 ## National
+SURVEY_REPORT_SUMMARY_DATA_FILENAME = dir_config["filenames"]["SURVEY_REPORT_SUMMARY_DATA_FILENAME"]
 HOUSEHOLD_SURVEY_FILENAME = dir_config["filenames"]["HOUSEHOLD_SURVEY_FILENAME"];
 COUNTRY_CODES_FILENAME = dir_config["filenames"]["COUNTRY_CODES_FILENAME"];
 ISO_LIST_FILENAME = dir_config["filenames"]["ISO_LIST_FILENAME"];

@@ -13,28 +13,28 @@ ncpus = 4
 memsize = 16384
 
 [step4]
-ncpus = 8
-memsize = 8192
+ncpus = 4
+memsize = 16384
 
 [step5]
 ncpus = 4
-memsize = 10240
+memsize = 16384
 
 [step6]
 ncpus = 8
-memsize = 16384
+memsize = 32768
 
 [step7]
 ncpus = 2
-memsize = 8192
+memsize = 16384
 
 [step8]
 ncpus = 4
-memsize = 10240
+memsize = 16384
 
 [step9]
 ncpus = 4
-memsize = 10240
+memsize = 16384
 
 [step9b]
 ncpus = 8
@@ -49,8 +49,8 @@ ncpus = 1
 memsize = 4096
 
 [step12]
-ncpus = 64
-memsize = 32768
+ncpus = 16
+memsize = 131072
 
 [step13]
 ncpus = 1

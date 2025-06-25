@@ -18,7 +18,7 @@ using CSV
 using ProgressBars
 
 # %% Maths packages
-using LinearAlgebra
+using LinearAlgebrafsnf
 using StatsBase
 
 # %% General useful functions

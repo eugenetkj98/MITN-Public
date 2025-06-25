@@ -1,7 +1,7 @@
 """
 Author: Eugene Tan
 Date Created: 22/8/2024
-Last Updated: 24/8/2024
+Last Updated: 23/6/2024
 This script calculates household nets per capita values from survey metrics and 
 applies adjustment to the standard errors. Outputs are saved in a csv file.
 """
@@ -170,10 +170,53 @@ for i in 1:length(surveyid_list)
     push!(survey_summaries, summarised_survey_data)
 end
 
-# %% Compile data and save
+# %% Compile household survey level data and save
 summarised_data = vcat(survey_summaries...)
 
-CSV.write(dataprep_dir*HOUSEHOLD_NAT_SUMMARY_DATA_FILENAME, summarised_data)
+# %% Import survey report summary data
+# Load Dataset Data
+rep_summary_data = CSV.read(datasets_dir*SURVEY_REPORT_SUMMARY_DATA_FILENAME, DataFrame)
+
+# Calculate midpoint timestamps for survey reports
+rep_monthidx_starts = monthyear_to_monthidx.(rep_summary_data.month_start, rep_summary_data.year_start, YEAR_START = YEAR_NAT_START)
+rep_monthidx_ends = monthyear_to_monthidx.(rep_summary_data.month_end, rep_summary_data.year_end, YEAR_START = YEAR_NAT_START)
+rep_monthidxs = round.(Int,(rep_monthidx_starts .+ rep_monthidx_ends)./2)
+rep_isos = rep_summary_data.ISO
+
+rep_month_vals = [monthidx_to_monthyear(rep_monthidxs[i])[1] for i in 1:length(rep_monthidxs)]
+rep_year_vals = [monthidx_to_monthyear(rep_monthidxs[i])[2] for i in 1:length(rep_monthidxs)] .- 1 .+ YEAR_NAT_START
+
+rep_summary_data = hcat(rep_summary_data, DataFrame(month = rep_month_vals, year = rep_year_vals))
+
+# Calculate monthidxs for complete household surveys
+hh_monthidxs = monthyear_to_monthidx.(summarised_data.month, summarised_data.year, YEAR_START = YEAR_NAT_START)
+hh_isos = summarised_data.ISO
+
+# Make list of tuples for each dataset
+rep_tuples = [(rep_isos[i],rep_monthidxs[i]) for i in 1:length(rep_isos)]
+hh_tuples = [(hh_isos[i],hh_monthidxs[i]) for i in 1:length(hh_isos)]
+
+# Find overlaps between survey report summary data and household surveys
+intersect(rep_tuples, hh_tuples)
+
+intersects = [rep_tuples[15], rep_tuples[6]]
+
+rep_idx_removal = []
+
+if !isempty(intersects)
+    for tuple_i in intersects
+        push!(rep_idx_removal,findfirst((rep_isos .== tuple_i[1]) .* (rep_monthidxs .== tuple_i[2])))
+    end
+end
+
+# Trim report summary data and remove overlaps with household data. Trust household data over summaries
+filt_rep_summary_data = rep_summary_data[setdiff(1:length(rep_monthidxs), rep_idx_removal),:]
+
+# Merge household survey data and filtered report summary data
+final_summarised_data = vcat(summarised_data, filt_rep_summary_data[:,names(summarised_data)])
+
+# %%
+CSV.write(dataprep_dir*HOUSEHOLD_NAT_SUMMARY_DATA_FILENAME, final_summarised_data)
 
 println("JULIA EXTRACTION COMPLETED :D")
 flush(stdout)

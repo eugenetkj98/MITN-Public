@@ -91,6 +91,7 @@ HOUSEHOLD_SURVEY_DATA_FILENAME = "itn_hh_surveydata_complete_dataeng.csv" #Data 
 HOUSEHOLD_SUBNAT_SURVEY_DATA_FILENAME = "itn_hh_surveydata_complete_subnat.csv"
 HOUSEHOLD_NAT_SUMMARY_DATA_FILENAME = "npc_monthly_data.csv"
 HOUSEHOLD_SUBNAT_SUMMARY_DATA_FILENAME = "subnat_npc_monthly_data.csv"
+SURVEY_REPORT_SUMMARY_DATA_FILENAME = "survey_report_summaries.csv"
 INLA_DATAPREP_FILENAME = "inla_dataset.csv"
 INLA_REDUCED_DATAPREP_FILENAME = "inla_dataset_reduced.csv"
 INLA_USE_REDUCED_DATAPREP_FILENAME = "inla_dataset_reduced_use.csv"

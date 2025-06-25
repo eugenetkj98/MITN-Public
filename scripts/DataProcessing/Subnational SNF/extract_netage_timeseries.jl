@@ -62,19 +62,17 @@ for ISO_i in ProgressBar(1:length(filt_ISOs))
     n_admin1 = length(admin1_names)
 
     # Demography matrix collection to get national estimate
-    n_samples = size(snf_posterior["merged_outputs"][1]["ADJ_COMBINED_A_TOTAL_samples"])[1]
-    n_months = size(snf_posterior["merged_outputs"][1]["ADJ_COMBINED_A_TOTAL_samples"])[2]
+    n_samples = size(snf_posterior["merged_outputs_full"][1]["ADJ_COMBINED_A_TOTAL_samples"])[1]
+    n_months = size(snf_posterior["merged_outputs_full"][1]["ADJ_COMBINED_A_TOTAL_samples"])[2]
     A_collection = Array{Matrix}(undef, n_admin1, n_samples)
 
     # Extract age data for each admin1 region
     for admin1_i in 1:n_admin1
         # Get area id
-        area_id = snf_posterior["merged_outputs"][admin1_i]["area_id"]
-
-        snf_posterior["merged_outputs"][admin1_i]
+        area_id = snf_posterior["merged_outputs_full"][admin1_i]["area_id"]
 
         # Get Demography Matrices by sample
-        A_samples = snf_posterior["merged_outputs"][admin1_i]["ADJ_COMBINED_A_TOTAL_samples"]
+        A_samples = snf_posterior["merged_outputs_full"][admin1_i]["ADJ_COMBINED_A_TOTAL_samples"]
 
         # Calculate Age Weight Matrix
         n_months = size(A_samples[1,:,:])[2]

@@ -32,7 +32,7 @@ model_config = from_toml(read_toml("/mnt/efs/userdata/etan/map-itn/scripts/awsba
 sf_use_s2(FALSE)
 
 # load INLA regression data
-inla_data <- read.csv('/mnt/efs/userdata/etan/map-itn/outputs/data_prep/INLA/inla_dataset_reduced.csv')
+inla_data <- read.csv('/mnt/efs/userdata/etan/mitn_outputs/outputs/data_prep/INLA/inla_dataset_reduced.csv')
 # inla_data <- inla_data[seq(1,dim(inla_data)[1],2),]
 inla_data <- inla_data[which(inla_data$access > 0),]
 inla_data$yearidx <- (inla_data$monthidx %/% 12)+1#*12
@@ -160,7 +160,7 @@ m1 <- inla(res_use_gap ~ -1 +# Intercept +
 
 print("Saving Use gap model outputs...")
 
-save(africa_mesh, africa_spde, temporal_mesh_monthly, m1, use_theta, file = "/mnt/efs/userdata/etan/map-itn/outputs/INLA/model1_use_complete_logis.RData")
+save(africa_mesh, africa_spde, temporal_mesh_monthly, m1, use_theta, file = "/mnt/efs/userdata/etan/mitn_outputs/outputs/INLA/model1_use_complete_logis.RData")
 
 print("Saved Use model Part")
 
