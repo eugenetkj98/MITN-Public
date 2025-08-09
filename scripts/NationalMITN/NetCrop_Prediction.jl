@@ -2,7 +2,8 @@
 Author: Eugene Tan
 Date Created: 24/3/2025
 Last Updated: 24/3/2025
-Takes input timeseries and a reference country and produces randomly sampled timeseries for ITN nets
+Takes input timeseries and a reference country and produces randomly sampled timeseries for ITN nets.
+    Run on a per country basis. Not automated!
 """
 # %% Prep environment and subdirectories
 include(pwd()*"/scripts/init_env.jl")

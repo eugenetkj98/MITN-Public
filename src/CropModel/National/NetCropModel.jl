@@ -2,7 +2,8 @@
 Author: Eugene Tan
 Date Created: 13/8/2024
 Last Updated: 30/9/2024
-Code that defined the PPL model for the estimating the national net crop time series from extracted data. Also contains a forward evaluation mode to perform posterior predictions. This versions accounts for multiple net types.
+Code that defines the PPL model for the estimating the national net crop time series from extracted data. 
+Also contains a forward evaluation mode to perform posterior predictions. This versions accounts for multiple net types.
 """
 
 module NetCropModel
@@ -22,8 +23,6 @@ using AdvancedMH
 
 using DateConversions
 using NetLoss
-
-
 
 ########################################
 # %% Forward evolution of monthly reduced ITN model

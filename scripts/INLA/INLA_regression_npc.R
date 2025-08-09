@@ -11,7 +11,10 @@ install.packages("sf")
 install.packages("lattice")
 install.packages("grideExtra")
 install.packages("tomledit")
-install.packages("INLA", repos=c(getOption("repos"), INLA="https://inla.r-inla-download.org/R/stable"), dep=TRUE)
+install.packages("remotes")
+library(remotes)
+remotes::install_version("INLA", version = "24.12.11",
+repos = c(getOption("repos"), INLA = "https://inla.r-inla-download.org/R/stable"), dep = TRUE)
 
 
 # Load all packages
@@ -32,12 +35,21 @@ model_config = from_toml(read_toml("/mnt/efs/userdata/etan/map-itn/scripts/awsba
 # Random fix
 sf_use_s2(FALSE)
 
+# Get year bounds
+start_year = model_config$YEAR_NAT_START
+end_year = model_config$YEAR_NAT_END
+n_years = (end_year-start_year+1)
+
 # load INLA regression data
 inla_data <- read.csv('/mnt/efs/userdata/etan/mitn_outputs/outputs/data_prep/INLA/inla_dataset_reduced.csv')
 # inla_data <- inla_data[seq(1,dim(inla_data)[1],2),]
 # inla_data <- inla_data[sample(dim(inla_data)[1], 25000, replace = FALSE),]
-inla_data$yearidx <- (inla_data$monthidx %/% 12)+1#*12
-inla_data$yearidx
+inla_data$yearidx <- ((inla_data$monthidx-1) %/% 12)+1#*12
+
+# Need to replicate most recent year and append to allow INLA to extrapolate to final year
+latest_data <- inla_data[which(inla_data$yearidx == max(inla_data$yearidx)),]
+latest_data$yearidx <- n_years
+inla_data <- rbind(inla_data, latest_data)
 
 # load Africa shapefile
 global_shp <- read_sf("/mnt/s3/master_geometries/Admin_Units/Global/MAP/2023/MG_5K/admin2023_0_MG_5K.shp")
@@ -56,21 +68,16 @@ africa_geometry <- st_union(test$geometry)
 coords <- cbind(inla_data$longitude, inla_data$latitude)
 africa_mesh <- inla.mesh.2d(loc = coords,
                             boundary = africa_geometry,
-                            max.edge = c(1.25,3),
-                            offset = c(1,5),
+                            max.edge = c(2,5),
+                            offset = c(0.5,5),
                             cutoff = 0.6)
 
 africa_spde <- inla.spde2.matern(mesh = africa_mesh)
 
 plot(africa_mesh)
 
-# Construct temporal parts of model
-start_year = model_config$YEAR_NAT_START
-end_year = model_config$YEAR_NAT_END
-n_years = (end_year-start_year+1)
-
 # generate temporal mesh
-temporal_mesh_annual <- inla.mesh.1d(seq(1,n_years+1,by=2),interval=c(1, n_years+1),degree=2)
+temporal_mesh_annual <- inla.mesh.1d(seq(1,n_years+1,by=1),interval=c(1, n_years+1),degree=2)
 
 # Make projection matrices
 A_proj_annual <- inla.spde.make.A(mesh = africa_spde, loc = coords,
@@ -141,12 +148,13 @@ m1 <- inla(res_npc_gap ~ -1 +
              annual_12 +
              annual_13 +
              annual_14 +
-             annual_15 +
+             annual_15# +
              # annual_16 +
              # annual_17 +
              # annual_18 +
-             f(field, model = spde, group = field.group, 
-               control.group = list(model = 'ar1') ),
+             # f(field, model = spde, group = field.group,
+             #   control.group = list(model = 'ar1'))
+               ,
            data = inla.stack.data(africa_stack_annual, spde = africa_spde),
            family = "gaussian",
            control.predictor = list(A = inla.stack.A(africa_stack_annual), compute = TRUE),
@@ -156,11 +164,64 @@ m1 <- inla(res_npc_gap ~ -1 +
 
 print("Saving NPC gap model outputs...")
 
-save(africa_mesh, africa_spde, temporal_mesh_annual, m1, epsilon, file = "/mnt/efs/userdata/etan/mitn_outputs/outputs/INLA/model1_npc_complete_logmodel.RData")
+save(africa_mesh, africa_spde, temporal_mesh_annual, m1, epsilon, file = "/mnt/efs/userdata/etan/mitn_outputs/outputs/INLA/model1_npc_complete_logmodel_ratio.RData")
 
 print("Saved NPC gap model")
 
 summary(m1)
+
+#############################
+# Fit NPC GAP Residuals Random Field
+#############################
+print("Fitting NPC gap spatio-temporal model residuals...")
+pred_ratio <- exp(
+                  m1$summary.fixed['static_1', 'mean'] * cov_data$static_1 +
+                  m1$summary.fixed['static_2', 'mean'] * cov_data$static_2 +
+                  m1$summary.fixed['static_3', 'mean'] * cov_data$static_3 +
+                  m1$summary.fixed['annual_1', 'mean'] * cov_data$annual_1 +
+                  m1$summary.fixed['annual_2', 'mean'] * cov_data$annual_2 +
+                  m1$summary.fixed['annual_3', 'mean'] * cov_data$annual_3 +
+                  m1$summary.fixed['annual_4', 'mean'] * cov_data$annual_4 +
+                  m1$summary.fixed['annual_5', 'mean'] * cov_data$annual_5 +
+                  m1$summary.fixed['annual_6', 'mean'] * cov_data$annual_6 +
+                  m1$summary.fixed['annual_7', 'mean'] * cov_data$annual_7 +
+                  m1$summary.fixed['annual_8', 'mean'] * cov_data$annual_8 +
+                  m1$summary.fixed['annual_9', 'mean'] * cov_data$annual_9 +
+                  m1$summary.fixed['annual_10', 'mean'] * cov_data$annual_10 +
+                  m1$summary.fixed['annual_11', 'mean'] * cov_data$annual_11 +
+                  m1$summary.fixed['annual_12', 'mean'] * cov_data$annual_12 +
+                  m1$summary.fixed['annual_13', 'mean'] * cov_data$annual_13 +
+                  m1$summary.fixed['annual_14', 'mean'] * cov_data$annual_14 +
+                  m1$summary.fixed['annual_15', 'mean'] * cov_data$annual_15)
+
+response_data$npc_residuals <-  inla_data$npc - pred_ratio*inla_data$npc_subnat
+
+effects_data_annual <- list(c(S_index_annual, list(Intercept = 1)),cov_data)
+
+africa_stack_annual <- inla.stack(data = response_data,
+                                  A = list(A_proj_annual,1),
+                                  effects = effects_data_annual,
+                                  tag = "npc.data")
+
+m1_res <- inla(npc_residuals ~ -1 + 
+           f(field, model = spde, group = field.group,
+             control.group = list(model = 'ar1')
+              ),
+              data = inla.stack.data(africa_stack_annual, spde = africa_spde),
+              family = "gaussian",
+              control.predictor = list(A = inla.stack.A(africa_stack_annual), compute = TRUE),
+              control.compute = list(cpo = TRUE, dic = TRUE, config = TRUE), 
+              control.inla = list(strategy = "adaptive", int.strategy = "eb"),
+              verbose = TRUE)
+
+print("Saving NPC residuals model outputs...")
+
+save(africa_mesh, africa_spde, temporal_mesh_annual, m1_res, epsilon, file = "/mnt/efs/userdata/etan/mitn_outputs/outputs/INLA/model1_npc_complete_logmodel_res.RData")
+
+print("Saved NPC gap model")
+
+summary(m1)
+
 
 print("HURRAH! I FINISHED THE R SCRIPT THANK GOD")
 

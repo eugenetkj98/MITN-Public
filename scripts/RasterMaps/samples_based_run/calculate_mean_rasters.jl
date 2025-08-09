@@ -2,7 +2,7 @@
 Author: Eugene Tan
 Date Created: 19/5/2025
 Last Updated: 19/5/2025
-Combines sampled rasters from posterior samples rasters of ITN metrics
+Combines sampled posterior rasters of ITN metrics into average monthly rasters.
 """
 # %% Prep environment and subdirectories
 include(pwd()*"/scripts/init_env.jl")

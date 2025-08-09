@@ -9,11 +9,12 @@ library(terra)
 source("scripts/INLA/transforms.R")
 
 # Import Models
-load("/mnt/efs/userdata/etan/map-itn/outputs/INLA/model1_npc_complete_logmodel.RData")
-# load("outputs/INLA/model1_npc_half_logmodel.RData")
+load("/mnt/efs/userdata/etan/mitn_outputs/outputs/INLA/model1_npc_complete_logmodel_ratio.RData")
+load("/mnt/efs/userdata/etan/mitn_outputs/outputs/INLA/model1_npc_complete_logmodel_res.RData")
 
 # Check summary
 summary(m1)
+summary(m1_res)
 
 # Random fix
 sf_use_s2(FALSE)
@@ -23,7 +24,7 @@ sf_use_s2(FALSE)
 #########################
 
 # load INLA regression data
-inla_data <- read.csv('/mnt/efs/userdata/etan/map-itn/outputs/data_prep/INLA/inla_dataset_reduced.csv')
+inla_data <- read.csv('/mnt/efs/userdata/etan/mitn_outputs/outputs/data_prep/INLA/inla_dataset_reduced.csv')
 # inla_data <- inla_data[seq(2,dim(inla_data)[1],2),]
 # inla_data <- inla_data[1:1000,]
 inla_data$yearidx <- (inla_data$monthidx %/% 12)+1#*12
@@ -82,10 +83,6 @@ Aprediction <- inla.spde.make.A(mesh = africa_spde, loc = coords,
                                 group = inla_data$yearidx,
                                 group.mesh = temporal_mesh_annual)
 
-# Calulate spatial structure
-sfield_nodes <- m1$summary.random$field['mean']
-field <- (Aprediction %*% as.data.frame(sfield_nodes)[, 1])
-summary(m1)
 # Calculate Predicted values using regression formula
 pred <- #m1$summary.fixed['Intercept', 'mean'] +
   # m1$summary.fixed['subnat_npc', 'mean'] * cov_data$subnat_npc +
@@ -107,16 +104,18 @@ pred <- #m1$summary.fixed['Intercept', 'mean'] +
   m1$summary.fixed['annual_12', 'mean'] * cov_data$annual_12 +
   m1$summary.fixed['annual_13', 'mean'] * cov_data$annual_13 +
   m1$summary.fixed['annual_14', 'mean'] * cov_data$annual_14 +
-  m1$summary.fixed['annual_15', 'mean'] * cov_data$annual_15 +
+  m1$summary.fixed['annual_15', 'mean'] * cov_data$annual_15# +
   # m1$summary.fixed['monthly_1', 'mean'] * cov_data$monthly_1 +
   # m1$summary.fixed['monthly_2', 'mean'] * cov_data$monthly_2 +
-  field
+  # field
+
+# Calculate spatial residuals structure
+sfield_nodes <- m1_res$summary.random$field['mean']
+residuals <- (Aprediction %*% as.data.frame(sfield_nodes)[, 1])
+
 
 # 
-epsilon = 0.001
-npc_subnat <- inla_data$npc - inla_data$npc_gap
-npc_gap_ratio <- exp(pred)
-npc_pred <- npc_gap_ratio*npc_subnat + (npc_gap_ratio - 1)*epsilon
+inla_data$npc_pred <- (inla_data$npc_subnat*exp(pred) + residuals)[,]
 
 # Calculate performance metrics
 RMSE <- round(sqrt(mean((inla_data$npc - npc_pred)^2)), digits = 4)
@@ -127,11 +126,23 @@ CORR <- round(cor(inla_data$npc, as.numeric(npc_pred)), digits = 4)
 title <- str_glue("NPC Fit (Gap Model) Full Training Data\nMAE = {MAE}, RMSE = {RMSE}, CORR = {CORR}")
 # title <- str_glue("NPC Fit (Gap Model) 50% Training, Out of Sample \nMAE = {MAE}, RMSE = {RMSE}, CORR = {CORR}")
 
-plot(inla_data$npc, npc_pred, 
+plot(inla_data$npc, inla_data$npc_pred, 
      col = rgb(red = 0, green = 0, blue = 1, alpha = 0.1), cex=0.1,
      xlim = c(0,1), ylim = c(0,1),
      xlab = "Survey NPC", ylab = "Fitted NPC", main = title)
 abline(a=0, b=1)
 
+###########################################
+# Plot Variogram
+###########################################
+library(gstat)
+coordinates(inla_data) = ~latitude+longitude
+vgram <- variogram(npc_pred ~ 1, inla_data, width = 1/100)
+plot(vgram)
 
+#
+library(ggplot2)
+ggplot(inla_data, aes(x = latitude, y = longitude)) +
+  geom_point(aes(colour = npc_pred[,]), size = 0.2, alpha = 0.6) +
+  scale_color_gradient2(limits = c(0,1))
 

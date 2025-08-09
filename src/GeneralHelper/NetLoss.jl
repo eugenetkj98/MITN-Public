@@ -3,8 +3,7 @@
 Author: Eugene Tan
 Date: 8/7/2024
 Updated: 23/7/2024
-This module contains the net loss functions (and inverse) used for analysis.
-
+This module contains the net loss functions (and inverse) used for the stock and flow model.
 """
 
 module NetLoss

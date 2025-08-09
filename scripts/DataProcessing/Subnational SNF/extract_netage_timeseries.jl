@@ -46,6 +46,8 @@ filt_ISOs = setdiff(ISO_list, exclusion_ISOs)
 # %% Extract age timeseries for each country and save as DataFrane
 df1_collection = []
 df0_collection = []
+
+
 for ISO_i in ProgressBar(1:length(filt_ISOs))
     # Select country
     ISO = filt_ISOs[ISO_i]
@@ -72,7 +74,7 @@ for ISO_i in ProgressBar(1:length(filt_ISOs))
         area_id = snf_posterior["merged_outputs_full"][admin1_i]["area_id"]
 
         # Get Demography Matrices by sample
-        A_samples = snf_posterior["merged_outputs_full"][admin1_i]["ADJ_COMBINED_A_TOTAL_samples"]
+        A_samples = Float64.(snf_posterior["merged_outputs_full"][admin1_i]["ADJ_COMBINED_A_TOTAL_samples"])
 
         # Calculate Age Weight Matrix
         n_months = size(A_samples[1,:,:])[2]
@@ -88,6 +90,8 @@ for ISO_i in ProgressBar(1:length(filt_ISOs))
 
         for sample_i in 1:n_samples
             A = A_samples[sample_i,:,:]
+            # A = Float64.(snf_posterior["merged_outputs_full"][admin1_i]["ADJ_COMBINED_A_TOTAL_mean"])#A_samples[sample_i,:,:]
+
             A_collection[admin1_i, sample_i] = A
 
             # Calculate average age in months

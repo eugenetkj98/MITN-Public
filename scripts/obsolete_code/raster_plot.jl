@@ -1,3 +1,10 @@
+"""
+This seems like code to plot an animation of the raster maps.
+May be useful for quick figure prep, but not much more. 
+Consider refactoring into a different code base.
+"""
+
+
 # %% Prep environment and subdirectories
 include(pwd()*"/scripts/init_env.jl")
 

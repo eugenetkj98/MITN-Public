@@ -2,6 +2,7 @@
 Author: Eugene Tan
 Date Created: 20/3/2025
 Last Updated: 20/3/2025
+DEPRECATED IN MOVE TO USE MAKIE PLOTTING BACKEND!
 Helper Function to generate nice plots using posterior draws of MITN outputs
 """
 

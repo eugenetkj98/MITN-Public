@@ -211,13 +211,21 @@ use_quantiles = Float64.(quantile(continent_use_raster_vals, [0.025, 0.975]))
 # Default assume no util or eff available
 util_quantiles = [NaN, NaN]
 eff_quantiles = [NaN, NaN]
-    
-raster_util_mean = Float64(mean(continent_util_raster_vals))
-raster_eff_mean = Float64(mean(continent_eff_raster_vals))
 
-if !isnan(raster_util_mean)
-    util_quantiles = Float64.(quantile(continent_util_raster_vals, [0.025, 0.975]))
-    eff_quantiles = Float64.(quantile(continent_eff_raster_vals, [0.025, 0.975]))
+raster_util_mean = NaN
+raster_eff_mean = NaN
+
+nonnanidx_util = findall(.!isnan.(continent_util_raster_vals))
+nonnanidx_eff = findall(.!isnan.(continent_eff_raster_vals))
+
+if length(nonnanidx_util) > 2
+  raster_util_mean = Float64(mean(continent_util_raster_vals[nonnanidx_util]))
+  util_quantiles = Float64.(quantile(continent_util_raster_vals[nonnanidx_util], [0.025, 0.975]))
+end
+
+if length(nonnanidx_eff) > 2
+  raster_eff_mean = Float64(mean(continent_eff_raster_vals[nonnanidx_eff]))
+  eff_quantiles = Float64.(quantile(continent_eff_raster_vals[nonnanidx_eff], [0.025, 0.975]))
 end
 
 snf_npc_mean = Float64(mean(continent_npc_snf_vals))

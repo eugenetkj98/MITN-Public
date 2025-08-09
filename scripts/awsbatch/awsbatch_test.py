@@ -10,14 +10,14 @@ def create_workflow(wf: Workflow):
         base = JuliaManifest(manifest_path="env_files/Manifest.toml")
     )
 
-    # # print("Commencing Step 1: Household Survey Cleanup\n")
-    # step1 = wf.add_task(
-    #     name = "Household_Survey_Cleanup",
-    #     memory_mb = config["step1"]["memsize"],
-    #     vcpus = config["step1"]["ncpus"],
-    #     command = f"julia --threads={config["step1"]["ncpus"]} scripts/DataProcessing/SurveyCleaning/DataEng_SurveyDataCleanup.jl"
-    # )
-    # # print("Completed Step 1 Succesfully!")
+    # print("Commencing Step 1: Household Survey Cleanup\n")
+    step1 = wf.add_task(
+        name = "Household_Survey_Cleanup",
+        memory_mb = config["step1"]["memsize"],
+        vcpus = config["step1"]["ncpus"],
+        command = f"julia --threads={config["step1"]["ncpus"]} scripts/DataProcessing/SurveyCleaning/DataEng_SurveyDataCleanup.jl"
+    )
+    # print("Completed Step 1 Succesfully!")
 
     # # print("Commencing Step 2: Extract Household NPC Metrics\n")
     # step2 = wf.add_task(
@@ -29,18 +29,19 @@ def create_workflow(wf: Workflow):
     # )
     # # print("Completed Step 2 Succesfully!")
 
-    # # print("Commencing Step 3: Net Crop Model Regression\n")
+    # print("Commencing Step 3: Net Crop Model Regression\n")
     # step3 = wf.add_task(
     #     name = "National_NPC_SNF_Regression",
     #     memory_mb = config["step3"]["memsize"],
     #     vcpus = config["step3"]["ncpus"],
     #     command = f"julia --threads={config["step3"]["ncpus"]} scripts/NationalMITN/AWS_run_analysis_crop.jl "+"${ISO}",
+    #     # is_spot = True,
     #     after = [step2],
     #     array_parameters = {
     #         "ISO": model_config["ISO_LIST"]
     #     }
     # )
-    # # print("Completed Step 3 Succesfully!")
+    # print("Completed Step 3 Succesfully!")
 
     # # print("Commencing Step 4: Net Access Model Regression\n")
     # step4 = wf.add_task(
@@ -114,7 +115,7 @@ def create_workflow(wf: Workflow):
     #     memory_mb = config["step9"]["memsize"],
     #     vcpus = config["step9"]["ncpus"],
     #     command = f"julia --threads={config["step9"]["ncpus"]} scripts/SubnationalMITN/AWS_generate_crop_access_draws.jl "+"${ISO}",
-    #     after = [step8],
+    #     # after = [step8],
     #     array_parameters = {
     #         "ISO": model_config["ISO_LIST"]
     #     }
@@ -122,15 +123,15 @@ def create_workflow(wf: Workflow):
     # # print("Completed Step 9 Succesfully!")
 
 
-    # print("Commencing Step 9b: Extract Net Age summaries\n")
-    step9b = wf.add_task(
-        name = "Subnational_Mean_Net_Age_draws",
-        memory_mb = config["step9b"]["memsize"],
-        vcpus = config["step9b"]["ncpus"],
-        command = f"julia --threads={config["step9b"]["ncpus"]} \"scripts/DataProcessing/Subnational SNF/extract_netage_timeseries.jl\" ",
-        # after = [step9]
-    )
-    # print("Completed Step 9b Succesfully!")
+    # # print("Commencing Step 9b: Extract Net Age summaries\n")
+    # step9b = wf.add_task(
+    #     name = "Subnational_Mean_Net_Age_draws",
+    #     memory_mb = config["step9b"]["memsize"],
+    #     vcpus = config["step9b"]["ncpus"],
+    #     command = f"julia --threads={config["step9b"]["ncpus"]} \"scripts/DataProcessing/Subnational SNF/extract_netage_timeseries.jl\" ",
+    #     after = [step9]
+    # )
+    # # print("Completed Step 9b Succesfully!")
 
     # # print("Commencing Step 10: Prep covariates data for INLA regression\n")
     # step10 = wf.add_task(
@@ -177,7 +178,7 @@ def create_workflow(wf: Workflow):
     #     memory_mb = config["step12"]["memsize"],
     #     vcpus = config["step12"]["ncpus"],
     #     after = [step11]
-    # )
+    # ) # DEPPRECATED
 
     # step12b = wf.add_task(
     #     name = "INLA_Deployment_Regression",
@@ -188,14 +189,14 @@ def create_workflow(wf: Workflow):
     #     # after = [step11]
     # )
 
-    step12c = wf.add_task(
-        name = "INLA_Use_Regression",
-        command = "Rscript scripts/INLA/INLA_regression_use.R",
-        base = DockerImage("rocker/geospatial:4.4.3"),
-        memory_mb = config["step12"]["memsize"],
-        vcpus = config["step12"]["ncpus"],
-        # after = [step11]
-    )
+    # step12c = wf.add_task(
+    #     name = "INLA_Use_Regression",
+    #     command = "Rscript scripts/INLA/INLA_regression_use.R",
+    #     base = DockerImage("rocker/geospatial:4.4.3"),
+    #     memory_mb = config["step12"]["memsize"],
+    #     vcpus = config["step12"]["ncpus"],
+    #     # after = [step11]
+    # )
 
     # step13 = wf.add_task(
     #     name = "INLA_NPC_Sampling",
@@ -219,7 +220,7 @@ def create_workflow(wf: Workflow):
     #     array_parameters = {
     #         "YEAR": list(range(model_config["YEAR_NAT_START"], model_config["YEAR_NAT_END"] + 1)) 
     #     }
-    # )
+    # ) # DEPPRECATED
 
     # step13b = wf.add_task(
     #     name = "INLA_Deployment_Sampling",
@@ -233,17 +234,17 @@ def create_workflow(wf: Workflow):
     #     }
     # )
 
-    step13c = wf.add_task(
-        name = "INLA_Use_Sampling",
-        command = "Rscript scripts/INLA/vis_models_use.R ${monthyear_arg}",
-        base = DockerImage("rocker/geospatial:4.4.3"),
-        memory_mb = config["step13"]["memsize"],
-        vcpus = config["step13"]["ncpus"],
-        after = [step12c],
-        array_parameters = {
-            "monthyear_arg": month_year_argslist  
-        }
-    )
+    # step13c = wf.add_task(
+    #     name = "INLA_Use_Sampling",
+    #     command = "Rscript scripts/INLA/vis_models_use.R ${monthyear_arg}",
+    #     base = DockerImage("rocker/geospatial:4.4.3"),
+    #     memory_mb = config["step13"]["memsize"],
+    #     vcpus = config["step13"]["ncpus"],
+    #     after = [step12c],
+    #     array_parameters = {
+    #         "monthyear_arg": month_year_argslist  
+    #     }
+    # )
 
     # step13c = wf.add_task(
     #     name = "INLA_Use_Sampling",
@@ -255,87 +256,93 @@ def create_workflow(wf: Workflow):
     #     array_parameters = {
     #         "YEAR": list(range(model_config["YEAR_NAT_START"], model_config["YEAR_NAT_END"] + 1)) 
     #     }
-    # )
+    # ) # DEPPRECATED
 
 
     ##########################################
     # NEED TO GET R CODE READY!!
     ##########################################
         
-    # print("Commencing Step 18: Construct final rasters using INLA outputs\n")
-    step18 = wf.add_task(
-        name = "Construct_Final_ITN_Rasters",
-        memory_mb = config["step18"]["memsize"],
-        vcpus = config["step18"]["ncpus"],
-        command = f"julia --threads={config["step18"]["ncpus"]} scripts/RasterMaps/samples_based_run/generate_final_rasters_samples.jl "+"${monthyear_arg}",
-        after = [step13c],
-        array_parameters = {
-            "monthyear_arg": month_year_argslist  
-        }
-    )
-    # print("Completed Step 18 Successfully!")
+    # # print("Commencing Step 18: Construct final rasters using INLA outputs\n")
+    # step18 = wf.add_task(
+    #     name = "Construct_Final_ITN_Rasters",
+    #     memory_mb = config["step18"]["memsize"],
+    #     vcpus = config["step18"]["ncpus"],
+    #     command = f"julia --threads={config["step18"]["ncpus"]} scripts/RasterMaps/samples_based_run/generate_final_rasters_samples.jl "+"${monthyear_arg}",
+    #     # after = [step13c],
+    #     after = [step9b],
+    #     # is_spot = True,
+    #     array_parameters = {
+    #         "monthyear_arg": month_year_argslist  
+    #     }
+    # )
+    # # print("Completed Step 18 Successfully!")
 
-    # print("Commencing Step 19: Extract timeseries from generated rasters \n")
-    step19 = wf.add_task(
-        name = "Extract_Country_Raster_Timeseries",
-        memory_mb = config["step19"]["memsize"],
-        vcpus = config["step19"]["ncpus"],
-        command = f"julia --threads={config["step19"]["ncpus"]} scripts/RasterMaps/samples_based_run/raster_timeseries_aggregation_samples.jl "+"${monthyear_arg}",
-        after = [step18],
-        array_parameters = {
-            "monthyear_arg": month_year_argslist  
-        }
-    )
-    # print("Completed Step 19 Successfully!")
+    # # print("Commencing Step 19: Extract timeseries from generated rasters \n")
+    # step19 = wf.add_task(
+    #     name = "Extract_Country_Raster_Timeseries",
+    #     memory_mb = config["step19"]["memsize"],
+    #     vcpus = config["step19"]["ncpus"],
+    #     command = f"julia --threads={config["step19"]["ncpus"]} scripts/RasterMaps/samples_based_run/raster_timeseries_aggregation_samples.jl "+"${monthyear_arg}",
+    #     after = [step18],
+    #     # is_spot = True,
+    #     array_parameters = {
+    #         "monthyear_arg": month_year_argslist  
+    #     }
+    # )
+    # # print("Completed Step 19 Successfully!")
 
-    # print("Commencing Step 19: Extract timeseries from generated rasters \n")
-    step19b = wf.add_task(
-        name = "Extract_Continent_Raster_Timeseries",
-        memory_mb = config["step19"]["memsize"],
-        vcpus = config["step19"]["ncpus"],
-        command = f"julia --threads={config["step19"]["ncpus"]} scripts/RasterMaps/samples_based_run/raster_timeseries_aggregation_continent_samples.jl "+"${monthyear_arg}",
-        after = [step19],
-        array_parameters = {
-            "monthyear_arg": month_year_argslist  
-        }
-    )
-    # print("Completed Step 19 Successfully!")
+    # # print("Commencing Step 19: Extract timeseries from generated rasters \n")
+    # step19b = wf.add_task(
+    #     name = "Extract_Continent_Raster_Timeseries",
+    #     memory_mb = config["step19"]["memsize"],
+    #     vcpus = config["step19"]["ncpus"],
+    #     command = f"julia --threads={config["step19"]["ncpus"]} scripts/RasterMaps/samples_based_run/raster_timeseries_aggregation_continent_samples.jl "+"${monthyear_arg}",
+    #     after = [step19],
+    #     # is_spot = True,
+    #     array_parameters = {
+    #         "monthyear_arg": month_year_argslist  
+    #     }
+    # )
+    # # print("Completed Step 19 Successfully!")
 
-    # print("Commencing Step 19b: Aggregate raster time series .csv \n")
-    step19c = wf.add_task(
-        name = "Aggregate_Raster_Timeseries",
-        memory_mb = config["step19b"]["memsize"],
-        vcpus = config["step19b"]["ncpus"],
-        command = f"julia --threads={config["step19b"]["ncpus"]} scripts/RasterMaps/samples_based_run/join_timeseries_aggregates_samples.jl",
-        after = [step19b]
-    )
-    # print("Completed Step 19 Successfully!")
+    # # print("Commencing Step 19b: Aggregate raster time series .csv \n")
+    # step19c = wf.add_task(
+    #     name = "Aggregate_Raster_Timeseries",
+    #     memory_mb = config["step19b"]["memsize"],
+    #     vcpus = config["step19b"]["ncpus"],
+    #     command = f"julia --threads={config["step19b"]["ncpus"]} scripts/RasterMaps/samples_based_run/join_timeseries_aggregates_samples.jl",
+    #     after = [step19b]
+    # )
+    # # print("Completed Step 19 Successfully!")
 
-    # print("Commencing Step 20: Construct mean monthly rasters \n")
-    step20 = wf.add_task(
-        name = "Construct_Mean_Monthly_Rasters",
-        memory_mb = config["step20"]["memsize"],
-        vcpus = config["step20"]["ncpus"],
-        command = f"julia --threads={config["step20"]["ncpus"]} scripts/RasterMaps/samples_based_run/calculate_mean_rasters.jl "+"${monthyear_arg}",
-        after = [step18],
-        array_parameters = {
-            "monthyear_arg": month_year_argslist  
-        }
-    )
-    # print("Completed Step 20 Successfully!")
+    # # print("Commencing Step 20: Construct mean monthly rasters \n")
+    # step20 = wf.add_task(
+    #     name = "Construct_Mean_Monthly_Rasters",
+    #     memory_mb = config["step20"]["memsize"],
+    #     vcpus = config["step20"]["ncpus"],
+    #     command = f"julia --threads={config["step20"]["ncpus"]} scripts/RasterMaps/samples_based_run/calculate_mean_rasters.jl "+"${monthyear_arg}",
+    #     after = [step18],
+    #     # is_spot = True,
+    #     array_parameters = {
+    #         "monthyear_arg": month_year_argslist  
+    #     }
+    # )
+    # # print("Completed Step 20 Successfully!")
 
-    # print("Commencing Step 20b: Construct mean annual rasters \n")
-    step20b = wf.add_task(
-        name = "Construct_Raster_Annual_Rasters",
-        memory_mb = config["step20b"]["memsize"],
-        vcpus = config["step20b"]["ncpus"],
-        command = f"julia --threads={config["step20b"]["ncpus"]} scripts/RasterMaps/samples_based_run/calculate_annual_aggregate_rasters.jl "+"${YEAR}",
-        after = [step20],
-        array_parameters = {
-            "YEAR": list(range(model_config["YEAR_NAT_START"], model_config["YEAR_NAT_END"] + 1))
-        }
-    )
-    # print("Completed Step 20b Successfully!")
+    # # print("Commencing Step 20b: Construct mean annual rasters \n")
+    # step20b = wf.add_task(
+    #     name = "Construct_Raster_Annual_Rasters",
+    #     memory_mb = config["step20b"]["memsize"],
+    #     vcpus = config["step20b"]["ncpus"],
+    #     command = f"julia --threads={config["step20b"]["ncpus"]} scripts/RasterMaps/samples_based_run/calculate_annual_aggregate_rasters.jl "+"${YEAR}",
+    #     after = [step20],
+    #     # is_spot = True,
+    #     array_parameters = {
+    #         "YEAR": list(range(model_config["YEAR_NAT_START"], model_config["YEAR_NAT_END"] + 1))
+    #     }
+    # )
+    # # print("Completed Step 20b Successfully!")
 
 
 

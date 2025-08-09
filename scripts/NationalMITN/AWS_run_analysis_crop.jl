@@ -10,6 +10,9 @@ include(pwd()*"/scripts/init_env.jl")
 # %% Import filenames and directories from TOML file
 include(pwd()*"/scripts/read_toml.jl")
 
+###########################################
+# %% Load Packages
+###########################################
 # %% Import Public Packages
 using JLD2
 using CSV
@@ -25,6 +28,9 @@ using NetCropRegression
 using LinearAlgebra
 using StatsBase
 
+###########################################
+# %% Define Directories, paths and parameters
+###########################################
 # %% Get ISO to analyse from argument input
 ISO = ARGS[1]
 exclusion_ISOs = EXCLUSION_ISOS
@@ -32,6 +38,10 @@ exclusion_ISOs = EXCLUSION_ISOS
 # %% Run Analysis
 YEAR_START = YEAR_NAT_START
 YEAR_END = YEAR_NAT_END
+
+###########################################
+# %% Perform data extraction and preparation + Regression
+###########################################
 
 # %% Net Crop Data Extraction
 println("Extracting Data for Country $(ISO).")

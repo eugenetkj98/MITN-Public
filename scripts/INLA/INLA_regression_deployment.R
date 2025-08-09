@@ -11,7 +11,10 @@ install.packages("sf")
 install.packages("lattice")
 install.packages("grideExtra")
 install.packages("tomledit")
-install.packages("INLA", repos=c(getOption("repos"), INLA="https://inla.r-inla-download.org/R/stable"), dep=TRUE)
+install.packages("remotes")
+library(remotes)
+remotes::install_version("INLA", version = "24.12.11",
+repos = c(getOption("repos"), INLA = "https://inla.r-inla-download.org/R/stable"), dep = TRUE)
 
 # Load all packages
 library(INLA)
@@ -31,13 +34,22 @@ source("/mnt/efs/userdata/etan/map-itn/scripts/INLA/transforms.R")
 # Random fix
 sf_use_s2(FALSE)
 
+# Get year bounds
+start_year = model_config$YEAR_NAT_START
+end_year = model_config$YEAR_NAT_END
+n_years = (end_year-start_year+1)
+
 # load INLA regression data
 inla_data <- read.csv('/mnt/efs/userdata/etan/mitn_outputs/outputs/data_prep/INLA/inla_dataset_reduced.csv')
 # inla_data <- inla_data[seq(1,dim(inla_data)[1],2),]
 # inla_data <- inla_data[which(inla_data$access > 0),]
 inla_data <- inla_data[which(inla_data$npc > 0),]
-inla_data$yearidx <- (inla_data$monthidx %/% 12)+1#*12
-inla_data$yearidx
+inla_data$yearidx <- ((inla_data$monthidx-1) %/% 12)+1#*12
+
+# Need to replicate most recent year and append to allow INLA to extrapolate to final year
+latest_data <- inla_data[which(inla_data$yearidx == max(inla_data$yearidx)),]
+latest_data$yearidx <- n_years
+inla_data <- rbind(inla_data, latest_data)
 
 # load Africa shapefile
 global_shp <- read_sf("/mnt/s3/master_geometries/Admin_Units/Global/MAP/2023/MG_5K/admin2023_0_MG_5K.shp")
@@ -61,12 +73,8 @@ africa_spde <- inla.spde2.matern(mesh = africa_mesh)
 
 plot(africa_mesh)
 
-# Construct temporal parts of model
-start_year = model_config$YEAR_NAT_START
-end_year = model_config$YEAR_NAT_END
-n_years = (end_year-start_year + 1)
 # generate temporal mesh
-temporal_mesh_annual <- inla.mesh.1d(seq(1,n_years+1,by=2),interval=c(1, n_years+1),degree=2)
+temporal_mesh_annual <- inla.mesh.1d(seq(1,n_years+1,by=1),interval=c(1, n_years+1),degree=2)
 
 # Make projection matrices
 A_proj_annual <- inla.spde.make.A(mesh = africa_spde, loc = coords,
@@ -146,8 +154,8 @@ m1 <- inla(res_dep_gap ~  -1 + #Intercept +
              annual_13 +
              annual_14 +
              annual_15 +
-             f(field, model = spde, group = field.group, 
-               control.group = list(model = 'ar1') ),
+             f(field, model = spde, group = field.group,
+               control.group = list(model = 'ar1')),
            data = inla.stack.data(africa_stack_annual, spde = africa_spde),
            family = "gaussian",
            control.predictor = list(A = inla.stack.A(africa_stack_annual), compute = TRUE),

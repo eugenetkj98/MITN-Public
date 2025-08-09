@@ -11,7 +11,10 @@ install.packages("sf")
 install.packages("lattice")
 install.packages("grideExtra")
 install.packages("tomledit")
-install.packages("INLA", repos=c(getOption("repos"), INLA="https://inla.r-inla-download.org/R/stable"), dep=TRUE)
+install.packages("remotes")
+library(remotes)
+remotes::install_version("INLA", version = "24.12.11",
+repos = c(getOption("repos"), INLA = "https://inla.r-inla-download.org/R/stable"), dep = TRUE)
 
 # Load all packages
 library(INLA)
@@ -250,7 +253,7 @@ start_year <- model_config$YEAR_NAT_START
   z_samples <- inv_gap_emplogit(inv_ihs(pred_samples, access_theta))
   
   # Calculate the average and standard deviation raster
-  z_mean <- pred_mean
+  z_mean <- apply(z_samples, c(1), mean)
   
   ###########################################
   # Save output raster

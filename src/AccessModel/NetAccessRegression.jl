@@ -31,67 +31,6 @@ chain_output_dir = OUTPUT_REGRESSIONS_DIR*"access/"
 # %% Function to perform model fit for Net Crop on survey data
 ########################################
 
-# """
-#     bayes_access(input_data_dict::Dict)
-# Need to write documentation
-# """
-# function bayes_access(ISO::String, extractions_dict,
-#                         net_access_input_dict;
-#                         n_max = 20, h_max = 10,
-#                         iterations = 10000, n_params = 2000,
-#                         save_output = true, chain_output_dir = chain_output_dir)
-
-#     # Extract data from dicts
-#     YEAR_START = extractions_dict["YEAR_START"]
-#     YEAR_END = extractions_dict["YEAR_END"]
-
-#     POPULATION_MONTHLY = net_access_input_dict["POPULATION_MONTHLY"]
-#     ρ_h_aggregated = net_access_input_dict["ρ_h_aggregated"]
-#     μ_h_aggregated = net_access_input_dict["μ_h_aggregated"]
-#     γ_aggregated = net_access_input_dict["γ_aggregated"]
-
-#     H_aggregated = net_access_input_dict["H_aggregated"]
-#     p_h_aggregated = net_access_input_dict["p_h_aggregated"]
-
-#     ### Part 1: Regressing for ρ_h                         
-#     # Calculate empirical logit of ρ_h to prep for regression as per model
-#     emplogit_ρ_h_aggregated = emplogit.(ρ_h_aggregated)
-
-#     # Bayesian inference for model parameters with Turing.jl
-#     model_ρ = model_prop_h_nonets(emplogit_ρ_h_aggregated, γ_aggregated)
-#     ρ_h_chain = sample(model_ρ, NUTS(), iterations; discard_initial = burn_in)
-
-#     ### Part 2: Regressing for μ_h
-#     model_μ = model_prop_h_meannets(μ_h_aggregated, γ_aggregated)
-#     μ_h_chain = sample(model_μ, NUTS(), iterations; discard_initial = burn_in)
-
-#     ### Part 3: Package results to dict and return as function output
-#     ρ_chain_df = DataFrame(ρ_h_chain[:,1:7,:])[:,3:end]
-#     μ_chain_df = DataFrame(μ_h_chain[:,:,:])[:,3:end]
-
-#     netaccess_dict = Dict("ρ_chain_df" => ρ_chain_df,
-#                         "μ_chain_df" => μ_chain_df,
-#                         "ISO" => ISO,
-#                         "YEAR_START" => YEAR_START,
-#                         "YEAR_END" => YEAR_END,
-#                         "POPULATION_MONTHLY" => POPULATION_MONTHLY,
-#                         "H_aggregated" => H_aggregated,
-#                         "p_h_aggregated" => p_h_aggregated)
-
-#     # Save last epoch's chain result in directory
-#     if save_output
-#         # Define filename
-#         chain_output_filepath = chain_output_dir*ISO*"_"*"$(YEAR_START)"*"_"*"$(YEAR_END)"*"_accesschains.jld2"
-    
-#         # Save .jld2 file
-#         save(chain_output_filepath, netaccess_dict)
-
-#         println("File saved at: "*chain_output_filepath)
-#     end
-
-#     return netaccess_dict
-# end
-
 """
     bayes_access(access_survey_globaldata::Dict; iterations = 10000, burn_in = 2000, chain_output_dir = chain_output_di)
 Function to perform MCMC draws of access model parameters `ρ_h` and `μ_h` using empirical survey data. Input variable `access_survey_globaldata` is a `Dict` with the following key values:

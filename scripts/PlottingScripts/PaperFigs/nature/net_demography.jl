@@ -268,7 +268,7 @@ ax = Axis(fig[1,1],
             xticklabelrotation = pi/2,
             yticks = 0:10:100)
 
-n_net_types = length(net_names[ISO_i])
+n_net_types = 5#length(net_names[ISO_i])
 
 legend_elems = Vector{Any}(undef, n_net_types)
 
@@ -286,7 +286,7 @@ for strata_i in 1:n_net_types
 end
 
 Legend(fig[1,2], legend_elems,
-            net_names[ISO_i],
+            ["cITN","LLIN","PBO","G2","ROYAL"],
             "Net Type",
             tellheight = false, tellwidth = true,
             margin = (17,0,5,0),

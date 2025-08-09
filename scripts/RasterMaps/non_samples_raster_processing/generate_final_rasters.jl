@@ -293,7 +293,8 @@ end
         # Construct mean rasters
         #################################
         # Import log model npc rasters
-        logmodel_npc_mean_raster = replace_missing(Raster(inla_dir*"inla_logmodel_npc/NPC_logmodel_$(year)_mean.tif"), missingval = NaN)
+        logmodel_npc_ratio_mean_raster = replace_missing(Raster(inla_dir*"inla_logmodel_npc/NPC_RATIO_logmodel_$(year)_mean.tif"), missingval = NaN)
+        logmodel_npc_residual_mean_raster = replace_missing(Raster(inla_dir*"inla_logmodel_npc/NPC_RESIDUAL_logmodel_$(year)_mean.tif"), missingval = NaN)
 
         # Import pmodel access rasters
         pmodel_access_mean_raster =  replace_missing(Raster(inla_dir*"inla_pmodel_access/ACCESS_pmodel_$(year)_mean.tif"), missingval = NaN)
@@ -306,8 +307,9 @@ end
 
         # Consruct rasters
         println("Calculating mean NPC rasters...")
-        logmodel_npc_ratio_mean_raster = exp.(logmodel_npc_mean_raster)
-        npc_map_mean_raster = logmodel_npc_ratio_mean_raster.* npc_snf_mean_raster
+        # logmodel_npc_ratio_mean_raster = exp.(logmodel_npc_mean_raster)
+        # npc_map_mean_raster = logmodel_npc_ratio_mean_raster.* npc_snf_mean_raster
+        npc_map_mean_raster = logmodel_npc_ratio_mean_raster.* npc_snf_mean_raster .+ logmodel_npc_residual_mean_raster
         println("Calculating mean Access rasters...")
         access_map_mean_raster = inv_p_transform.(pmodel_access_mean_raster, access_snf_mean_raster, n=2)
         println("Calculating mean Use rasters...")

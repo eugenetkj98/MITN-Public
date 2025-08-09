@@ -2,7 +2,8 @@
 Author: Eugene Tan
 Date Created: 6/4/2025
 Last Updated: 22/4/2025
-Calculate prediction error of the entire summarised survey dataset w.r.t to the final regressed rasters
+Calculate prediction error of the entire summarised survey dataset w.r.t to the final regressed rasters.
+Also extracts data from the BV dataset for comparison.
 """
 
 # %% Prep environment and subdirectories

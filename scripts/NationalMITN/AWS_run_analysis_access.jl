@@ -2,7 +2,7 @@
 Author: Eugene Tan
 Date Created: 2/4/2025
 Last Updated: 2/4/2025
-Script to run regression for net access
+Script to run regression for net access model in SNF
 """
 
 # %% Prep environment and subdirectories
@@ -11,6 +11,9 @@ include(pwd()*"/scripts/init_env.jl")
 # %% Import filenames and directories from TOML file
 include(pwd()*"/scripts/read_toml.jl")
 
+###########################################
+# %% Import packages
+###########################################
 # %% Import Public Packages
 using JLD2
 using CSV
@@ -26,6 +29,10 @@ using NetAccessRegression
 using LinearAlgebra
 using StatsBase
 
+###########################################
+# %% Define Directories, paths and parameters
+###########################################
+
 # %% Get ISO List
 ISO_list = ISO_LIST
 exclusion_ISOs = EXCLUSION_ISOS
@@ -35,7 +42,9 @@ filt_ISOs = setdiff(ISO_list, exclusion_ISOs)
 YEAR_START = YEAR_NAT_START
 YEAR_END = YEAR_NAT_END
 
-# %%
+###########################################
+# %% Net Access data extraction
+###########################################
 for i in 1:length(filt_ISOs)
     # Select ISO
     ISO = filt_ISOs[i]
@@ -113,10 +122,13 @@ mkpath(OUTPUT_EXTRACTIONS_DIR*"access/reg_data/aggregated_inputs/")
 jldsave(OUTPUT_EXTRACTIONS_DIR*"access/reg_data/aggregated_inputs/netaccess_allsurvey_inputs.jld2";
             p_h_globaldata, ρ_h_globaldata, μ_h_globaldata, γ_globaldata)
 
-# %% MCMC Regression for Net Access model
+###########################################
+# %% Net access model regression
+###########################################
+# Load data
 access_survey_globaldata = load(OUTPUT_EXTRACTIONS_DIR*"access/reg_data/aggregated_inputs/netaccess_allsurvey_inputs.jld2")
 
-# %%
+# Perform regression
 bayes_access(access_survey_globaldata)
 println("Net access regression complete.")
 

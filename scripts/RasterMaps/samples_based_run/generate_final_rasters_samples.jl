@@ -53,7 +53,7 @@ survey_data_filename = INLA_REDUCED_DATAPREP_FILENAME
 n_samples = INLA_UNCERTAINTY_N_SAMPLES
 
 # Get base raster with required resolution to build from
-raster_base = replace_missing(Raster(OUTPUT_RASTERS_DIR*"inla_logmodel_npc/NPC_logmodel_$(2000)_sample_1.tif"), missingval = -NaN)
+raster_base = replace_missing(Raster(OUTPUT_RASTERS_DIR*"inla_logmodel_npc/NPC_RATIO_logmodel_$(2000)_sample_1.tif"), missingval = -NaN)
 
 # Input and output directory for rasters
 inla_dir = OUTPUT_RASTERS_DIR
@@ -95,6 +95,8 @@ mean_netage_data = CSV.read(OUTPUT_DATAPREP_DIR*"snf_mean_netage.csv", DataFrame
 
 
 monthidx = monthyear_to_monthidx(month, year, YEAR_START = YEAR_NAT_START)
+
+
 
 println("Constructing stock and flow rasters year $(year), month $(month)")
 
@@ -344,7 +346,8 @@ end
             # Construct mean rasters
             #################################
             # Import log model npc rasters
-            logmodel_npc_sample_raster = replace_missing(Raster(inla_dir*"inla_logmodel_npc/NPC_logmodel_$(year)_sample_$(sample_i).tif"), missingval = NaN)
+            logmodel_npc_ratio_sample_raster = replace_missing(Raster(inla_dir*"inla_logmodel_npc/NPC_RATIO_logmodel_$(year)_sample_$(sample_i).tif"), missingval = NaN)
+            logmodel_npc_residual_sample_raster = replace_missing(Raster(inla_dir*"inla_logmodel_npc/NPC_RESIDUAL_logmodel_$(year)_sample_$(sample_i).tif"), missingval = NaN)
 
             # Import pmodel access rasters
             # pmodel_access_sample_raster =  replace_missing(Raster(inla_dir*"inla_pmodel_access/ACCESS_pmodel_$(year)_sample_$(sample_i).tif"), missingval = NaN)
@@ -355,8 +358,8 @@ end
 
             # Consruct rasters
             println("Calculating sample NPC raster...")
-            logmodel_npc_ratio_sample_raster = exp.(logmodel_npc_sample_raster)
-            npc_map_sample_raster = logmodel_npc_ratio_sample_raster.* npc_snf_sample_raster
+            # logmodel_npc_ratio_sample_raster = exp.(logmodel_npc_sample_raster)
+            npc_map_sample_raster = max.(logmodel_npc_ratio_sample_raster.* npc_snf_sample_raster .+ logmodel_npc_residual_sample_raster,0) # Truncate at npc = 0
             
             # access_map_sample_raster = inv_p_transform.(pmodel_access_sample_raster, access_snf_sample_raster, n=2)
             println("Calculating sample Deployment raster...")

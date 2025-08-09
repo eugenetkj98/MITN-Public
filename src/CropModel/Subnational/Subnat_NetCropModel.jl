@@ -33,8 +33,9 @@ using Turing
                                     monthly_p = nothing,
                                     MISSING_NETS_SCALE = MISSING_NETS_SCALE)
 
-Function of statistical evolution model for net crop component of the stock and flow model. This function uses the `@model` macro to pass the function into the Sampler construction in Turing.jl. The variable `monthly_p` contains real values for the relative proportions of each annual distribution quota that is distributed in each given month.
-NEED TO WRITE PROPER DOCUMENTATION!!
+Function of statistical evolution model for net crop component of the stock and flow model. 
+This function uses the `@model` macro to pass the function into the Sampler construction in Turing.jl. 
+The variable `monthly_p` contains real values for the relative proportions of each annual distribution quota that is distributed in each given month.
 """
 MISSING_NETS_SCALE = 1e6
 

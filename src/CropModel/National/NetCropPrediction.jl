@@ -14,12 +14,24 @@ using DateConversions
 using NetLoss
 using NetCropModel
 
+
+########################################
 # %% Prediction using the full National MITN model with stock piling and redistributions
-function mitn_national_predict(YEARS_ANNUAL,
+########################################
+"""
+    mitn_national_predict(YEARS_ANNUAL,
                                 DELIVERIES_ANNUAL, DISTRIBUTION_ANNUAL,
                                 ϕ_est, τ_net_est, κ_net_est, 
                                 α_LLIN_est;
                                 monthly_p = nothing)
+
+Forward posterior prediction of net crop using the MITN model, given parameter values for ϕ, τ, κ, α etc.
+"""
+function mitn_national_predict(YEARS_ANNUAL,
+                                DELIVERIES_ANNUAL, DISTRIBUTION_ANNUAL,
+                                ϕ_est, τ_net_est, κ_net_est, 
+                                α_LLIN_est;
+                                monthly_p = nothing, return_distributions = false)
 
     # Get Number of net types from parameter MCMC chain
     n_net_types = size(DISTRIBUTION_ANNUAL)[2]
@@ -157,10 +169,24 @@ function mitn_national_predict(YEARS_ANNUAL,
 
     Γ_MONTHLY_BYNET = sum(A_BYNET, dims = 2)[:,1,:]
 
-    return Γ_MONTHLY_BYNET, A_BYNET
+    if return_distributions
+        return Γ_MONTHLY_BYNET, A_BYNET, DISTRIBUTION_MONTHLY_BYNET
+    else
+        return Γ_MONTHLY_BYNET, A_BYNET
+    end
 end
 
+########################################
 # %% Prediction a simplified National MITN model with no stockpiling or distributions
+########################################
+"""
+    mitn_national_noredist_predict(YEARS_ANNUAL,
+                                DISTRIBUTION_ANNUAL,
+                                τ_net_est, κ_net_est;
+                                monthly_p = monthly_p)
+
+Predicts the estimated netcrop given some distribution time series. Does not use the redistribution parameter ϕ, or the imputed missing distribution values.
+"""
 # i.e. only use the raw annual distribution numbers as the driving signal
 function mitn_national_noredist_predict(YEARS_ANNUAL,
                                 DISTRIBUTION_ANNUAL,

@@ -11,7 +11,10 @@ install.packages("sf")
 install.packages("lattice")
 install.packages("grideExtra")
 install.packages("tomledit")
-install.packages("INLA", repos=c(getOption("repos"), INLA="https://inla.r-inla-download.org/R/stable"), dep=TRUE)
+install.packages("remotes")
+library(remotes)
+remotes::install_version("INLA", version = "24.12.11",
+repos = c(getOption("repos"), INLA = "https://inla.r-inla-download.org/R/stable"), dep = TRUE)
 
 # Load all packages
 library(INLA)
@@ -31,12 +34,22 @@ model_config = from_toml(read_toml("/mnt/efs/userdata/etan/map-itn/scripts/awsba
 # Random fix
 sf_use_s2(FALSE)
 
+# Construct temporal parts of model
+start_year = model_config$YEAR_NAT_START
+end_year = model_config$YEAR_NAT_END
+n_years = (end_year-start_year + 1)
+n_months = n_years*12
+
 # load INLA regression data
 inla_data <- read.csv('/mnt/efs/userdata/etan/mitn_outputs/outputs/data_prep/INLA/inla_dataset_reduced.csv')
 # inla_data <- inla_data[seq(1,dim(inla_data)[1],2),]
 inla_data <- inla_data[which(inla_data$access > 0),]
-inla_data$yearidx <- (inla_data$monthidx %/% 12)+1#*12
-inla_data$yearidx
+
+# Need to replicate most recent year and append to allow INLA to extrapolate to final year
+latest_data <- inla_data[which(inla_data$monthidx == max(inla_data$monthidx)),]
+latest_data$monthidx <- n_months
+inla_data <- rbind(inla_data, latest_data)
+inla_data$yearidx <- ((inla_data$monthidx-1) %/% 12)+1#*12
 
 # load Africa shapefile
 global_shp <- read_sf("/mnt/s3/master_geometries/Admin_Units/Global/MAP/2023/MG_5K/admin2023_0_MG_5K.shp")
@@ -61,11 +74,7 @@ africa_spde <- inla.spde2.matern(mesh = africa_mesh)
 plot(africa_mesh)
 
 
-# Construct temporal parts of model
-start_year = model_config$YEAR_NAT_START
-end_year = model_config$YEAR_NAT_END
-n_years = (end_year-start_year + 1)
-n_months = n_years*12
+
 
 
 # generate temporal mesh

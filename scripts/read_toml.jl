@@ -8,7 +8,8 @@ Script to parse TOML config file into nice Julia formatting that is consistent w
 using TOML
 
 # %% Load TOML file
-dir_config = TOML.parsefile("scripts/awsbatch/configs/dir_config.toml")
+# dir_config = TOML.parsefile("scripts/awsbatch/configs/dir_config.toml")
+dir_config = TOML.parsefile("scripts/awsbatch/configs/workspace_dir_config.toml")
 model_config = TOML.parsefile("scripts/awsbatch/configs/model_config.toml")
 
 ########################################
@@ -110,6 +111,7 @@ POPULATION_DATA_FILENAME = dir_config["filenames"]["POPULATION_DATA_FILENAME"];
 ADMIN1_AREAID_LEGEND_FILENAME = dir_config["filenames"]["ADMIN1_AREAID_LEGEND_FILENAME"];
 SUBNAT_POPULATION_FILENAME = dir_config["filenames"]["SUBNAT_POPULATION_FILENAME"];
 SUBNAT_DISTRIBUTION_DATA_FILENAME = dir_config["filenames"]["SUBNAT_DISTRIBUTION_DATA_FILENAME"];
+SUBNAT_MULTITYPE_DISTRIBUTION_DATA_FILENAME = dir_config["filenames"]["SUBNAT_MULTITYPE_DISTRIBUTION_DATA_FILENAME"];
 
 # Data Prep Outputs
 HOUSEHOLD_SURVEY_DATA_FILENAME = dir_config["filenames"]["HOUSEHOLD_SURVEY_DATA_FILENAME"];

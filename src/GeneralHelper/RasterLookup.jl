@@ -2,7 +2,7 @@
 Author: Eugene Tan
 Date Created: 14/4/2024
 Last Updated: 14/4/2024
-Function to lookup and linearly interpolate value from a raster at a given latitude and longitude
+Function to lookup and linearly interpolate value from a raster at a given latitude and longitude.
 """
 
 module RasterLookup

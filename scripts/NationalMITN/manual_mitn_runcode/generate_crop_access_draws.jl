@@ -5,7 +5,6 @@ Last Updated: 26/8/2024
 Code to generate the mean net crop posterior estimate. Saves as a CSV file
 """
 
-
 # %% Prep environment and subdirectories
 include(pwd()*"/scripts/init_env.jl")
 

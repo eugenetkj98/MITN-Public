@@ -2,7 +2,7 @@
 Author: Eugene Tan
 Date Created: 19/5/2024
 Last Updated: 19/5/2024
-MITN model for subnational
+AWS version of the subnational MITN regression code to be run using batch.
 """
 # %% Prep environment and subdirectories
 include(pwd()*"/scripts/init_env.jl")

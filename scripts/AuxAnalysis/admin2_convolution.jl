@@ -30,7 +30,7 @@ using NetAccessPrediction
 using Convolutions
 
 # %% Load Admin2 Distribution Dataset
-admin2_filepath = "/mnt/efs/model_dev/meerkat/data/monthly_volume_25062025.csv"
+admin2_filepath = "/mnt/efs/model_dev/meerkat/data/gfatm_request_monthly_volume_02072025.csv"
 admin2_data = CSV.read(admin2_filepath, DataFrame)
 
 # %% Define save file name
@@ -48,7 +48,6 @@ ISO_list = String.(CSV.read(RAW_DATASET_DIR*ISO_LIST_FILENAME, DataFrame)[:,1])
 exclusion_ISOs = EXCLUSION_ISOS
 filt_ISOs = setdiff(ISO_list, exclusion_ISOs)
 
-setdiff(data_ISOs, filt_ISOs)
 # Find overlap of ISOs bewteen input dataset and our library
 ISOs = intersect(data_ISOs, filt_ISOs)
 
@@ -197,3 +196,4 @@ mkpath(save_dir)
 # Write file
 CSV.write(save_dir*save_filename, master_df)
 println("Saved time series admin2 predictions at: $(save_dir*save_filename)")
+

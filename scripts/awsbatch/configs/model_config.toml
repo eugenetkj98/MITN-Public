@@ -55,7 +55,7 @@ EXCLUSION_CITN_ISOS = ["MRT"] # Countries to lump cITN and LLINs together when d
 # Regression Time Period
 YEAR_REF_START = 1950 # Earliest possible year for referencing survey extracts (PLEASE DO NOT TOUCH!)
 YEAR_NAT_START = 2000 # Start of National SNF Regression
-YEAR_NAT_END = 2023 # End of National SNF Regression (inclusive)
+YEAR_NAT_END = 2024 # End of National SNF Regression (inclusive)
 YEAR_SUBNAT_TRANS = 2010 # Year to transition into subnat regression form national regression
 
 # Survey Standard Error Inflation

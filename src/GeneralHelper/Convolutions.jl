@@ -2,7 +2,7 @@
 Author: Eugene Tan
 Date Created: 6/5/2025
 Last Updated: 6/5/2025
-Numerical implementation of convolutions between two time series
+Numerical implementation of time series convolution. Used to do quick and dirty predictions of net crop.
 """
 
 module Convolutions

@@ -9,9 +9,15 @@ module NetCropRegression
 export bayes_GD
 export normalised_monthly_weights
 
-# %% Import filenames and directories from TOML file
+########################################
+# %% Import filenames and directories from config TOML file
+########################################
 include(pwd()*"/scripts/read_toml.jl")
 
+
+########################################
+# %% Load Required Packages
+########################################
 using ProgressBars
 using LinearAlgebra
 using Distributions
@@ -24,7 +30,9 @@ using Missings
 using NetCropModel
 using NetLoss
 
-# %% Default parameters for regression
+########################################
+# %% Define defaul parameters for regression from config TOML file.
+########################################
 # Bayesian MCMC hyperparameters
 iterations = NAT_CROP_MCMC_ITERATIONS; # Number of MCMC iterations
 n_chains = min(NAT_CROP_N_CHAINS, Threads.nthreads()); # Number of chains
@@ -48,7 +56,6 @@ chain_output_dir = OUTPUT_REGRESSIONS_DIR*"crop/"
 ########################################
 # %% Helper function to normalise monthly distribution weights
 ########################################
-
 """
     normalised_monthly_weights(monthly_p)
 This function just normalises the monthly_p weights to represent a proportion out of 1, of the annual allocated distributions, that are distributed in a given month.
@@ -66,7 +73,12 @@ end
 ########################################
 # %% Helper function to calculate DIC
 ########################################
+"""
+    calc_deviance(Y, Y_STD, θ_vals)
 
+Calculate the estimated deviance given a collection of observations and their associated uncertainty.
+- Y_STD: the mean 
+"""
 function calc_deviance(Y, Y_STD, θ_vals)#, σ)
     D_i = missings(Float64, length(Y))
     for i in 1:length(Y)
@@ -83,6 +95,10 @@ function calc_deviance(Y, Y_STD, θ_vals)#, σ)
     return D
 end
 
+"""
+    calc_deviance(Y, Y_STD, θ_vals)
+Wrappe
+"""
 function DIC_netcrop(YEARS_ANNUAL, MONTHS_MONTHLY,
                         DELIVERIES_ANNUAL, DISTRIBUTION_ANNUAL, 
                         NET_CROP_MONTHLY, NET_CROP_STD_MONTHLY,

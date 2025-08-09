@@ -10,6 +10,10 @@ include(pwd()*"/scripts/init_env.jl")
 # %% Import filenames and directories from TOML file
 include(pwd()*"/scripts/read_toml.jl")
 
+###########################################
+# %% Import Packages
+###########################################
+
 # %% Import Public Packages
 using JLD2
 using CSV
@@ -29,6 +33,9 @@ using LinearAlgebra
 using StatsBase
 using ProgressBars
 
+###########################################
+# %% Define Directories, paths and parameters
+###########################################
 # %% Output directory
 output_dir = OUTPUT_DRAWS_DIR*"national/crop_access/"
 
@@ -46,6 +53,9 @@ YEAR_END = YEAR_NAT_END
 # %% Get ISO to analyse from argument input
 ISO = ARGS[1]
 
+###########################################
+# %% Perform Draws and save outputs
+###########################################
 if ISO ∈ exclusion_ISOs
     println("$(ISO) is on exclusion list. Skipping draws.")
     flush(stdout)
@@ -53,7 +63,6 @@ else
     println("Generating draws of national crop and access for $(ISO)...")
     # Import Data
     input_dict = load(OUTPUT_EXTRACTIONS_DIR*"crop/$(YEAR_START)_$(YEAR_END)/$(ISO)_$(YEAR_START)_$(YEAR_END)_cropextract.jld2")
-    # regression_dict = load("outputs/regressions/crop/Compact Regressions/$(YEAR_START)_$(YEAR_END)/$(ISO)_$(YEAR_START)_$(YEAR_END)_cropchains.jld2")
     regression_dict = load(OUTPUT_REGRESSIONS_DIR*"crop/$(YEAR_START)_$(YEAR_END)/$(ISO)_$(YEAR_START)_$(YEAR_END)_cropchains.jld2")
     net_access_input_dict = load(OUTPUT_EXTRACTIONS_DIR*"access/pred_data/$(YEAR_START)_$(YEAR_END)/$(ISO)_$(YEAR_START)_$(YEAR_END)_accessextract.jld2")
     net_access_chain = load(OUTPUT_REGRESSIONS_DIR*"access/netaccesschains.jld2")

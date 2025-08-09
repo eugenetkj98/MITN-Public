@@ -3,7 +3,7 @@ Author: Eugene Tan
 Date Created: 23/4/2025
 Last Updated: 23/4/2025
 Use raster level estimates to reconstruct survey aggregates that would have been used to
-calibrate SNF model
+calibrate SNF model. Used for calculate errors and validation.
 """
 
 # %% Prep environment and subdirectories

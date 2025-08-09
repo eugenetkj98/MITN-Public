@@ -34,7 +34,7 @@ memsize = 16384
 
 [step9]
 ncpus = 4
-memsize = 16384
+memsize = 65536
 
 [step9b]
 ncpus = 8
@@ -58,12 +58,12 @@ memsize = 32768
 
 
 
-[step18] # Should Need about 22GB Memory for computation.
+[step18]
 ncpus = 1
 memsize = 32762
 
 [step19]
-ncpus = 1 # Should need about 4-10GB Memory for compuration
+ncpus = 1 
 memsize = 16384
 
 [step19b]
@@ -71,7 +71,7 @@ ncpus = 1
 memsize = 4096
 
 [step20]
-ncpus = 1 # Should need about 6-8GB Memory
+ncpus = 1 
 memsize = 16384
 
 [step20b]

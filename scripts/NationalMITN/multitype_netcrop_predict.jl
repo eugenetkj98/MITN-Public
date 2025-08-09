@@ -11,6 +11,9 @@ include(pwd()*"/scripts/init_env.jl")
 # %% Prep environment and subdirectories
 include(pwd()*"/scripts/read_toml.jl")
 
+###########################################
+# %% Load packages
+###########################################
 # %% Load packages
 using JLD2
 using CSV
@@ -27,6 +30,9 @@ using NetCropModel
 using NetLoss
 using NetCropPrediction
 
+###########################################
+# %% Define Directories, paths and parameters
+###########################################
 # %% Get ISO List
 ISO_list = String.(CSV.read(RAW_DATASET_DIR*ISO_LIST_FILENAME, DataFrame)[:,1])
 exclusion_ISOs = EXCLUSION_ISOS
@@ -35,7 +41,9 @@ filt_ISOs = setdiff(ISO_list, exclusion_ISOs)
 # %% Define countries where cITNs are forced to have the same decay curve as LLINs due to lack of surveys pre 2010
 excl_citn_ISOs = EXCLUSION_CITN_ISOS
 
-# %% LOOP TO GENERATE PREDICTIONS
+###########################################
+# %% Generate multitype predictions
+###########################################
 for ISO in filt_ISOs
     ########################################################
     # %% Define required directories and prediction settings

@@ -106,7 +106,7 @@ POPULATION_DATA_FILENAME = "ihme_populations.csv"
 ## Subnational
 ADMIN1_AREAID_LEGEND_FILENAME = "admin2023_1_MG_5K_config.csv"
 SUBNAT_POPULATION_FILENAME = "map_admin1_zonal_stats_pops.csv"
-SUBNAT_DISTRIBUTION_DATA_FILENAME = "net_distributions_admin1_dummy_combined_amp.csv"
+SUBNAT_DISTRIBUTION_DATA_FILENAME = "net_distributions_admin1_dummy_combined_amp_multitype.csv"
 
 # Data Prep Outputs
 HOUSEHOLD_SURVEY_DATA_FILENAME = "itn_hh_surveydata_complete_dataeng.csv"

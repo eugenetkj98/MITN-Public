@@ -2,7 +2,7 @@
 Author: Eugene Tan
 Date Created: 4/11/2024
 Last Updated: 12/11/2024
-Generate subnational crop and access draws after training subnational crop model
+AWS version of the subnational MITN posterior draws code to be run using batch.
 """
 
 # %% Prep environment and subdirectories
@@ -80,7 +80,7 @@ else
     # Reg filename
     subnat_reg_filename = "$(ISO)_SUBNAT_NETCROP_$(REG_YEAR_START_NAT)_$(REG_YEAR_START)_$(REG_YEAR_END)_regression.jld2"
     # National draws filename
-    nat_netcrop_post_filename = "$(ISO)_2000_2023_post_crop_access.jld2"
+    nat_netcrop_post_filename = "$(ISO)_$(REG_YEAR_START_NAT)_$(REG_YEAR_END)_post_crop_access.jld2"
     # Net Distribution data
     distributions_filename = SUBNAT_DISTRIBUTION_DATA_FILENAME
     # Net age demography posterior
@@ -102,6 +102,7 @@ else
     nat_netcrop_post_data = JLD2.load(nat_netcrop_post_dir*nat_netcrop_post_filename)
     
     subnat_reg_data = JLD2.load(subnat_reg_dir*subnat_reg_filename)
+
     # Load distribution data
     master_distributions = CSV.read(dataset_dir*distributions_filename, DataFrame)
     # Load posterior net demography data
@@ -244,11 +245,11 @@ else
         sampled_idxs = rand(1:size(τ_chain)[1], n_samples)
 
         # Define storage variables for sample draws
-        COMBINED_A_BYNET_samples = zeros(n_samples, size(FULL_A_BYNET)...)
+        COMBINED_A_BYNET_samples = zeros(Float32, n_samples, size(FULL_A_BYNET)...)
         Γ_MONTHLY_BYNET_samples = zeros(n_samples, size(FULL_A_BYNET)[1], n_net_types)
         NPC_MONTHLY_BYNET_samples = zeros(n_samples, size(FULL_A_BYNET)[1], n_net_types)
 
-        COMBINED_A_TOTAL_samples = zeros(n_samples, size(FULL_A_BYNET)[1:2]...)
+        COMBINED_A_TOTAL_samples = zeros(Float32, n_samples, size(FULL_A_BYNET)[1:2]...)
         Γ_MONTHLY_TOTAL_samples = zeros(n_samples, size(FULL_A_BYNET)[1])
         NPC_MONTHLY_TOTAL_samples = zeros(n_samples, size(FULL_A_BYNET)[1])
 
@@ -310,13 +311,15 @@ else
             NPC_MONTHLY_TOTAL = Γ_MONTHLY_TOTAL./FULL_POPULATION_MONTHLY
             Plots.plot(NPC_MONTHLY_TOTAL)
             # Store sample in storage variable
-            COMBINED_A_BYNET_samples[i,:,:,:] = COMBINED_A_BYNET
+            COMBINED_A_BYNET_samples[i,:,:,:] = Float32.(COMBINED_A_BYNET)
             Γ_MONTHLY_BYNET_samples[i,:,:] = Γ_MONTHLY_BYNET
             NPC_MONTHLY_BYNET_samples[i,:,:] = NPC_MONTHLY_BYNET
-            COMBINED_A_TOTAL_samples[i,:,:] = COMBINED_A_TOTAL
+            COMBINED_A_TOTAL_samples[i,:,:] = Float32.(COMBINED_A_TOTAL)
             Γ_MONTHLY_TOTAL_samples[i,:] = Γ_MONTHLY_TOTAL
             NPC_MONTHLY_TOTAL_samples[i,:] = NPC_MONTHLY_TOTAL
         end
+
+
 
         # %% Sample posterior access, give subnational NPC draws
         λ_ACCESS_samples = sample_net_access(ρ_chain_df, μ_chain_df, p_h,
@@ -329,11 +332,11 @@ else
         COMBINED_A_TOTAL_mean = mean(COMBINED_A_TOTAL_samples,dims = 1)[1,:,:]
 
         admin1_output_full = Dict(   "area_id" => area_id,
-                                "COMBINED_A_BYNET_samples" => Float16.(COMBINED_A_BYNET_samples),
+                                "COMBINED_A_BYNET_samples" => COMBINED_A_BYNET_samples,
                                 "COMBINED_A_BYNET_mean" => COMBINED_A_BYNET_mean,
                                 "Γ_MONTHLY_BYNET_samples" => Γ_MONTHLY_BYNET_samples,
                                 "NPC_MONTHLY_BYNET_samples" => NPC_MONTHLY_BYNET_samples,
-                                "COMBINED_A_TOTAL_samples" => Float16.(COMBINED_A_TOTAL_samples),
+                                "COMBINED_A_TOTAL_samples" => COMBINED_A_TOTAL_samples,
                                 "COMBINED_A_TOTAL_mean" => COMBINED_A_TOTAL_mean,
                                 "Γ_MONTHLY_TOTAL_samples" => Γ_MONTHLY_TOTAL_samples,
                                 "NPC_MONTHLY_TOTAL_samples" => NPC_MONTHLY_TOTAL_samples,
@@ -476,13 +479,14 @@ else
 
         # Calculate Adjusted Estimates
         ADJ_COMBINED_A_BYNET_mean = admin1_output["COMBINED_A_BYNET_mean"].*α[admin1_name_i]
-        ADJ_COMBINED_A_BYNET_samples = admin1_output_full["COMBINED_A_BYNET_samples"].*α[admin1_name_i]
+        ADJ_COMBINED_A_BYNET_samples = Float32.(admin1_output_full["COMBINED_A_BYNET_samples"].*α[admin1_name_i])
         ADJ_Γ_MONTHLY_BYNET_samples = admin1_output["Γ_MONTHLY_BYNET_samples"].*α[admin1_name_i]
         ADJ_COMBINED_A_TOTAL_mean = sum(ADJ_COMBINED_A_BYNET_mean, dims = 3)[:,:,1]
-        ADJ_COMBINED_A_TOTAL_samples = zeros(n_samples, size(ADJ_COMBINED_A_TOTAL_mean)...)
+        ADJ_COMBINED_A_TOTAL_samples = zeros(Float32, n_samples, size(ADJ_COMBINED_A_TOTAL_mean)...)
         for sample_i in 1:n_samples
             ADJ_COMBINED_A_TOTAL_samples[sample_i,:,:] = sum(ADJ_COMBINED_A_BYNET_samples[sample_i,:,:,:], dims = 3)[:,:,1]
         end
+        
         ADJ_Γ_MONTHLY_TOTAL_samples = sum(ADJ_Γ_MONTHLY_BYNET_samples, dims = 3)[:,:,1]
         ADJ_NPC_MONTHLY_BYNET_samples = copy(ADJ_Γ_MONTHLY_BYNET_samples)
         for i in 1:n_samples
@@ -491,20 +495,19 @@ else
             end
         end
         ADJ_NPC_MONTHLY_TOTAL_samples = ADJ_Γ_MONTHLY_TOTAL_samples./repeat(SUBNAT_POPULATION_MONTHLY[admin1_name_i,:]', n_samples,1)
-
+        
         # Re-sample Access
-
         FULL_POPULATION_MONTHLY = subnat_reg_data["admin1_outputs"][admin1_name_i]["FULL_POPULATION_MONTHLY"]
         ADJ_λ_ACCESS_samples = sample_net_access(ρ_chain_df, μ_chain_df, p_h,
                                                     FULL_POPULATION_MONTHLY, ADJ_Γ_MONTHLY_TOTAL_samples;
                                                 n_max = 20)
 
         adj_admin1_output_full = Dict(   "area_id" => area_id,
-                                    "ADJ_COMBINED_A_BYNET_samples" => Float16.(ADJ_COMBINED_A_BYNET_samples),
+                                    "ADJ_COMBINED_A_BYNET_samples" => Float32.(ADJ_COMBINED_A_BYNET_samples),
                                     "ADJ_COMBINED_A_BYNET_mean" => ADJ_COMBINED_A_BYNET_mean,
                                     "ADJ_Γ_MONTHLY_BYNET_samples" => ADJ_Γ_MONTHLY_BYNET_samples,
                                     "ADJ_NPC_MONTHLY_BYNET_samples" => ADJ_NPC_MONTHLY_BYNET_samples,
-                                    "ADJ_COMBINED_A_TOTAL_samples" => Float16.(ADJ_COMBINED_A_TOTAL_samples),
+                                    "ADJ_COMBINED_A_TOTAL_samples" => Float32.(ADJ_COMBINED_A_TOTAL_samples),
                                     "ADJ_COMBINED_A_TOTAL_mean" => ADJ_COMBINED_A_TOTAL_mean,
                                     "ADJ_Γ_MONTHLY_TOTAL_samples" => ADJ_Γ_MONTHLY_TOTAL_samples,
                                     "ADJ_NPC_MONTHLY_TOTAL_samples" => ADJ_NPC_MONTHLY_TOTAL_samples,

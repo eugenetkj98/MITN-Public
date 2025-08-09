@@ -18,7 +18,7 @@ using CSV
 using ProgressBars
 
 # %% Maths packages
-using LinearAlgebrafsnf
+using LinearAlgebra
 using StatsBase
 
 # %% General useful functions
@@ -100,6 +100,7 @@ country_utilisation = zeros(length(filt_ISOs), n_months, 3)
 country_efficiency = zeros(length(filt_ISOs), n_months, 3)
 
 
+
 # %% Select ISO
 for ISO_i in 1:length(filt_ISOs)
     ISO = filt_ISOs[ISO_i]
@@ -168,7 +169,7 @@ for ISO_i in ProgressBar(1:length(filt_ISOs))
             yticks = (0:0.2:1),
             ylabelsize = 20
             )
-    xlims!(-0.5,n_months+0.5)
+    xlims!(-6.3*12,n_months+0.5)
     ylims!(-0.02, 1.02)
 
     # Add lines
@@ -238,8 +239,8 @@ subplot_lookup = Dict(   "MRT" => (1,2,"Mauritania"),
                         "GHA" => (3,3,"Ghana"),
                         "BFA" => (3,4,"Burkina Faso"),
                         "BEN" => (3,5,"Benin"),
-                        "CAF" => (3,6,"Centr. Afr. Rep."),
-                        "SSD" => (3,7,"South Sudan"),
+                        "CAF" => (3,6,"Ctr. Afr. Rep."),
+                        "SSD" => (3,7,"Sth. Sudan"),
                         "ETH" => (3,8,"Ethiopia"),
                         "SOM" => (3,9,"Somalia"),
                         "LBR" => (4,2,"Liberia"),
@@ -249,14 +250,14 @@ subplot_lookup = Dict(   "MRT" => (1,2,"Mauritania"),
                         "CMR" => (4,6,"Cameroon"),
                         "RWA" => (4,7,"Rwanda"),
                         "KEN" => (4,8,"Kenya"),
-                        "STP" => (5,3,"Sao Tome & Prin."),
+                        "STP" => (5,3,"S. T. & Prin."),
                         "GAB" => (5,4,"Gabon"),
-                        "COG" => (5,5,"Rep. of Congo"),
-                        "GNQ" => (5,6,"Equatorial Guinea"),
+                        "COG" => (5,5,"R. Congo"),
+                        "GNQ" => (5,6,"Eq. Guinea"),
                         "BDI" => (5,7,"Burundi"),
                         "UGA" => (5,8,"Uganda"),
                         "AGO" => (6,4,"Angola"),
-                        "COD" => (6,5,"Dem. Rep. Congo"),
+                        "COD" => (6,5,"D.R.C"),
                         "ZMB" => (6,6,"Zambia"),
                         "TZA" => (6,7,"Tanzania"),
                         "NAM" => (7,3,"Namibia"),
@@ -300,11 +301,11 @@ for ISO_i in 1:length(filt_ISOs)
                 xticklabelrotation = pi/2,
                 # ylabel = "Metric",
                 yticks = (0:0.2:1),
-                ylabelsize = 20)
-    xlims!(ax,-0.5,n_months+0.5)
+                yticklabelsize = 18, xticklabelsize = 18)
+    xlims!(ax,4.3*12,n_months+0.5)
     ylims!(ax,-0.02, 1.02)
 
-    lb = Label(fig[2*(x_idx-1)+1,y_idx], "$(country_name)")
+    lb = Label(fig[2*(x_idx-1)+1,y_idx], "$(country_name)", fontsize = 20, tellwidth = false)
     
     # Hide labels as required
     if !(ISO ∈ show_xlabel_ISOs)
@@ -351,7 +352,7 @@ for ISO_i in ProgressBar(1:length(filt_ISOs), leave = false)
     if ISO_i == 1
         Legend(fig[10, 1],
             [npc_line, access_line, use_line],
-            ["NPC", "Access", "Use"])
+            ["NPC", "Access", "Use"], labelsize = 22)
     end
 end
 
@@ -379,7 +380,7 @@ for ISO_i in ProgressBar(1:length(filt_ISOs))
             yticks = (0:0.2:1),
             ylabelsize = 20
             )
-    xlims!(ax1, -0.5,n_months+0.5)
+    xlims!(ax1, 4.3*12,n_months+0.5)
     ylims!(ax1, -0.02, 1.02)
 
     # Add lines
@@ -441,7 +442,7 @@ for ISO_i in ProgressBar(1:length(filt_ISOs))
             yticks = (0:0.5:4),
             ylabelsize = 20
             )
-    xlims!(ax2, -0.5,n_months+0.5)
+    xlims!(ax2, 4.3*12,n_months+0.5)
     ylims!(ax2, -0.05, 4.05)
 
     # Add lines
@@ -490,7 +491,7 @@ for ISO_i in 1:length(filt_ISOs)
                 # ylabel = "Metric",
                 yticks = (0:0.5:4),
                 ylabelsize = 20)
-    xlims!(ax,-0.5,n_months+0.5)
+    xlims!(ax,-6.3*12,n_months+0.5)
     ylims!(ax,-0.05, 4.05)
 
     lb = Label(fig[2*(x_idx-1)+1,y_idx], "$(country_name)")

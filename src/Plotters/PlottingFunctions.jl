@@ -2,7 +2,8 @@
 Author: Eugene Tan
 Date Created: 13/8/2024
 Last Updated: 26/8/2024
-Need to write documentation
+DEPRECATED IN MOVE TO USE MAKIE PLOTTING BACKEND!
+Old plotting functions for showing various SNF outputs. No longer relevant. 
 """
 module PlottingFunctions
 export regression_timeseries_plot

@@ -51,8 +51,8 @@ filt_ISOs = setdiff(ISO_list, exclusion_ISOs)
 ###################################################
 
 # %% Extract numerical/empirical estiamates of NPC-Access values from household survey data
-NPC_SURVEY_aggregated = []
-ACCESS_SURVEY_aggregated = []
+global NPC_SURVEY_aggregated = []
+global ACCESS_SURVEY_aggregated = []
 
 for ISO_i in 1:length(filt_ISOs)
     # Select ISO
@@ -73,8 +73,8 @@ for ISO_i in 1:length(filt_ISOs)
     # Find all non-missing entries and add store in aggregation variable
     nonzero_idxs = intersect(findall(.!ismissing.(NET_ACCESS_SURVEY_MONTHLY)), findall(.!ismissing.(NPC_SURVEY_MONTHLY)))#findall(.!ismissing.(NET_ACCESS_SURVEY_MONTHLY))
 
-    NPC_SURVEY_aggregated = vcat(NPC_SURVEY_aggregated, Float64.(NPC_SURVEY_MONTHLY[nonzero_idxs]))
-    ACCESS_SURVEY_aggregated = vcat(ACCESS_SURVEY_aggregated, Float64.(NET_ACCESS_SURVEY_MONTHLY[nonzero_idxs]))
+    global NPC_SURVEY_aggregated = vcat(NPC_SURVEY_aggregated, Float64.(NPC_SURVEY_MONTHLY[nonzero_idxs]))
+    global ACCESS_SURVEY_aggregated = vcat(ACCESS_SURVEY_aggregated, Float64.(NET_ACCESS_SURVEY_MONTHLY[nonzero_idxs]))
 end
 
 

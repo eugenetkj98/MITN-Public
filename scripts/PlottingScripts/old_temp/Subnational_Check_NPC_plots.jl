@@ -8,6 +8,9 @@ Script to plot posterior draws for each country and their subnational region to 
 # %% Prep environment and subdirectories
 include(pwd()*"/scripts/init_env.jl")
 
+# %% Import filenames and directories from config file
+include(pwd()*"/scripts/read_toml.jl")
+
 # %% Import Public Packages
 using JLD2
 using CSV
@@ -27,25 +30,25 @@ using DateConversions
 # %% GLOBAL SETTINGS (NOT COUNTRY DEPENDENT)
 ##############################################
 # %% Define paths
-dataset_dir = "datasets/subnational/"
-subnat_reg_dir = "outputs/regressions/subnational/"
-nat_netcrop_post_dir = "outputs/draws/national/crop_access/"
-nat_netage_post_dir = "outputs/draws/national/demography/"
-nat_access_ext_dir = "outputs/extractions/access/pred_data/"
-nat_access_reg_dir = "outputs/regressions/access/"
-save_dir = "output_plots/snf/subnational/"
+subnat_reg_dir = OUTPUT_REGRESSIONS_DIR*"subnational/"
+nat_netcrop_post_dir = OUTPUT_DRAWS_DIR*"national/crop_access/"
+nat_netage_post_dir = OUTPUT_DRAWS_DIR*"national/demography/"
+nat_access_ext_dir = OUTPUT_EXTRACTIONS_DIR*"access/pred_data/"
+nat_access_reg_dir = OUTPUT_REGRESSIONS_DIR*"access/"
+save_dir = OUTPUT_PLOTS_DIR*"snf/subnational/"
+
 
 # %% Year bounds
-REG_YEAR_START_NAT = 2000 # Start year for national model
-REG_YEAR_START = 2010#2011 # Start year for subnational model
-REG_YEAR_END = 2023
+REG_YEAR_START_NAT = YEAR_NAT_START # Start year for national model
+REG_YEAR_START = YEAR_SUBNAT_TRANS#2011 # Start year for subnational model
+REG_YEAR_END = YEAR_NAT_END
 
 ##############################################
 # %% BATCH RUN CODE BLOCK!
 ##############################################
 # %% Get ISO List
-ISO_list = String.(CSV.read("datasets/ISO_list.csv", DataFrame)[:,1])
-exclusion_ISOs = ["CPV","ZAF"]
+ISO_list = String.(CSV.read(RAW_DATASET_DIR*"ISO_list.csv", DataFrame)[:,1])
+exclusion_ISOs = EXCLUSION_ISOS
 filt_ISOs = setdiff(ISO_list, exclusion_ISOs)
 
 
@@ -55,7 +58,8 @@ for ISO_i in ProgressBar(1:length(filt_ISOs))
     # %% Load Regressed Data
     ##############################
     ISO = filt_ISOs[ISO_i]
-    merged_outputs = load("outputs/draws/subnational/"*"$(ISO)_SUBNAT_draws.jld2")["merged_outputs"]
+    
+    merged_outputs = load(OUTPUT_DRAWS_DIR*"subnational/"*"$(ISO)_SUBNAT_draws.jld2")["merged_outputs"]
     n_admin1 = length(merged_outputs)
     n_samples, n_months = size(merged_outputs[1]["NPC_MONTHLY_TOTAL_samples"])[1:2]
 
@@ -65,15 +69,19 @@ for ISO_i in ProgressBar(1:length(filt_ISOs))
     # %% Data filenames
     # Reg filename
     subnat_reg_filename = "$(ISO)_SUBNAT_NETCROP_$(REG_YEAR_START_NAT)_$(REG_YEAR_START)_$(REG_YEAR_END)_regression.jld2"
+
     # National draws filename
     nat_netcrop_post_filename = "$(ISO)_2000_2023_post_crop_access.jld2"
+
     # Net Distribution data
-    distributions_filename = "net_distributions_cITN_adjusted.csv"
+    distributions_filename = MULTITYPE_DISTRIBUTION_DATA_FILENAME#"net_distributions_cITN_adjusted.csv"
+
     # Net age demography posterior
     net_age_filename = "$(ISO)_net_age_demography_samples.csv"
 
+    
     # %% National MCMC chain (for getting monthly disaggregation ratios)
-    nat_cropchain_dir = "outputs/regressions/crop/$(REG_YEAR_START_NAT)_$(REG_YEAR_END)/"
+    nat_cropchain_dir = OUTPUT_REGRESSIONS_DIR*"crop/$(REG_YEAR_START_NAT)_$(REG_YEAR_END)/"
     nat_cropchain_filename = "$(ISO)_$(REG_YEAR_START_NAT)_$(REG_YEAR_END)_cropchains.jld2"
 
     # %% Access Model MCMC Chain
@@ -88,15 +96,18 @@ for ISO_i in ProgressBar(1:length(filt_ISOs))
     nat_netcrop_post_data = JLD2.load(nat_netcrop_post_dir*nat_netcrop_post_filename)
     subnat_reg_data = JLD2.load(subnat_reg_dir*subnat_reg_filename)
     # Load distribution data
-    master_distributions = CSV.read("datasets/"*distributions_filename, DataFrame)
+    master_distributions = CSV.read(RAW_DATASET_DIR*distributions_filename, DataFrame)
+
     # Load posterior net demography data
     master_net_age = CSV.read(nat_netage_post_dir*net_age_filename, DataFrame)
+    
     # Access Model data
     net_access_input_dict = JLD2.load(nat_access_ext_dir*net_access_input_dict_filename)
     net_access_chain = JLD2.load(nat_access_reg_dir*net_access_chain_filename)
     # Household Survey Data
-    nat_npc_monthly = CSV.read("outputs/data_prep/npc_monthly_data.csv", DataFrame)
-    subnat_npc_monthly = CSV.read("outputs/data_prep/subnat_npc_monthly_data.csv", DataFrame)
+    
+    nat_npc_monthly = CSV.read(OUTPUT_DATAPREP_DIR*"npc_monthly_data.csv", DataFrame)
+    subnat_npc_monthly = CSV.read(OUTPUT_DATAPREP_DIR*"subnat_npc_monthly_data.csv", DataFrame)
     # National MCMC Chain (for getting monthly disaggregation ratios)
     nat_cropchain = load(nat_cropchain_dir*nat_cropchain_filename)
 
@@ -109,9 +120,9 @@ for ISO_i in ProgressBar(1:length(filt_ISOs))
     admin1_names = subnat_reg_data["admin1_names"]
 
     # %% Calculate indexing bounds
-    YEAR_START_NAT = 2000 #subnat_reg_data["YEAR_START_NAT"]
-    YEAR_START = 2010 #subnat_reg_data["YEAR_START"]
-    YEAR_END = 2023 #subnat_reg_data["YEAR_END"]
+    YEAR_START_NAT = subnat_reg_data["YEAR_START_NAT"]
+    YEAR_START = subnat_reg_data["YEAR_START"]
+    YEAR_END = subnat_reg_data["YEAR_END"]
 
     YEARS_ANNUAL = Vector(YEAR_START:1:(YEAR_END))
     MONTHS_MONTHLY = Vector(1:(YEAR_END-YEAR_START+1)*12)
@@ -222,16 +233,15 @@ for ISO_i in ProgressBar(1:length(filt_ISOs))
     # %% Plot and Check Adjustments （NET CROP)
     ##############################
     # General plot settings
-    pythonplot()
+    # pythonplot()
     Plots.theme(:vibrant)
     YEARS_ANNUAL = REG_YEAR_START_NAT:REG_YEAR_END
     MONTHS_MONTHLY = 1:length(YEARS_ANNUAL)*12
     YEARS_ANNUAL[1]:YEARS_ANNUAL[end]
 
-    # %% Check National Sums
-
+    # %% Plot National Crop
     fig = plot(xlabel = "Years", ylabel = "Net Crop (mil)", title = "$(ISO) (National)", legend = :topleft,
-    xticks = (MONTHS_MONTHLY[1:12:end],YEARS_ANNUAL[1]:YEARS_ANNUAL[end]), xtickfontrotation = 90)
+    xticks = (MONTHS_MONTHLY[1:12:end],YEARS_ANNUAL[1]:YEARS_ANNUAL[end]), xrotation = 90)
     plot!(fig, NAT_REG_NAT_Γ_MONTHLY./1e6, label = "National Regression", linewidth = 1.5)
     plot!(fig, SUBNAT_REG_NAT_Γ_MONTHLY./1e6, label = "Subnational Regression", linewidth = 1.5)
     scatter!(fig, NAT_NET_CROP_MONTHLY./1e6, label = "National Survey", markercolor = 5, markersize = 4)
@@ -244,18 +254,23 @@ for ISO_i in ProgressBar(1:length(filt_ISOs))
     # %% Plot and Check Adjustments （NPC)
     ##############################
 
-    # # %% Check National Sums
-    # fig = plot(xlabel = "Months", ylabel = "NPC", title = "$(ISO) (National)", legend = :topleft,
-    #         xticks = (MONTHS_MONTHLY[1:12:end],YEARS_ANNUAL[1]:YEARS_ANNUAL[end]), xtickfontrotation = 90)
-    # plot!(fig, NAT_REG_NAT_NPC_MONTHLY, label = "National Regression")
-    # plot!(fig, SUBNAT_REG_NAT_NPC_MONTHLY, label = "Subnational Regression")
+    # %% Plot National NPC
+    fig = plot(xlabel = "Years", ylabel = "NPC (mil)", title = "$(ISO) (National)", legend = :topleft,
+    xticks = (MONTHS_MONTHLY[1:12:end],YEARS_ANNUAL[1]:YEARS_ANNUAL[end]), xrotation = 90)
+    plot!(fig, NAT_REG_NAT_Γ_MONTHLY./NAT_POPULATION_MONTHLY, label = "National Regression", linewidth = 1.5)
+    plot!(fig, SUBNAT_REG_NAT_Γ_MONTHLY./NAT_POPULATION_MONTHLY, label = "Subnational Regression", linewidth = 1.5)
+    scatter!(fig, NAT_NET_CROP_MONTHLY./NAT_POPULATION_MONTHLY, label = "National Survey", markercolor = 5, markersize = 4)
+
+    save_subdir = save_dir*"netcrop_nat_vs_subnat_fits/"
+    mkpath(save_subdir)
+    savefig(fig, save_subdir*"$(ISO)_NAT_SUBNAT_NPC.pdf")
 
     # %% Check Subnational Sums
     admin1_figs_collection = []
 
     for admin1_name_i in 1:n_admin1
         fig = plot(xlabel = "Months", ylabel = "NPC", title = "$(ISO) ($(admin1_names[admin1_name_i]))", legend = false,
-        xticks = (MONTHS_MONTHLY[1:12:end],YEARS_ANNUAL[1]:YEARS_ANNUAL[end]), xtickfontrotation = 90)
+        xticks = (MONTHS_MONTHLY[1:12:end],YEARS_ANNUAL[1]:YEARS_ANNUAL[end]), xrotation = 90)
         plot!(fig, ADJ_SUBNAT_NPC_MONTHLY[admin1_name_i, :], label = "Subnational Regression", linewidth = 1.5)
         scatter!(fig, SUBNAT_NPC_MONTHLY[admin1_name_i,:], label = "Subnational Survey",
                     markerstrokewidth = 0, markercolor = 5)

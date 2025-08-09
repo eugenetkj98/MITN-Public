@@ -11,7 +11,10 @@ install.packages("sf")
 install.packages("lattice")
 install.packages("grideExtra")
 install.packages("tomledit")
-install.packages("INLA", repos=c(getOption("repos"), INLA="https://inla.r-inla-download.org/R/stable"), dep=TRUE)
+install.packages("remotes")
+library(remotes)
+remotes::install_version("INLA", version = "24.12.11",
+repos = c(getOption("repos"), INLA = "https://inla.r-inla-download.org/R/stable"), dep = TRUE)
 
 # Load all packages
 library(INLA)
@@ -26,14 +29,17 @@ library(tomledit)
 source("scripts/INLA/transforms.R")
 
 # Import Models
-load("/mnt/efs/userdata/etan/mitn_outputs/outputs/INLA/model1_npc_complete_logmodel.RData")
+load("/mnt/efs/userdata/etan/mitn_outputs/outputs/INLA/model1_npc_complete_logmodel_ratio.RData")
+load("/mnt/efs/userdata/etan/mitn_outputs/outputs/INLA/model1_npc_complete_logmodel_res.RData")
 
 # Check summary
 summary(m1)
+summary(m1_res)
 
 # Load provided arguments in script
 args <- commandArgs(trailingOnly = TRUE)
 year <- strtoi(args[1])
+
 
 # Load TOML Config file
 model_config = from_toml(read_toml("/mnt/efs/userdata/etan/map-itn/scripts/awsbatch/configs/model_config.toml"))
@@ -43,8 +49,8 @@ model_config = from_toml(read_toml("/mnt/efs/userdata/etan/map-itn/scripts/awsba
 ##############################
 
 # Define number of posterior samples
-n_samples <- 100
-n_samples_saved <- 100
+n_samples <- 1 # Number of samples to calculate sample mean raster
+n_samples_saved <- 100 # Number of sample means to draw
 
 # Get raster image for coordinates to predict on (i.e. only restrict predictions to Africa)
 reference_image <- raster('datasets/INLA/MAP_Regions_Unclipped_5k.tif')
@@ -172,43 +178,45 @@ start_year <- model_config$YEAR_NAT_START
                                   group = groupid,
                                   group.mesh = temporal_mesh_annual)
   
-  ##########################################
-  ####### Direct formula method to get mean raster
-  ##########################################
-  # Calculate spatial structure
-  sfield_nodes <- m1$summary.random$field['mean']
-  field <- (Aprediction %*% as.data.frame(sfield_nodes)[, 1])
-  summary(m1)
-  # Calculate Predicted values using regression formula
-  pred_mean <- #m1$summary.fixed['Intercept', 'mean'] +
-                m1$summary.fixed['static_1', 'mean'] * proj_cov_dataset$static_1 +
-                m1$summary.fixed['static_2', 'mean'] * proj_cov_dataset$static_2 +
-                m1$summary.fixed['static_3', 'mean'] * proj_cov_dataset$static_3 +
-                m1$summary.fixed['annual_1', 'mean'] * proj_cov_dataset$annual_1 +
-                m1$summary.fixed['annual_2', 'mean'] * proj_cov_dataset$annual_2 +
-                m1$summary.fixed['annual_3', 'mean'] * proj_cov_dataset$annual_3 +
-                m1$summary.fixed['annual_4', 'mean'] * proj_cov_dataset$annual_4 +
-                m1$summary.fixed['annual_5', 'mean'] * proj_cov_dataset$annual_5 +
-                m1$summary.fixed['annual_6', 'mean'] * proj_cov_dataset$annual_6 +
-                m1$summary.fixed['annual_7', 'mean'] * proj_cov_dataset$annual_7 +
-                m1$summary.fixed['annual_8', 'mean'] * proj_cov_dataset$annual_8 +
-                m1$summary.fixed['annual_9', 'mean'] * proj_cov_dataset$annual_9 +
-                m1$summary.fixed['annual_10', 'mean'] * proj_cov_dataset$annual_10 +
-                m1$summary.fixed['annual_11', 'mean'] * proj_cov_dataset$annual_11 +
-                m1$summary.fixed['annual_12', 'mean'] * proj_cov_dataset$annual_12 +
-                m1$summary.fixed['annual_13', 'mean'] * proj_cov_dataset$annual_13 +
-                m1$summary.fixed['annual_14', 'mean'] * proj_cov_dataset$annual_14 +
-                m1$summary.fixed['annual_15', 'mean'] * proj_cov_dataset$annual_15 +
-                field
-  
+  # ##########################################
+  # ####### Direct formula method to get mean raster
+  # ##########################################
+  # # Calculate spatial structure
+  # sfield_nodes <- m1$summary.random$field['mean']
+  # field <- (Aprediction %*% as.data.frame(sfield_nodes)[, 1])
+  # 
+  # # Calculate Predicted values using regression formula
+  # pred_mean <- #m1$summary.fixed['Intercept', 'mean'] +
+  #               m1$summary.fixed['static_1', 'mean'] * proj_cov_dataset$static_1 +
+  #               m1$summary.fixed['static_2', 'mean'] * proj_cov_dataset$static_2 +
+  #               m1$summary.fixed['static_3', 'mean'] * proj_cov_dataset$static_3 +
+  #               m1$summary.fixed['annual_1', 'mean'] * proj_cov_dataset$annual_1 +
+  #               m1$summary.fixed['annual_2', 'mean'] * proj_cov_dataset$annual_2 +
+  #               m1$summary.fixed['annual_3', 'mean'] * proj_cov_dataset$annual_3 +
+  #               m1$summary.fixed['annual_4', 'mean'] * proj_cov_dataset$annual_4 +
+  #               m1$summary.fixed['annual_5', 'mean'] * proj_cov_dataset$annual_5 +
+  #               m1$summary.fixed['annual_6', 'mean'] * proj_cov_dataset$annual_6 +
+  #               m1$summary.fixed['annual_7', 'mean'] * proj_cov_dataset$annual_7 +
+  #               m1$summary.fixed['annual_8', 'mean'] * proj_cov_dataset$annual_8 +
+  #               m1$summary.fixed['annual_9', 'mean'] * proj_cov_dataset$annual_9 +
+  #               m1$summary.fixed['annual_10', 'mean'] * proj_cov_dataset$annual_10 +
+  #               m1$summary.fixed['annual_11', 'mean'] * proj_cov_dataset$annual_11 +
+  #               m1$summary.fixed['annual_12', 'mean'] * proj_cov_dataset$annual_12 +
+  #               m1$summary.fixed['annual_13', 'mean'] * proj_cov_dataset$annual_13 +
+  #               m1$summary.fixed['annual_14', 'mean'] * proj_cov_dataset$annual_14 +
+  #               m1$summary.fixed['annual_15', 'mean'] * proj_cov_dataset$annual_15 +
+  #               field
+  # 
+
   ###########################################
   # ####### Joint posterior draws
   ###########################################
   # Formula to evaluate when drawing posteriors
-  inla_model_eval_fun <- function(){
+  inla_model_eval_fun_ratios <- function(){
     return(
       #Intercept +
-        static_1 * proj_cov_dataset$static_1 +
+        exp(
+          static_1 * proj_cov_dataset$static_1 +
         static_2 * proj_cov_dataset$static_2 +
         static_3 * proj_cov_dataset$static_3 +
         # static_4 * proj_cov_dataset$static_4 +
@@ -226,47 +234,70 @@ start_year <- model_config$YEAR_NAT_START
         annual_12 * proj_cov_dataset$annual_12 +
         annual_13 * proj_cov_dataset$annual_13 +
         annual_14 * proj_cov_dataset$annual_14 +
-        annual_15 * proj_cov_dataset$annual_15 +
-        Aprediction %*% field
+        annual_15 * proj_cov_dataset$annual_15
+        )# +
+        # Aprediction %*% field
     )
   }
   
-  # Generate samples
-  samples <- inla.posterior.sample(n = n_samples, m1, verbose = TRUE)
-  eval_samples <- inla.posterior.sample.eval(inla_model_eval_fun, samples)
-  
-  # Calculate the posterior raster values and inverse transform as appropriate
-  pred_samples <- matrix(0, nrow = dim(Aprediction)[1], ncol = n_samples)
-  for (i in 1:n_samples){
-    print(str_glue("Extracting sample {i} of {n_samples}..."))
-    pred_samples[,i] <- eval_samples[i][[1]]@x
+  inla_model_eval_fun_residuals <- function(){
+    return(
+      Aprediction %*% field
+    )
   }
   
-  z_samples <- pred_samples 
   
-  # Calculate the average and standard deviation raster
-  z_mean <- pred_mean
-
   ###########################################
-  # Save output raster
+  # Generate draws of sample mean rasters
   ###########################################
+  for (j in 1:n_samples_saved){
   
-  print("Saving...")
-  # write results as a raster
-  x <- as.matrix(reference_coordinates)
-  
-  pr.mdg.out_mean <- rasterFromXYZ(cbind(x, z_mean), crs = "+proj=longlat +datum=WGS84 +no_defs +type=crs")
-
-  # Save Raster
-  save_filename_mean = str_glue("/mnt/efs/userdata/etan/mitn_outputs/outputs/INLA/rasters/inla_logmodel_npc/NPC_logmodel_{year}_mean.tif")
-  writeRaster(pr.mdg.out_mean, save_filename_mean, NAflag = -9999, overwrite = TRUE)
-  
-  # Save sample draws for calculating quantiles later
-  for (i in 1:n_samples_saved){
-    pr.mdg.out_sample <- rasterFromXYZ(cbind(x, z_samples[,i]), crs = "+proj=longlat +datum=WGS84 +no_defs +type=crs")
-    save_filename_sample = str_glue("/mnt/efs/userdata/etan/mitn_outputs/outputs/INLA/rasters/inla_logmodel_npc/NPC_logmodel_{year}_sample_{i}.tif")
-    writeRaster(pr.mdg.out_sample, save_filename_sample, NAflag = -9999, overwrite = TRUE)
+    print(str_glue("Extracting sample mean {j} of {n_samples_saved}..."))
+    
+    # Generate samples
+    ratio_samples <- inla.posterior.sample(n = n_samples, m1, verbose = TRUE)
+    residuals_samples <- inla.posterior.sample(n = n_samples, m1_res, verbose = TRUE)
+    eval_samples <- inla.posterior.sample.eval(inla_model_eval_fun_ratios, ratio_samples)
+    eval_residuals_samples <- inla.posterior.sample.eval(inla_model_eval_fun_residuals, residuals_samples)
+    
+    # Calculate the posterior raster values and inverse transform as appropriate
+    numeric_ratio_samples <- matrix(0, nrow = dim(Aprediction)[1], ncol = n_samples)
+    numeric_residual_samples <- matrix(0, nrow = dim(Aprediction)[1], ncol = n_samples)
+    for (i in 1:n_samples){
+      # print(str_glue("Extracting sample {i} of {n_samples}..."))
+      numeric_ratio_samples[,i] <- as.numeric(eval_samples[,i])
+      numeric_residual_samples[,i] <- eval_residuals_samples[,i][[1]]@x
+    }
+    
+    
+    # Calculate the average and standard deviation raster
+    z_ratio_mean <- apply(numeric_ratio_samples, c(1), mean)
+    z_residuals_mean <- apply(numeric_residual_samples, c(1), mean)
+    
+    ###########################################
+    # Save output sample mean raster
+    ###########################################
+    
+    print("Saving...")
+    # write results as a raster
+    x <- as.matrix(reference_coordinates)
+    
+    ratio_raster <- rasterFromXYZ(cbind(x, z_ratio_mean), crs = "+proj=longlat +datum=WGS84 +no_defs +type=crs")
+    residuals_raster <- rasterFromXYZ(cbind(x, z_residuals_mean), crs = "+proj=longlat +datum=WGS84 +no_defs +type=crs")
+    
+    # Save Raster
+    save_filename_ratio_mean = str_glue("/mnt/efs/userdata/etan/mitn_outputs/outputs/INLA/rasters/inla_logmodel_npc/NPC_RATIO_logmodel_{year}_sample_{j}.tif")
+    save_filename_residuals_mean = str_glue("/mnt/efs/userdata/etan/mitn_outputs/outputs/INLA/rasters/inla_logmodel_npc/NPC_RESIDUAL_logmodel_{year}_sample_{j}.tif")
+    writeRaster(ratio_raster, save_filename_ratio_mean, NAflag = -9999, overwrite = TRUE)
+    writeRaster(residuals_raster, save_filename_residuals_mean, NAflag = -9999, overwrite = TRUE)
   }
+  
+  # # Save sample draws for calculating quantiles later
+  # for (i in 1:n_samples_saved){
+  #   pr.mdg.out_sample <- rasterFromXYZ(cbind(x, z_samples[,i]), crs = "+proj=longlat +datum=WGS84 +no_defs +type=crs")
+  #   save_filename_sample = str_glue("/mnt/efs/userdata/etan/mitn_outputs/outputs/INLA/rasters/inla_logmodel_npc/NPC_logmodel_{year}_sample_{i}.tif")
+  #   writeRaster(pr.mdg.out_sample, save_filename_sample, NAflag = -9999, overwrite = TRUE)
+  # }
 
 
 # }

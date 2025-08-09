@@ -2,7 +2,7 @@
 Author: Eugene Tan
 Date Created: 28/1/2024
 Last Updated: 28/1/2024
-Useful data transformatio functions used when processing INLA outputs.
+Useful data transformation functions used when processing INLA outputs.
 """
 
 module UsefulTransformations

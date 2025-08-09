@@ -146,5 +146,5 @@ end
 fig
 
 # %% Save fig
-save(OUTPUT_PLOTS_DIR*"SNF_Halflife.pdf", fig, pdf_version = "1.4")
+save(OUTPUT_PLOTS_DIR*"Special_Request/SNF_Halflife.pdf", fig, pdf_version = "1.4")
 

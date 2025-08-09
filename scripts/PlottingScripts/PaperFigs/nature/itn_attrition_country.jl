@@ -212,3 +212,70 @@ Legend(fig[12, 1],
 # Save fig
 save(OUTPUT_PLOTS_DIR*"PaperFigures/Africa_country_Attrition.pdf", fig, pdf_version = "1.4")
 fig
+
+# %%
+ISO = ISO_list[findfirst(filt_ISOs .== "CMR")]
+
+
+fig = Figure(size = (600,400))
+
+
+ax = Axis(fig[1,1],
+            xlabel = "Years", 
+            xticks = (0:1:5),
+            ylabel = "Survival Proportion",
+            title = "CMR Attrition",
+            yticks = (0:0.2:1),
+            titlesize = 25,
+            ylabelsize = 20)
+xlims!(ax,-0.5,5.05)
+ylims!(ax,-0.02, 1.02)
+
+
+# Load Datasets
+input_dict = load(OUTPUT_EXTRACTIONS_DIR*"crop/$(YEAR_START)_$(YEAR_END)/$(ISO)_$(YEAR_START)_$(YEAR_END)_cropextract.jld2")
+regression_dict = load(OUTPUT_REGRESSIONS_DIR*"crop/$(YEAR_START)_$(YEAR_END)/$(ISO)_$(YEAR_START)_$(YEAR_END)_cropchains.jld2")
+
+# Get Metadata and define bounds
+NET_NAMES = regression_dict["NET_NAMES"]
+n_nets = length(NET_NAMES)
+
+# Extract chain
+τ_chain = regression_dict["chain"][:,5:2:5+(length(NET_NAMES)-1)*2]
+κ_chain = regression_dict["chain"][:,6:2:6+(length(NET_NAMES)-1)*2]
+
+for net_type_i in 1:n_nets
+    NET_NAME = NET_NAMES[net_type_i]
+
+    # Calculate attrition curve samples
+    attrition_curves = Matrix{Float64}(undef, size(τ_chain)[1], length(t_vals))
+    attrition_curves_quantiles = Matrix{Float64}(undef, length(t_vals),3)
+
+    for i in 1:size(τ_chain)[1]
+        attrition_curves[i,:] = net_loss_compact.(t_vals, τ_chain[i,net_type_i], κ_chain[i,net_type_i])
+    end
+
+    for t in 1:length(t_vals)
+        attrition_curves_quantiles[t,:] = quantile(attrition_curves[:,t], [0.025,0.5,0.975])
+    end
+
+    color_dict[NET_NAME]
+    band!(ax, t_vals, attrition_curves_quantiles[:,1], attrition_curves_quantiles[:,3],
+            color = (color_dict[NET_NAME], fillalpha))
+    lines!(ax, t_vals, attrition_curves_quantiles[:,2],
+            linewidth = lw, color = color_dict[NET_NAME])
+end
+
+elem_1 = [LineElement(color = color_dict["cITN"], linewidth = lw)]
+elem_2 = [LineElement(color = color_dict["LLIN"], linewidth = lw)]
+
+Legend(fig[1, 2],
+    # [elem_1, elem_2, elem_3, elem_4, elem_5],
+    [elem_1, elem_2],
+    # ["cITN", "LLIN", "PBO", "G2", "Royal"],
+    ["cITN", "LLIN"],
+    labelsize = 25)
+
+mkpath(OUTPUT_PLOTS_DIR*"Special_Request/")
+save(OUTPUT_PLOTS_DIR*"Special_Request/$(ISO)_Attrition.pdf", fig, pdf_version = "1.4")
+fig

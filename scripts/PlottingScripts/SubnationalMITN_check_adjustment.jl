@@ -9,11 +9,16 @@ Used to check if general properties of national is inherited by subnational.
 # %% Prep environment and subdirectories
 include(pwd()*"/scripts/init_env.jl")
 
+# %% Import filenames and directories from config file
+include(pwd()*"/scripts/read_toml.jl")
+
 # %% Import Public Packages
 using DataFrames
 using Missings
 using JLD2
 using ProgressBars
+using CSV
+using StatsBase
 
 # %% Plot packages
 using LaTeXStrings
@@ -21,7 +26,7 @@ using Plots
 using Measures
 
 # %%
-ISO_list = String.(CSV.read("datasets/ISO_list.csv", DataFrame)[:,1])
+ISO_list = String.(CSV.read(RAW_DATASET_DIR*"/ISO_list.csv", DataFrame)[:,1])
 exclusion_ISOs = EXCLUSION_ISOS
 filt_ISOs = setdiff(ISO_list, exclusion_ISOs)
 fig_collection = []
@@ -29,9 +34,10 @@ fig_collection = []
 # %% Load Data
 for ISO_i in ProgressBar(1:length(filt_ISOs))
     ISO = filt_ISOs[ISO_i]
-    nat_reg_data = JLD2.load("outputs/draws/national/crop_access/$(ISO)_2000_2023_post_crop_access.jld2")
-    subnat_reg_data = JLD2.load("outputs/draws/subnational/$(ISO)_SUBNAT_draws.jld2")
+    nat_reg_data = JLD2.load(OUTPUT_DIR*"draws/national/crop_access/$(ISO)_2000_2023_post_crop_access.jld2")
+    subnat_reg_data = JLD2.load(OUTPUT_DIR*"draws/subnational/$(ISO)_SUBNAT_draws.jld2")
 
+    
     # %% Get meta_data and loop ranges
     n_regions = length(subnat_reg_data["merged_outputs"])
     YEAR_START = subnat_reg_data["YEAR_START_NAT"]
@@ -51,6 +57,11 @@ for ISO_i in ProgressBar(1:length(filt_ISOs))
         UNADJ_SUBNAT_Γ_MONTHLY_TOTAL_mean[i,:] = mean(subnat_reg_data["merged_outputs"][i]["Γ_MONTHLY_TOTAL_samples"], dims = 1)[1,:]
         ADJ_SUBNAT_Γ_MONTHLY_TOTAL_mean[i,:] = mean(subnat_reg_data["merged_outputs"][i]["ADJ_Γ_MONTHLY_TOTAL_samples"], dims = 1)[1,:]
     end
+
+    plot((ADJ_SUBNAT_Γ_MONTHLY_TOTAL_mean./(repeat(nat_reg_data["POPULATION_MONTHLY"],1,n_regions)'))')
+
+    subnat_reg_data["merged_outputs"][1]["NPC_MONTHLY_TOTAL_mean"]
+    
 
     UNADJ_Γ_MONTHLY_TOTAL_mean = sum(UNADJ_SUBNAT_Γ_MONTHLY_TOTAL_mean, dims = 1)[1,:]
     ADJ_Γ_MONTHLY_TOTAL_mean = sum(ADJ_SUBNAT_Γ_MONTHLY_TOTAL_mean, dims = 1)[1,:]
@@ -78,13 +89,13 @@ for ISO_i in ProgressBar(1:length(filt_ISOs))
             label = nothing)
     vline!(fig, [(2010-YEAR_START)*12+1], label = nothing, color = :red)
 
-    plot!(fig, 1:n_months, NAT_Γ_MONTHLY_TOTAL_mean./1e6,
+    plot!(fig, 1:n_months, NAT_Γ_MONTHLY_TOTAL_mean./nat_reg_data["POPULATION_MONTHLY"],
             linecolor = colors[1], linewidth = lw,
             label= "National Estimate")
-    plot!(fig, 1:n_months, UNADJ_Γ_MONTHLY_TOTAL_mean./1e6,
+    plot!(fig, 1:n_months, UNADJ_Γ_MONTHLY_TOTAL_mean./nat_reg_data["POPULATION_MONTHLY"],
             linecolor = colors[2], linewidth = lw,
             label= "Unadj. Subnat Estimate")
-    plot!(fig, 1:n_months, ADJ_Γ_MONTHLY_TOTAL_mean./1e6,
+    plot!(fig, 1:n_months, ADJ_Γ_MONTHLY_TOTAL_mean./nat_reg_data["POPULATION_MONTHLY"],
             linecolor = colors[3], linewidth = lw,
             label= "Adj. Subnat Estimate")
 
@@ -94,4 +105,4 @@ end
 # %%
 fig = plot(fig_collection..., layout = (6,8), size = (2880,1620))
 
-savefig(fig, "output_plots/nat_vs_subnat_netcrop.pdf")
+savefig(fig, OUTPUT_PLOTS_DIR*"nat_vs_subnat_netcrop.pdf")
