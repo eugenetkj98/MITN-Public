@@ -100,15 +100,14 @@ country_utilisation = zeros(length(filt_ISOs), n_months, 3)
 country_efficiency = zeros(length(filt_ISOs), n_months, 3)
 
 
-
 # %% Select ISO
 for ISO_i in 1:length(filt_ISOs)
     ISO = filt_ISOs[ISO_i]
     # %% Construct continent time series to plot
     filt_data = raster_timeseries[raster_timeseries.category .== "Admin0" .&&
                                     raster_timeseries.ISO .== ISO,:]
-
     for monthidx in 1:n_months
+
         # Get timestamps
         month_val, year_idx = monthidx_to_monthyear(monthidx)
         year_val = (YEAR_START:YEAR_END)[year_idx]
@@ -169,48 +168,45 @@ for ISO_i in ProgressBar(1:length(filt_ISOs))
             yticks = (0:0.2:1),
             ylabelsize = 20
             )
-    xlims!(-6.3*12,n_months+0.5)
+    # xlims!(-6.3*12,n_months+0.5)
     ylims!(-0.02, 1.02)
 
     # Add lines
 
     ### NPC
-    band!(ax, 1:n_months, country_npc[ISO_i,:,1], country_npc[ISO_i,:,3],
+    # band!(ax, 1:n_months, country_npc[ISO_i,:,1], country_npc[ISO_i,:,3],
+    #         color = (colors[1], fillalpha)
+    #         )
+    # npc_line = lines!(ax, 1:n_months, country_npc[ISO_i,:,2],
+    #         color = colors[1], linewidth = lw)
+    band!(ax, (6*12+1):n_months, country_npc[ISO_i,(6*12+1):n_months,1], country_npc[ISO_i,(6*12+1):n_months,3],
             color = (colors[1], fillalpha)
             )
-    npc_line = lines!(ax, 1:n_months, country_npc[ISO_i,:,2],
+    npc_line = lines!(ax, (6*12+1):n_months, country_npc[ISO_i,(6*12+1):n_months,2],
             color = colors[1], linewidth = lw)
-    lines!(ax, 1:n_months, country_npc[ISO_i,:,1],
-            color = (colors[1], la), 
-            linewidth = lw, linestyle = :dash)
-    lines!(ax, 1:n_months, country_npc[ISO_i,:,3],
-            color = (colors[1], la), linewidth = lw, 
-            linestyle = :dash)
 
     ### Access
-    band!(ax, 1:n_months, country_access[ISO_i,:,1], country_access[ISO_i,:,3],
+    # band!(ax, 1:n_months, country_access[ISO_i,:,1], country_access[ISO_i,:,3],
+    # color = (colors[2], fillalpha))
+    # access_line = lines!(ax, 1:n_months, country_access[ISO_i,:,2],
+    #         color = colors[2], linewidth = lw)
+    band!(ax, (6*12+1):n_months, country_access[ISO_i,(6*12+1):n_months,1], country_access[ISO_i,(6*12+1):n_months,3],
     color = (colors[2], fillalpha))
-    access_line = lines!(ax, 1:n_months, country_access[ISO_i,:,2],
+    access_line = lines!(ax, (6*12+1):n_months, country_access[ISO_i,(6*12+1):n_months,2],
             color = colors[2], linewidth = lw)
-    lines!(ax, 1:n_months, country_access[ISO_i,:,1],
-            color = (colors[2], la), 
-            linewidth = lw, linestyle = :dash)
-    lines!(ax, 1:n_months, country_access[ISO_i,:,3],
-            color = (colors[2], la), linewidth = lw, 
-            linestyle = :dash)
 
     ### Use
-    band!(ax, 1:n_months, country_use[ISO_i,:,1], country_use[ISO_i,:,3],
-    color = (colors[2], fillalpha)
+    # band!(ax, 1:n_months, country_use[ISO_i,:,1], country_use[ISO_i,:,3],
+    # color = (colors[2], fillalpha)
+    # )
+    # use_line = lines!(ax, 1:n_months, country_use[ISO_i,:,2],
+    #         color = colors[3], linewidth = lw)
+    band!(ax, (6*12+1):n_months, country_use[ISO_i,(6*12+1):n_months,1], country_use[ISO_i,(6*12+1):n_months,3],
+    color = (colors[3], fillalpha)
     )
-    use_line = lines!(ax, 1:n_months, country_use[ISO_i,:,2],
+    use_line = lines!(ax, (6*12+1):n_months, country_use[ISO_i,(6*12+1):n_months,2],
             color = colors[3], linewidth = lw)
-    lines!(ax, 1:n_months, country_use[ISO_i,:,1],
-            color = (colors[3], la), 
-            linewidth = lw, linestyle = :dash)
-    lines!(ax, 1:n_months, country_use[ISO_i,:,3],
-            color = (colors[3], la), linewidth = lw, 
-            linestyle = :dash)
+
 
     # Legend
     Legend(fig[1, 2],
@@ -220,6 +216,7 @@ for ISO_i in ProgressBar(1:length(filt_ISOs))
     save(OUTPUT_PLOTS_DIR*"PaperFigures/Country_ITN_Metrics/$(ISO)_ITN_Metrics.pdf", fig, pdf_version = "1.4")
 end
 
+fig
 ####################################################################
 # %% FIGURE 2: Make summary figure tiled by geographical location in africa
 ####################################################################
@@ -275,9 +272,9 @@ show_ylabel_ISOs = ["MRT","ERI","GMB","SLE","LBR","STP",
                     "AGO","NAM"]
 
 # construct year strings for xticks
-year_strings = Vector{String}(undef, length(YEAR_START:YEAR_END))
-for year_i in 1:length(YEAR_START:YEAR_END)
-    year = (YEAR_START:YEAR_END)[year_i]
+year_strings = Vector{String}(undef, length(YEAR_START:YEAR_END+1))
+for year_i in 1:length(YEAR_START:YEAR_END+1)
+    year = (YEAR_START:YEAR_END+1)[year_i]
     year_mod_val = year%2000
     if year_mod_val < 10
         year_strings[year_i] = "'0"*string(year_mod_val)
@@ -297,12 +294,12 @@ for ISO_i in 1:length(filt_ISOs)
     x_idx, y_idx, country_name = subplot_lookup[ISO]
     ax = Axis(fig[2*x_idx,y_idx], width = layout_res[1]/14,
                 # xlabel = "Years", 
-                xticks = ((1:12:n_months)[1:5:end], year_strings[1:5:end]),
+                xticks = ((1:12:n_months+12)[1:5:end], year_strings[1:5:end]),
                 xticklabelrotation = pi/2,
                 # ylabel = "Metric",
                 yticks = (0:0.2:1),
                 yticklabelsize = 18, xticklabelsize = 18)
-    xlims!(ax,4.3*12,n_months+0.5)
+    xlims!(ax,4*12,n_months+12+0.5)
     ylims!(ax,-0.02, 1.02)
 
     lb = Label(fig[2*(x_idx-1)+1,y_idx], "$(country_name)", fontsize = 20, tellwidth = false)
@@ -330,22 +327,34 @@ for ISO_i in ProgressBar(1:length(filt_ISOs), leave = false)
 
     # Add lines
     ### NPC
-    band!(plot_axs[ISO_i], 1:n_months, country_npc[ISO_i,:,1], country_npc[ISO_i,:,3],
+    # band!(plot_axs[ISO_i], 1:n_months, country_npc[ISO_i,:,1], country_npc[ISO_i,:,3],
+    #         color = (colors[1], fillalpha))
+    # npc_line = lines!(plot_axs[ISO_i], 1:n_months, country_npc[ISO_i,:,2],
+    #         color = colors[1], linewidth = africa_lw)
+    band!(plot_axs[ISO_i], (6*12+1):n_months, country_npc[ISO_i,(6*12+1):n_months,1], country_npc[ISO_i,(6*12+1):n_months,3],
             color = (colors[1], fillalpha))
-    npc_line = lines!(plot_axs[ISO_i], 1:n_months, country_npc[ISO_i,:,2],
+    npc_line = lines!(plot_axs[ISO_i], (6*12+1):n_months, country_npc[ISO_i,(6*12+1):n_months,2],
             color = colors[1], linewidth = africa_lw)
     
 
     ### Access
-    band!(plot_axs[ISO_i], 1:n_months, country_access[ISO_i,:,1], country_access[ISO_i,:,3],
+    # band!(plot_axs[ISO_i], 1:n_months, country_access[ISO_i,:,1], country_access[ISO_i,:,3],
+    #             color = (colors[2], fillalpha))
+    # access_line = lines!(plot_axs[ISO_i], 1:n_months, country_access[ISO_i,:,2],
+    #         color = colors[2], linewidth = africa_lw)
+    band!(plot_axs[ISO_i], (6*12+1):n_months, country_access[ISO_i,(6*12+1):n_months,1], country_access[ISO_i,(6*12+1):n_months,3],
                 color = (colors[2], fillalpha))
-    access_line = lines!(plot_axs[ISO_i], 1:n_months, country_access[ISO_i,:,2],
+    access_line = lines!(plot_axs[ISO_i], (6*12+1):n_months, country_access[ISO_i,(6*12+1):n_months,2],
             color = colors[2], linewidth = africa_lw)
 
     ### Use
-    band!(plot_axs[ISO_i], 1:n_months, country_use[ISO_i,:,1], country_use[ISO_i,:,3],
+    # band!(plot_axs[ISO_i], 1:n_months, country_use[ISO_i,:,1], country_use[ISO_i,:,3],
+    #         color = (colors[3], fillalpha))
+    # use_line = lines!(plot_axs[ISO_i], 1:n_months, country_use[ISO_i,:,2],
+    #         color = colors[3], linewidth = africa_lw)
+    band!(plot_axs[ISO_i], (6*12+1):n_months, country_use[ISO_i,(6*12+1):n_months,1], country_use[ISO_i,(6*12+1):n_months,3],
             color = (colors[3], fillalpha))
-    use_line = lines!(plot_axs[ISO_i], 1:n_months, country_use[ISO_i,:,2],
+    use_line = lines!(plot_axs[ISO_i], (6*12+1):n_months, country_use[ISO_i,(6*12+1):n_months,2],
             color = colors[3], linewidth = africa_lw)
 
     # Add legend
@@ -372,7 +381,7 @@ for ISO_i in ProgressBar(1:length(filt_ISOs))
     ax1 = Axis(fig[1,1],
             title = "$(ISO) ITN Metrics",
             xlabel = "Years", 
-            xticks = (1:12:n_months, string.(YEAR_START:YEAR_END)),
+            xticks = (1:12:(n_months+12), string.(YEAR_START:(YEAR_END+1))),
             xticklabelrotation = pi/2,
             xlabelsize = 20,
             titlesize = 25,
@@ -380,49 +389,46 @@ for ISO_i in ProgressBar(1:length(filt_ISOs))
             yticks = (0:0.2:1),
             ylabelsize = 20
             )
-    xlims!(ax1, 4.3*12,n_months+0.5)
+    # xlims!(ax1, 4.3*12,n_months+0.5)
     ylims!(ax1, -0.02, 1.02)
 
     # Add lines
 
     ### NPC
-    band!(ax1, 1:n_months, country_npc[ISO_i,:,1], country_npc[ISO_i,:,3],
+    # band!(ax1, 1:n_months, country_npc[ISO_i,:,1], country_npc[ISO_i,:,3],
+    #         color = (colors[1], fillalpha)
+    #         )
+    # npc_line = lines!(ax1, 1:n_months, country_npc[ISO_i,:,2],
+    #         color = colors[1], linewidth = lw)
+    band!(ax1, (6*12+1):n_months, country_npc[ISO_i,(6*12+1):n_months,1], country_npc[ISO_i,(6*12+1):n_months,3],
             color = (colors[1], fillalpha)
             )
-    npc_line = lines!(ax1, 1:n_months, country_npc[ISO_i,:,2],
+    npc_line = lines!(ax1, (6*12+1):n_months, country_npc[ISO_i,(6*12+1):n_months,2],
             color = colors[1], linewidth = lw)
-    lines!(ax1, 1:n_months, country_npc[ISO_i,:,1],
-            color = (colors[1], la), 
-            linewidth = lw, linestyle = :dash)
-    lines!(ax1, 1:n_months, country_npc[ISO_i,:,3],
-            color = (colors[1], la), linewidth = lw, 
-            linestyle = :dash)
 
     ### Access
-    band!(ax1, 1:n_months, country_access[ISO_i,:,1], country_access[ISO_i,:,3],
+    # band!(ax1, 1:n_months, country_access[ISO_i,:,1], country_access[ISO_i,:,3],
+    # color = (colors[2], fillalpha)
+    # )
+    # access_line = lines!(ax1, 1:n_months, country_access[ISO_i,:,2],
+    #         color = colors[2], linewidth = lw)
+    band!(ax1, (6*12+1):n_months, country_access[ISO_i,(6*12+1):n_months,1], country_access[ISO_i,(6*12+1):n_months,3],
     color = (colors[2], fillalpha)
     )
-    access_line = lines!(ax1, 1:n_months, country_access[ISO_i,:,2],
+    access_line = lines!(ax1, (6*12+1):n_months, country_access[ISO_i,(6*12+1):n_months,2],
             color = colors[2], linewidth = lw)
-    lines!(ax1, 1:n_months, country_access[ISO_i,:,1],
-            color = (colors[2], la), 
-            linewidth = lw, linestyle = :dash)
-    lines!(ax1, 1:n_months, country_access[ISO_i,:,3],
-            color = (colors[2], la), linewidth = lw, 
-            linestyle = :dash)
 
     ### Use
-    band!(ax1, 1:n_months, country_use[ISO_i,:,1], country_use[ISO_i,:,3],
+    # band!(ax1, 1:n_months, country_use[ISO_i,:,1], country_use[ISO_i,:,3],
+    # color = (colors[2], fillalpha)
+    # )
+    # use_line = lines!(ax1, 1:n_months, country_use[ISO_i,:,2],
+    #         color = colors[3], linewidth = lw)
+    band!(ax1, (6*12+1):n_months, country_use[ISO_i,(6*12+1):n_months,1], country_use[ISO_i,(6*12+1):n_months,3],
     color = (colors[2], fillalpha)
     )
-    use_line = lines!(ax1, 1:n_months, country_use[ISO_i,:,2],
+    use_line = lines!(ax1, (6*12+1):n_months, country_use[ISO_i,(6*12+1):n_months,2],
             color = colors[3], linewidth = lw)
-    lines!(ax1, 1:n_months, country_use[ISO_i,:,1],
-            color = (colors[3], la), 
-            linewidth = lw, linestyle = :dash)
-    lines!(ax1, 1:n_months, country_use[ISO_i,:,3],
-            color = (colors[3], la), linewidth = lw, 
-            linestyle = :dash)
 
     # Legend
     Legend(fig[1, 2],
@@ -434,7 +440,7 @@ for ISO_i in ProgressBar(1:length(filt_ISOs))
     ax2 = Axis(fig[2,1],
             title = "$(ISO) ITN Rates",
             xlabel = "Years", 
-            xticks = (1:12:n_months, string.(YEAR_START:YEAR_END)),
+            xticks = (1:12:(n_months+12), string.(YEAR_START:(YEAR_END+1))),
             xticklabelrotation = pi/2,
             xlabelsize = 20,
             titlesize = 25,
@@ -442,24 +448,34 @@ for ISO_i in ProgressBar(1:length(filt_ISOs))
             yticks = (0:0.5:4),
             ylabelsize = 20
             )
-    xlims!(ax2, 4.3*12,n_months+0.5)
+    # xlims!(ax2, 4.3*12,n_months+0.5)
     ylims!(ax2, -0.05, 4.05)
 
     # Add lines
 
     ### Utilisation
-    band!(ax2, 1:n_months, country_utilisation[ISO_i,:,1], country_utilisation[ISO_i,:,3],
+    # band!(ax2, 1:n_months, country_utilisation[ISO_i,:,1], country_utilisation[ISO_i,:,3],
+    #         color = (colors[1], fillalpha)
+    #         )
+    # util_line = lines!(ax2, 1:n_months, country_utilisation[ISO_i,:,2],
+    #         color = colors[1], linewidth = lw)
+    band!(ax2, (6*12+1):n_months, country_utilisation[ISO_i,(6*12+1):n_months,1], country_utilisation[ISO_i,(6*12+1):n_months,3],
             color = (colors[1], fillalpha)
             )
-    util_line = lines!(ax2, 1:n_months, country_utilisation[ISO_i,:,2],
+    util_line = lines!(ax2, (6*12+1):n_months, country_utilisation[ISO_i,(6*12+1):n_months,2],
             color = colors[1], linewidth = lw)
     hlines!(ax2, [2], color = colors[1], linewidth = lw, linestyle = :dash)
 
     ### Use Rate
-    band!(ax2, 1:n_months, country_efficiency[ISO_i,:,1], country_efficiency[ISO_i,:,3],
+    # band!(ax2, 1:n_months, country_efficiency[ISO_i,:,1], country_efficiency[ISO_i,:,3],
+    #         color = (colors[2], fillalpha)
+    #         )
+    # eff_line = lines!(ax2, 1:n_months, country_efficiency[ISO_i,:,2],
+    #         color = colors[2], linewidth = lw)
+    band!(ax2, (6*12+1):n_months, country_efficiency[ISO_i,(6*12+1):n_months,1], country_efficiency[ISO_i,(6*12+1):n_months,3],
             color = (colors[2], fillalpha)
             )
-    eff_line = lines!(ax2, 1:n_months, country_efficiency[ISO_i,:,2],
+    eff_line = lines!(ax2, (6*12+1):n_months, country_efficiency[ISO_i,(6*12+1):n_months,2],
             color = colors[2], linewidth = lw)
     hlines!(ax2, [1], color = colors[2], linewidth = lw, linestyle = :dash)
 
@@ -486,12 +502,12 @@ for ISO_i in 1:length(filt_ISOs)
     x_idx, y_idx, country_name = subplot_lookup[ISO]
     ax = Axis(fig[2*x_idx,y_idx], width = layout_res[1]/14,
                 # xlabel = "Years", 
-                xticks = ((1:12:n_months)[1:5:end], year_strings[1:5:end]),
+                xticks = ((1:12:n_months+12)[1:5:end], year_strings[1:5:end]),
                 xticklabelrotation = pi/2,
                 # ylabel = "Metric",
-                yticks = (0:0.5:4),
-                ylabelsize = 20)
-    xlims!(ax,-6.3*12,n_months+0.5)
+                yticks = (0:1:4),
+                yticklabelsize = 18, xticklabelsize = 18)
+    xlims!(ax,4*12,n_months+12+0.5)
     ylims!(ax,-0.05, 4.05)
 
     lb = Label(fig[2*(x_idx-1)+1,y_idx], "$(country_name)")
@@ -520,20 +536,29 @@ for ISO_i in ProgressBar(1:length(filt_ISOs), leave = false)
     # Add lines
 
     ### NPC
-    band!(plot_axs[ISO_i], 1:n_months, country_utilisation[ISO_i,:,1], country_utilisation[ISO_i,:,3],
+    # band!(plot_axs[ISO_i], 1:n_months, country_utilisation[ISO_i,:,1], country_utilisation[ISO_i,:,3],
+    # color = (colors[1], fillalpha)
+    # )
+    # util_line = lines!(plot_axs[ISO_i], 1:n_months, country_utilisation[ISO_i,:,2],
+    #         color = colors[1], linewidth = africa_lw)
+    band!(plot_axs[ISO_i], (6*12+1):n_months, country_utilisation[ISO_i,(6*12+1):n_months,1], country_utilisation[ISO_i,(6*12+1):n_months,3],
     color = (colors[1], fillalpha)
     )
-    util_line = lines!(plot_axs[ISO_i], 1:n_months, country_utilisation[ISO_i,:,2],
+    util_line = lines!(plot_axs[ISO_i], (6*12+1):n_months, country_utilisation[ISO_i,(6*12+1):n_months,2],
             color = colors[1], linewidth = africa_lw)
     hlines!(plot_axs[ISO_i], [2], color = colors[1], linewidth = africa_lw, linestyle = :dash)
 
 
-    band!(plot_axs[ISO_i], 1:n_months, country_efficiency[ISO_i,:,1], country_efficiency[ISO_i,:,3],
+    # band!(plot_axs[ISO_i], 1:n_months, country_efficiency[ISO_i,:,1], country_efficiency[ISO_i,:,3],
+    # color = (colors[2], fillalpha)
+    # )
+    # eff_line = lines!(plot_axs[ISO_i], 1:n_months, country_efficiency[ISO_i,:,2],
+    #         color = colors[2], linewidth = africa_lw)
+    band!(plot_axs[ISO_i], (6*12+1):n_months, country_efficiency[ISO_i,(6*12+1):n_months,1], country_efficiency[ISO_i,(6*12+1):n_months,3],
     color = (colors[2], fillalpha)
     )
-    eff_line = lines!(plot_axs[ISO_i], 1:n_months, country_efficiency[ISO_i,:,2],
+    eff_line = lines!(plot_axs[ISO_i], (6*12+1):n_months, country_efficiency[ISO_i,(6*12+1):n_months,2],
             color = colors[2], linewidth = africa_lw)
-    
     hlines!(plot_axs[ISO_i], [1], color = colors[2], linewidth = africa_lw, linestyle = :dash)
         
     # Add legend

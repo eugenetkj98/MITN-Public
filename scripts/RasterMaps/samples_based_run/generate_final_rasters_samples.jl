@@ -374,7 +374,7 @@ end
 
             println("Calculating sample Utilisation raster...")
             util_map_sample_raster = use_map_sample_raster ./ (2 .* npc_map_sample_raster)
-            util_map_sample_raster[findall(npc_map_sample_raster .== 0)].= 0
+            util_map_sample_raster[findall((npc_map_sample_raster .<= 0))].= 0
             
             # Save mean rasters, overwrites previous rasters
             println("Saving sample rasters...")

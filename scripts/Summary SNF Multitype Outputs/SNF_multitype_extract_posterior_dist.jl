@@ -1,7 +1,7 @@
 """
 Author: Eugene Tan
 Date Created: 8/8/2025
-Last Updated: 8/8/2025
+Last Updated: 12/8/2025
 Script to extract posterior adjusted estimates of net distributions at subnational level, accounts for multiple net type ratio from raw distribution data.
 Saves as a .csv file and outputs are used later for posterior estimates on net crop of each each at subnational level
 """
@@ -55,9 +55,10 @@ for ISO in filt_ISOs
 
     # Load required JLD2 data files
     nat_posterior_chain = JLD2.load(OUTPUT_REGRESSIONS_DIR*"crop/$(YEAR_NAT_START)_$(YEAR_NAT_END)/$(ISO)_$(YEAR_NAT_START)_$(YEAR_NAT_END)_cropchains.jld2")
-    nat_extractions = JLD2.load(OUTPUT_EXTRACTIONS_DIR*"crop/$(YEAR_START)_$(YEAR_END)/$(ISO)_$(YEAR_START)_$(YEAR_END)_cropextract.jld2")
+    nat_extractions = JLD2.load(OUTPUT_EXTRACTIONS_DIR*"crop/$(YEAR_NAT_START)_$(YEAR_NAT_END)/$(ISO)_$(YEAR_NAT_START)_$(YEAR_NAT_END)_cropextract.jld2")
     YEARS_ANNUAL = nat_extractions["YEARS_ANNUAL"]
-
+    POPULATION_ANNUAL = nat_extractions["POPULATION_ANNUAL"]
+    
     # Generate posterior annual distributions given imputed missing data
 
     ## Find number of missing distributions entries
@@ -66,6 +67,16 @@ for ISO in filt_ISOs
     n_missing = length(missingdist_idx)
 
     ## Use imputed missing data posterior data to infer value at missing data points
+    # # Need to cap CITN imputed missing distributions by the average historical percapita distribution
+    # CITN_YEAR_START_idx = findfirst(YEARS_ANNUAL .>= 2000)
+    # CITN_YEAR_END_idx = findfirst(YEARS_ANNUAL .> 2010)
+    # ITN_PERCAPITA_DIST = nat_raw_distribution[CITN_YEAR_START_idx:CITN_YEAR_END_idx,1]./POPULATION_ANNUAL[CITN_YEAR_START_idx:CITN_YEAR_END_idx,1]
+    # mean_CITN_PERCAPITA_DIST = mean(ITN_PERCAPITA_DIST[findall(.!ismissing.(ITN_PERCAPITA_DIST))])
+    # if isnan(mean_CITN_PERCAPITA_DIST) # i.e. there was no reference, then take the full distribution dataset inclusive of LLINs as reference ratio
+    #     ITN_PERCAPITA_DIST = nat_raw_distribution[:,1]./POPULATION_ANNUAL[1:end-1,1]
+    #     mean_CITN_PERCAPITA_DIST = mean(ITN_PERCAPITA_DIST[findall(.!ismissing.(ITN_PERCAPITA_DIST))])
+    # end
+    # missingdist_vals = round.(Int,min.(mean(Matrix(nat_posterior_chain["chain"][:, (end-n_missing+1):end]), dims = 1)[:].*MISSING_NETS_SCALE, POPULATION_ANNUAL[missingdist_idx].*mean_CITN_PERCAPITA_DIST))
     missingdist_vals = round.(Int,mean(Matrix(nat_posterior_chain["chain"][:, (end-n_missing+1):end]), dims = 1)[:].*MISSING_NETS_SCALE)
 
     ## Create imputed (but not delivery adjusted) distribution time series
@@ -84,6 +95,7 @@ for ISO in filt_ISOs
     # Get Attrition and conversion posterior parameters
     ϕ_est = mean(nat_posterior_chain["chain"][:,:ϕ])
     α_LLIN_est = mean(nat_posterior_chain["chain"][:,:α_LLIN])
+    
     τ_net_est = mean(Matrix(nat_posterior_chain["chain"][:,[5,7]]), dims = 1)[1,:]
     κ_net_est = mean(Matrix(nat_posterior_chain["chain"][:,[6,8]]), dims = 1)[1,:]
 

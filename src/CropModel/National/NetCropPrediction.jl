@@ -69,6 +69,7 @@ function mitn_national_predict(YEARS_ANNUAL,
         else
             if YEARS_ANNUAL[i] < 2010 # Need to account for cITNs
                 # Proportion of distributions attributed to cITNs
+                UNADJUSTED_DISTRIBUTION_ANNUAL_TOTAL[i] = min((1+1/α_LLIN_est)*COUNTRY_LLIN_STOCK_ANNUAL_SOY[i], UNADJUSTED_DISTRIBUTION_ANNUAL_TOTAL[i])
                 UNADJUSTED_DISTRIBUTION_ANNUAL_BYNET[i,1] = ((1/α_LLIN_est)/(1+1/α_LLIN_est))*UNADJUSTED_DISTRIBUTION_ANNUAL_TOTAL[i]
                 
                 # Set remaining nets distributed to LLINs

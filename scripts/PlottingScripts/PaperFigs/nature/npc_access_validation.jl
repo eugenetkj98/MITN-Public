@@ -329,13 +329,16 @@ Legend(fig[1,2], [global_line],
 
 # %%
 
-util_cluster_survey = scatter!(ax5, NPC_SURVEY_CLUSTER[1], (USE_SURVEY_CLUSTER[1])/NPC_SURVEY_CLUSTER[1],
+survey_util_valididx = findall(.!isnan.((USE_SURVEY_CLUSTER)./NPC_SURVEY_CLUSTER) .&& .!isinf.((USE_SURVEY_CLUSTER)./NPC_SURVEY_CLUSTER))
+raster_util_valididx = findall(.!isnan.((USE_RASTER_CLUSTER)./NPC_RASTER_CLUSTER) .&& .!isinf.((USE_RASTER_CLUSTER)./NPC_RASTER_CLUSTER))
+
+util_cluster_survey = scatter!(ax5, NPC_SURVEY_CLUSTER[survey_util_valididx][1], (USE_SURVEY_CLUSTER./NPC_SURVEY_CLUSTER)[survey_util_valididx][1],
         markersize = 4, color = (colors[2],1))
-scatter!(ax5, NPC_SURVEY_CLUSTER, (USE_SURVEY_CLUSTER)./NPC_SURVEY_CLUSTER,
+scatter!(ax5, NPC_SURVEY_CLUSTER[survey_util_valididx], (USE_SURVEY_CLUSTER./NPC_SURVEY_CLUSTER)[survey_util_valididx],
         markersize = 4, color = (colors[2],0.1))
-util_cluster_raster = scatter!(ax5, NPC_RASTER_CLUSTER[1], (USE_RASTER_CLUSTER[1])/NPC_RASTER_CLUSTER[1],
+util_cluster_raster = scatter!(ax5, NPC_RASTER_CLUSTER[raster_util_valididx][1], (USE_RASTER_CLUSTER./NPC_RASTER_CLUSTER)[raster_util_valididx][1],
         markersize = 4, color = (colors[1],1))
-scatter!(ax5, NPC_RASTER_CLUSTER, (USE_RASTER_CLUSTER)./NPC_RASTER_CLUSTER,
+scatter!(ax5, NPC_RASTER_CLUSTER[raster_util_valididx], (USE_RASTER_CLUSTER./NPC_RASTER_CLUSTER)[raster_util_valididx],
         markersize = 4, color = (colors[1],0.03))
 
 Legend(fig[2,2], [util_cluster_raster, util_cluster_survey],
@@ -361,9 +364,8 @@ K = 2
 survey_dist_factor = (min.(K .* NPC_SURVEY_CLUSTER,1) .- ACCESS_SURVEY_CLUSTER)./(min.(K .* NPC_SURVEY_CLUSTER,1) .- USE_SURVEY_CLUSTER)
 raster_dist_factor = (min.(K .* NPC_RASTER_CLUSTER,1) .- ACCESS_RASTER_CLUSTER)./(min.(K .* NPC_RASTER_CLUSTER,1) .- USE_RASTER_CLUSTER)
 
-survey_valididx = findall(.!isinf.(survey_dist_factor))
-raster_valididx = findall(.!isinf.(raster_dist_factor))
-
+survey_valididx = findall(.!isinf.(survey_dist_factor) .&& .!isnan.(survey_dist_factor))
+raster_valididx = findall(.!isinf.(raster_dist_factor) .&& .!isnan.(raster_dist_factor))
 
 eff_cluster_survey = scatter!(ax6, NPC_SURVEY_CLUSTER[1], survey_dist_factor[1],
         markersize = 4, color = (colors[2],1))
@@ -376,13 +378,13 @@ scatter!(ax6, NPC_RASTER_CLUSTER[raster_valididx], raster_dist_factor[raster_val
         markersize = 4, color = (colors[1],0.05))
 
 
-
 Legend(fig[2,3], [eff_cluster_raster, eff_cluster_survey],
         ["Raster", "Survey"], 
         tellwidth = false, tellheight = false,
         halign = :right, valign = :top,
         padding = (10,10,10,10)) 
 
+        
 fig
 # %%
 mkpath(OUTPUT_PLOTS_DIR*"PaperFigures/")

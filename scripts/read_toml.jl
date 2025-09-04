@@ -8,8 +8,8 @@ Script to parse TOML config file into nice Julia formatting that is consistent w
 using TOML
 
 # %% Load TOML file
-# dir_config = TOML.parsefile("scripts/awsbatch/configs/dir_config.toml")
-dir_config = TOML.parsefile("scripts/awsbatch/configs/workspace_dir_config.toml")
+dir_config = TOML.parsefile("scripts/awsbatch/configs/dir_config.toml")
+# dir_config = TOML.parsefile("scripts/awsbatch/configs/workspace_dir_config.toml")
 model_config = TOML.parsefile("scripts/awsbatch/configs/model_config.toml")
 
 ########################################

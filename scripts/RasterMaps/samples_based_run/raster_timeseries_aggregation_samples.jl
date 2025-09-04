@@ -358,8 +358,8 @@ for ISO_i in 1:length(filt_ISOs)
     raster_util_mean = NaN
     raster_eff_mean = NaN
     
-    nonnanidx_util = findall(.!isnan.(admin0_util_raster_vals[:, ISO_i]))
-    nonnanidx_eff = findall(.!isnan.(admin0_eff_raster_vals[:, ISO_i]))
+    nonnanidx_util = findall(.!isnan.(admin0_util_raster_vals[:, ISO_i]) .&& .!isinf.(admin0_util_raster_vals[:, ISO_i]))
+    nonnanidx_eff = findall(.!isnan.(admin0_eff_raster_vals[:, ISO_i]) .&& .!isinf.(admin0_eff_raster_vals[:, ISO_i]))
     
     if length(nonnanidx_util) > 2
       raster_util_mean = Float64(mean(admin0_util_raster_vals[nonnanidx_util, ISO_i]))

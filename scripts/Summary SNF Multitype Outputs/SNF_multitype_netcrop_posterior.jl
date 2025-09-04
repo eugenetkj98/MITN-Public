@@ -1,7 +1,7 @@
 """
 Author: Eugene Tan
 Date Created: 8/8/2025
-Last Updated: 8/8/2025
+Last Updated: 12/8/2025
 Uses extract posterior distribution timeseries to estimate multitype net crop at subnational level
 """
 
@@ -60,23 +60,22 @@ for ISO in filt_ISOs
     ###########################################
 
     # Load required JLD2 data files
-    nat_extractions = JLD2.load(OUTPUT_EXTRACTIONS_DIR*"crop/$(YEAR_START)_$(YEAR_END)/$(ISO)_$(YEAR_START)_$(YEAR_END)_cropextract.jld2")
+    nat_extractions = JLD2.load(OUTPUT_EXTRACTIONS_DIR*"crop/$(YEAR_NAT_START)_$(YEAR_NAT_END)/$(ISO)_$(YEAR_NAT_START)_$(YEAR_NAT_END)_cropextract.jld2")
     nat_posterior_chain = JLD2.load(OUTPUT_REGRESSIONS_DIR*"crop/$(YEAR_NAT_START)_$(YEAR_NAT_END)/$(ISO)_$(YEAR_NAT_START)_$(YEAR_NAT_END)_cropchains.jld2")
     subnat_posterior_chain = JLD2.load(OUTPUT_REGRESSIONS_DIR*"subnational/"*"$(ISO)_SUBNAT_NETCROP_$(YEAR_NAT_START)_$(YEAR_SUBNAT_TRANS)_$(YEAR_NAT_END)_regression.jld2")
-    NET_NAMES = names(subnat_raw_dist_data)[findfirst(names(subnat_raw_dist_data) .== "cITN"):end]
+    NET_NAMES = names(subnat_dist_data)[findfirst(names(subnat_dist_data) .== "cITN"):end]
     YEARS_ANNUAL = nat_extractions["YEARS_ANNUAL"]
+    n_months = length(nat_extractions["MONTHS_MONTHLY"])
     n_admin1 = length(subnat_posterior_chain["admin1_names"])
+
+    admin1_A_MONTHLY_BYNET = Array{Float64}(undef, n_admin1, n_months, n_months, length(NET_NAMES))
+    admin1_Γ_MONTHLY_BYNET = Array{Float64}(undef, n_admin1, n_months, length(NET_NAMES))
 
     for admin1_i in 1:n_admin1
         # Prepare required distribution input time series and metadata
         DISTRIBUTION_ANNUAL = zeros(length(YEARS_ANNUAL), length(NET_NAMES))
         for year_i in 1:length(YEARS_ANNUAL)
             year = YEARS_ANNUAL[year_i]
-
-            # Metadata
-            admin1_entry_metadata[year_i] = subnat_dist_data[(subnat_dist_data.year .== year) .&&
-                                                                (subnat_dist_data.admin1 .== subnat_posterior_chain["admin1_names"][admin1_i]) .&&
-                                                                (subnat_dist_data.iso .== ISO),["WHO_region","country","iso","admin1","admin1_id","area_id","year"]]
 
             # Distribution data
             DISTRIBUTION_ANNUAL[year_i,:] .= Matrix(subnat_dist_data[(subnat_dist_data.year .== year) .&&
@@ -175,7 +174,25 @@ for ISO in filt_ISOs
 
         # %% Save entry
         push!(age_breakdown_allnets_df_entries, age_breakdown_allnets_df_entry)
+
+        # %% Save predictions into placeholder variables for exporting as JLD2 file later
+        admin1_A_MONTHLY_BYNET[admin1_i,:,:,:] = copy(A_MONTHLY_BYNET)
+        admin1_Γ_MONTHLY_BYNET[admin1_i,:,:] = copy(Γ_MONTHLY_BYNET)
     end
+
+    admin0_A_MONTHLY_BYNET = sum(admin1_A_MONTHLY_BYNET, dims = 1)[1,:,:,:]
+    admin0_Γ_MONTHLY_BYNET = sum(admin1_Γ_MONTHLY_BYNET, dims = 1)[1,:,:]
+
+    output_dict = Dict("ISO" => subnat_posterior_chain["ISO"], 
+            "admin1_names" => subnat_posterior_chain["admin1_names"],
+            "YEAR_START" => YEAR_NAT_START,
+            "YEAR_END" => YEAR_NAT_END,
+            "NET_NAMES" => NET_NAMES,
+            "admin0_Γ_MONTHLY_BYNET" => admin0_Γ_MONTHLY_BYNET,
+            "admin0_A_MONTHLY_BYNET" => admin0_A_MONTHLY_BYNET,
+            "admin1_Γ_MONTHLY_BYNET" => Γ_MONTHLY_BYNET,
+            "admin1_A_MONTHLY_BYNET" => A_MONTHLY_BYNET)
+    save(OUTPUT_DIR*"multitype_predictions/$(ISO)_multitype_netcrop_predictions.jld2", output_dict)
 end
 
 ###########################################

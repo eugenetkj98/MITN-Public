@@ -20,7 +20,6 @@ using CSV
 aggregate_parts_dir_continent = OUTPUT_DIR*"coverage_timeseries/master_extractions_parts/continent/"
 aggregate_parts_dir_admin0 = OUTPUT_DIR*"coverage_timeseries/master_extractions_parts/admin0/"
 output_dir = OUTPUT_DIR*"coverage_timeseries/"
-
 #############################################
 # %% Join datasets
 #############################################

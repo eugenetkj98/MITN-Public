@@ -167,49 +167,48 @@ ax = Axis(fig[1,1],
         yticks = (0:0.2:1),
         ylabelsize = 20
         )
-xlims!(6.3*12,n_months+0.5)
+# xlims!(6.3*12,n_months+0.5)
 ylims!(-0.02, 1.02)
+
+
 
 # Add lines
 
 ### NPC
-band!(ax, 1:n_months, continent_npc[:,1], continent_npc[:,3],
+# band!(ax, 1:n_months, continent_npc[:,1], continent_npc[:,3],
+#         color = (colors[1], fillalpha)
+#         )
+# npc_line = lines!(ax, 1:n_months, continent_npc[:,2],
+#         color = colors[1], linewidth = lw)
+band!(ax, (6*12+1):n_months, continent_npc[(6*12+1):n_months,1], continent_npc[(6*12+1):n_months,3],
         color = (colors[1], fillalpha)
         )
-npc_line = lines!(ax, 1:n_months, continent_npc[:,2],
+npc_line = lines!(ax, (6*12+1):n_months, continent_npc[(6*12+1):n_months,2],
         color = colors[1], linewidth = lw)
-# lines!(ax, 1:n_months, continent_npc[:,1],
-#         color = (colors[1], la), 
-#         linewidth = lw, linestyle = :dash)
-# lines!(ax, 1:n_months, continent_npc[:,3],
-#         color = (colors[1], la), linewidth = lw, 
-#         linestyle = :dash)
 
 ### Access
-band!(ax, 1:n_months, continent_access[:,1], continent_access[:,3],
+# band!(ax, 1:n_months, continent_access[:,1], continent_access[:,3],
+# color = (colors[2], fillalpha)
+# )
+# access_line = lines!(ax, 1:n_months, continent_access[:,2],
+#         color = colors[2], linewidth = lw)
+band!(ax, (6*12+1):n_months, continent_access[(6*12+1):n_months,1], continent_access[(6*12+1):n_months,3],
 color = (colors[2], fillalpha)
 )
-access_line = lines!(ax, 1:n_months, continent_access[:,2],
+access_line = lines!(ax, (6*12+1):n_months, continent_access[(6*12+1):n_months,2],
         color = colors[2], linewidth = lw)
-# lines!(ax, 1:n_months, continent_access[:,1],
-#         color = (colors[2], la), 
-#         linewidth = lw, linestyle = :dash)
-# lines!(ax, 1:n_months, continent_access[:,3],
-#         color = (colors[2], la), linewidth = lw, 
-#         linestyle = :dash)
 
 ### Use
-band!(ax, 1:n_months, continent_use[:,1], continent_use[:,3],
+# band!(ax, 1:n_months, continent_use[:,1], continent_use[:,3],
+# color = (colors[3], fillalpha)
+# )
+# use_line = lines!(ax, 1:n_months, continent_use[:,2],
+#         color = colors[3], linewidth = lw)
+band!(ax, (6*12+1):n_months, continent_use[(6*12+1):n_months,1], continent_use[(6*12+1):n_months,3],
 color = (colors[3], fillalpha)
 )
-use_line = lines!(ax, 1:n_months, continent_use[:,2],
+use_line = lines!(ax, (6*12+1):n_months, continent_use[(6*12+1):n_months,2],
         color = colors[3], linewidth = lw)
-# lines!(ax, 1:n_months, continent_use[:,1],
-#         color = (colors[3], la), 
-#         linewidth = lw, linestyle = :dash)
-# lines!(ax, 1:n_months, continent_use[:,3],
-#         color = (colors[3], la), linewidth = lw, 
-#         linestyle = :dash)
 
 # Legend
 Legend(fig[1, 2],
@@ -236,49 +235,47 @@ ax = Axis(fig[1,1],
         yticks = (0:0.2:1),
         ylabelsize = 20
         )
-xlims!(6.3,n_years+0.5)
+# xlims!(6.3,n_years+0.5)
 ylims!(-0.02, 1.02)
+
 
 # Add lines
 
 ### NPC
-band!(ax, 1:n_years, continent_npc_annual[:,1], continent_npc_annual[:,3],
+# band!(ax, 1:n_years, continent_npc_annual[:,1], continent_npc_annual[:,3],
+#         color = (colors[1], fillalpha)
+#         )
+# npc_line = lines!(ax, 1:n_years, continent_npc_annual[:,2],
+#         color = colors[1], linewidth = lw)
+band!(ax, 7:n_years, continent_npc_annual[7:n_years,1], continent_npc_annual[7:n_years,3],
         color = (colors[1], fillalpha)
         )
-npc_line = lines!(ax, 1:n_years, continent_npc_annual[:,2],
+npc_line = lines!(ax, 7:n_years, continent_npc_annual[7:n_years,2],
         color = colors[1], linewidth = lw)
-# lines!(ax, 1:n_years, continent_npc_annual[:,1],
-#         color = (colors[1], la), 
-#         linewidth = lw, linestyle = :dash)
-# lines!(ax, 1:n_years, continent_npc_annual[:,3],
-#         color = (colors[1], la), linewidth = lw, 
-#         linestyle = :dash)
 
 ### Access
-band!(ax, 1:n_years, continent_access_annual[:,1], continent_access_annual[:,3],
+# band!(ax, 1:n_years, continent_access_annual[:,1], continent_access_annual[:,3],
+# color = (colors[2], fillalpha)
+# )
+# access_line = lines!(ax, 1:n_years, continent_access_annual[:,2],
+#         color = colors[2], linewidth = lw)
+band!(ax, 7:n_years, continent_access_annual[7:n_years,1], continent_access_annual[7:n_years,3],
 color = (colors[2], fillalpha)
 )
-access_line = lines!(ax, 1:n_years, continent_access_annual[:,2],
+access_line = lines!(ax, 7:n_years, continent_access_annual[7:n_years,2],
         color = colors[2], linewidth = lw)
-# lines!(ax, 1:n_years, continent_access_annual[:,1],
-#         color = (colors[2], la), 
-#         linewidth = lw, linestyle = :dash)
-# lines!(ax, 1:n_years, continent_access_annual[:,3],
-#         color = (colors[2], la), linewidth = lw, 
-#         linestyle = :dash)
 
 ### Use
-band!(ax, 1:n_years, continent_use_annual[:,1], continent_use_annual[:,3],
+# band!(ax, 1:n_years, continent_use_annual[:,1], continent_use_annual[:,3],
+# color = (colors[3], fillalpha)
+# )
+# use_line = lines!(ax, 1:n_years, continent_use_annual[:,2],
+#         color = colors[3], linewidth = lw)
+band!(ax, 7:n_years, continent_use_annual[7:n_years,1], continent_use_annual[7:n_years,3],
 color = (colors[3], fillalpha)
 )
-use_line = lines!(ax, 1:n_years, continent_use_annual[:,2],
+use_line = lines!(ax, 7:n_years, continent_use_annual[7:n_years,2],
         color = colors[3], linewidth = lw)
-# lines!(ax, 1:n_years, continent_use_annual[:,1],
-#         color = (colors[3], la), 
-#         linewidth = lw, linestyle = :dash)
-# lines!(ax, 1:n_years, continent_use_annual[:,3],
-#         color = (colors[3], la), linewidth = lw, 
-#         linestyle = :dash)
 
 # Legend
 Legend(fig[1, 2],
@@ -306,22 +303,34 @@ ax = Axis(fig[1,1],
         yticks = (0:0.5:4),
         ylabelsize = 20
         )
-xlims!(-0.5,n_months+0.5)
+# xlims!(-0.5,n_months+0.5)
 ylims!(-0.02, 4.02)
 
 # Add Line
-band!(ax, 1:n_months, continent_util[:,1], continent_util[:,3],
+# band!(ax, 1:n_months, continent_util[:,1], continent_util[:,3],
+#                 color = (colors[1], fillalpha)
+#                 )
+# util_line = lines!(ax, 1:n_months, continent_util[:,2],
+#         color = colors[1], linewidth = lw)
+# hlines!(ax, [2], color = colors[1], linestyle = :dash, linewidth = lw)
+band!(ax, (6*12+1):n_months, continent_util[(6*12+1):n_months,1], continent_util[(6*12+1):n_months,3],
                 color = (colors[1], fillalpha)
                 )
-util_line = lines!(ax, 1:n_months, continent_util[:,2],
+util_line = lines!(ax, (6*12+1):n_months, continent_util[(6*12+1):n_months,2],
         color = colors[1], linewidth = lw)
 hlines!(ax, [2], color = colors[1], linestyle = :dash, linewidth = lw)
 
 # Add Line
-band!(ax, 1:n_months, continent_eff[:,1], continent_eff[:,3],
+# band!(ax, 1:n_months, continent_eff[:,1], continent_eff[:,3],
+#                 color = (colors[2], fillalpha)
+#                 )
+# eff_line = lines!(ax, 1:n_months, continent_eff[:,2],
+#         color = colors[2], linewidth = lw)
+# hlines!(ax, [1], color = colors[2], linestyle = :dash, linewidth = lw)
+band!(ax, (6*12+1):n_months, continent_eff[(6*12+1):n_months,1], continent_eff[(6*12+1):n_months,3],
                 color = (colors[2], fillalpha)
                 )
-eff_line = lines!(ax, 1:n_months, continent_eff[:,2],
+eff_line = lines!(ax, (6*12+1):n_months, continent_eff[(6*12+1):n_months,2],
         color = colors[2], linewidth = lw)
 hlines!(ax, [1], color = colors[2], linestyle = :dash, linewidth = lw)
 
@@ -351,22 +360,34 @@ ax = Axis(fig[1,1],
         yticks = (0:0.5:4),
         ylabelsize = 20
         )
-xlims!(6.5,n_years+0.5)
+# xlims!(6.5,n_years+0.5)
 ylims!(-0.05, 3.05)
 
 # Add Line
-band!(ax, 1:n_years, continent_util_annual[:,1], continent_util_annual[:,3],
+# band!(ax, 1:n_years, continent_util_annual[:,1], continent_util_annual[:,3],
+#                 color = (colors[1], fillalpha)
+#                 )
+# util_line = lines!(ax, 1:n_years, continent_util_annual[:,2],
+#         color = colors[1], linewidth = lw)
+# hlines!(ax, [2], color = colors[1], linestyle = :dash, linewidth = lw)
+band!(ax, 7:n_years, continent_util_annual[7:n_years,1], continent_util_annual[7:n_years,3],
                 color = (colors[1], fillalpha)
                 )
-util_line = lines!(ax, 1:n_years, continent_util_annual[:,2],
+util_line = lines!(ax, 7:n_years, continent_util_annual[7:n_years,2],
         color = colors[1], linewidth = lw)
 hlines!(ax, [2], color = colors[1], linestyle = :dash, linewidth = lw)
 
 # Add Line
-band!(ax, 1:n_years, continent_eff_annual[:,1], continent_eff_annual[:,3],
+# band!(ax, 1:n_years, continent_eff_annual[:,1], continent_eff_annual[:,3],
+#                 color = (colors[2], fillalpha)
+#                 )
+# eff_line = lines!(ax, 1:n_years, continent_eff_annual[:,2],
+#         color = colors[2], linewidth = lw)
+# hlines!(ax, [1], color = colors[2], linestyle = :dash, linewidth = lw)
+band!(ax, 7:n_years, continent_eff_annual[7:n_years,1], continent_eff_annual[7:n_years,3],
                 color = (colors[2], fillalpha)
                 )
-eff_line = lines!(ax, 1:n_years, continent_eff_annual[:,2],
+eff_line = lines!(ax, 7:n_years, continent_eff_annual[7:n_years,2],
         color = colors[2], linewidth = lw)
 hlines!(ax, [1], color = colors[2], linestyle = :dash, linewidth = lw)
 
@@ -513,7 +534,7 @@ fig = Figure(size = (600,400))
 ax = Axis(fig[1,1],
         title = "Africa Mean Net Age",
         xlabel = "Years", 
-        xticks = (1:12:n_months, string.(YEAR_START:YEAR_END)),
+        xticks = (1:12:n_months+12, string.(YEAR_START:(YEAR_END+1))),
         xticklabelrotation = pi/2,
         xlabelsize = 18,
         titlesize = 23,
@@ -521,14 +542,19 @@ ax = Axis(fig[1,1],
         yticks = (0:0.5:2),
         ylabelsize = 18
         )
-xlims!(0.5,n_months+0.5)
+# xlims!(0.5,n_months+0.5)
 ylims!(-0.02, 1.52)
 
 # Add Line
-band!(ax, 1:n_months, continent_age_vals[:,1]./12, continent_age_vals[:,3]./12,
+# band!(ax, 1:n_months, continent_age_vals[:,1]./12, continent_age_vals[:,3]./12,
+#                 color = (colors[1], fillalpha)
+#                 )
+# lines!(ax, 1:n_months, continent_age_vals[:,2]./12,
+#         color = colors[1], linewidth = lw)
+band!(ax, (6*12+1):n_months, continent_age_vals[(6*12+1):n_months,1]./12, continent_age_vals[(6*12+1):n_months,3]./12,
                 color = (colors[1], fillalpha)
                 )
-util_line = lines!(ax, 1:n_months, continent_age_vals[:,2]./12,
+lines!(ax, (6*12+1):n_months, continent_age_vals[(6*12+1):n_months,2]./12,
         color = colors[1], linewidth = lw)
 
 save(OUTPUT_PLOTS_DIR*"PaperFigures/Continent_ITN_net_age.pdf", fig, pdf_version = "1.4")
