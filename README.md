@@ -67,37 +67,5 @@ Script that combines stock and flow outputs, and INLA rasters to provide final I
 ### Miscellaneous
 - Improved documentation and code organisation
 
-## To Do List
-### Implementations
-#### Required
-- Clean up obsolete/commented code originally from prototyping phase. General declutter
-- Organise directories and wrap functions into modules where possible for cleaning
-- Update and complete code repo documentation
-	- Add material into documentation and makefile.jl
-	- Provide support for automatic documentation updates via Github-CI
-	- Update documentation with list of dependencies and required data formats
-- Write master script to run both Julia and R components in pipeline
-
-#### Desirable (Nice to haves)
-- Clean up and try and implement multithreading capabilities (if possible) in the raster construction section. Might not be possible due to GDAL limitations
-- Find a way to run Julia on AWS (currently broken and needs to be run manually)
-	- Implementation of automatic multi-processing capability when doing national level SNF estimates of net attrition parameters (currently manually run via R Studio terminal)
-
-### Testing
-- Complete first run initial outputs of ITN coverage rasters with coarse mesh in INLA
-- Do full pipeline run of entire model construction to iron out bugs
-
-### Model Validation
-- Compare initial estimates (with CI) of continent and national ITN measures over time at annual resolution
-
-### Bug Hunts
-- Identify spurious/occasional NaNs in adjusted national and subnational access
-
-### Writing and Publication
-- Extend current paper draft to include new innovations of subnational analyses and spatial disaggregation
-- Narrative for public health purposes
-- Overhaul paper structure and separate body from SI
-- Update supplementary information with new mathematical changes and detail
-
 ## Documentation wiki
 Coming soon once I figure out how to get Github-CI to play nice with Documenter.jl :(
