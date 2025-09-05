@@ -11,6 +11,8 @@ In order to provide better scalability with available computational resources, p
 
 ## Repository Structure (For illustrative reference)
 
+NOTE: The following directories are recently deprecated due to implementation with cloud computing APIs and on-prem storage. This repository is used purely for the inspection of code.
+
 ### Non-Model Code
 #### docs (WORK IN PROGRESS)
 Sub-project directory containing Documenter script for producing documentation pages for the code base. Currently WIP, but will eventually contain information on the following:
