@@ -9,17 +9,17 @@ This repository contains the codebase to construct newly developed MITN (Multity
 
 In order to provide better scalability with available computational resources, phases 1,2, and 4 are written in Julia and are multithreaded where possible. Phase 3 is implemented in R to utilise the existing mature INLA package for spatial statistics.
 
-## Repository Structure
+## Repository Structure (For illustrative reference)
 
 ### Non-Model Code
-#### docs
+#### docs (WORK IN PROGRESS)
 Sub-project directory containing Documenter script for producing documentation pages for the code base. Currently WIP, but will eventually contain information on the following:
 - How-to-use guide
 - Mathematical justification and code details
 - Required input data formats and standards
 - Outstanding code issues
 - References (if relevant)
-#### datasets
+#### datasets (Note raw datasets are currently stored on-prem for storage capacity reasons. Please contact if looking that have access for running code)
 Folder containing all the required raw numerical datasets (anything contained in a .csv file) such as 
 - Cleaned household surveys
 - Delivery data
